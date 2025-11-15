@@ -1,0 +1,1 @@
+from .instance_fusion import InstanceFusion
