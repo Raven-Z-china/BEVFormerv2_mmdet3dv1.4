@@ -311,7 +311,7 @@ class CustomNuScenesDatasetV2(NuScenesDataset):
         while True:
             data = self.prepare_train_data(idx)
             if data is None:
-                idx = self._rand_another(idx)
+                idx = self._rand_another()
                 continue
             return data
 
