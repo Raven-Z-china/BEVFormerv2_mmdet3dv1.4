@@ -1,8 +1,8 @@
 # Copyright 2021 Toyota Research Institute.  All rights reserved.
 import numpy as np
-import projects.BEVFormerv3.bevformerv2.dd3d.structures.transform3d as t3d
+import projects.BEVFormerv2.bevformerv2.dd3d.structures.transform3d as t3d
 import torch
-from projects.BEVFormerv3.bevformerv2.dd3d.utils.geometry import unproject_points2d
+from projects.BEVFormerv2.bevformerv2.dd3d.utils.geometry import unproject_points2d
 from pyquaternion import Quaternion
 from torch.cuda import amp
 

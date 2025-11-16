@@ -15,7 +15,7 @@ from mmdet.models.utils import multi_apply
 from mmdet.utils import reduce_mean
 from mmengine.model import BaseModule
 from mmengine.model.weight_init import bias_init_with_prob
-from projects.BEVFormerv3.bevformerv2.bevformer.modules import (
+from projects.BEVFormerv2.bevformerv2.bevformer.modules import (
     PerceptionTransformerBEVEncoder,
 )
 

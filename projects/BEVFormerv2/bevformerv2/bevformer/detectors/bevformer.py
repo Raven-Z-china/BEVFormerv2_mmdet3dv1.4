@@ -9,7 +9,7 @@ import time
 
 import numpy as np
 import torch
-from projects.BEVFormerv3.bevformerv2.grid_mask import GridMask
+from projects.BEVFormerv2.bevformerv2.grid_mask import GridMask
 
 import mmdet3d
 from mmdet3d.models.detectors.mvx_two_stage import MVXTwoStageDetector

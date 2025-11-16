@@ -8,7 +8,7 @@ import copy
 from collections import OrderedDict
 
 import torch
-from projects.BEVFormerv3.bevformerv2.grid_mask import GridMask
+from projects.BEVFormerv2.bevformerv2.grid_mask import GridMask
 
 from mmdet3d.models.detectors.mvx_two_stage import MVXTwoStageDetector
 from mmdet3d.registry import MODELS
@@ -16,7 +16,7 @@ from mmdet3d.structures.ops.transforms import bbox3d2result
 
 
 @MODELS.register_module()
-class BEVFormerV3(MVXTwoStageDetector):
+class BEVFormerV2(MVXTwoStageDetector):
     """BEVFormer.
 
     Args:
@@ -46,9 +46,8 @@ class BEVFormerV3(MVXTwoStageDetector):
         num_mono_levels=None,
         mono_loss_weight=1.0,
         frames=(0,),
-        abc=0.0,
     ):
-        super(BEVFormerV3, self).__init__(
+        super(BEVFormerV2, self).__init__(
             pts_voxel_encoder,
             pts_middle_encoder,
             pts_fusion_layer,

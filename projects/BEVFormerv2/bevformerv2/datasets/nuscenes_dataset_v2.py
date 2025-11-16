@@ -6,7 +6,7 @@ import mmcv
 import numpy as np
 import torch
 from nuscenes.eval.common.utils import Quaternion, quaternion_yaw
-from projects.BEVFormerv3.bevformerv2.dd3d.datasets.nuscenes import (
+from projects.BEVFormerv2.bevformerv2.dd3d.datasets.nuscenes import (
     NuscenesDataset as DD3DNuscenesDataset,
 )
 

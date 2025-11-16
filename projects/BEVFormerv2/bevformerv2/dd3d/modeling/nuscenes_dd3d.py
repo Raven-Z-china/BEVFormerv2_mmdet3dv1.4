@@ -8,10 +8,10 @@ from detectron2.modeling.postprocessing import detector_postprocess as resize_in
 from detectron2.structures import Instances
 from detectron2.utils import comm as d2_comm
 from fvcore.nn.smooth_l1_loss import smooth_l1_loss
-from projects.BEVFormerv3.bevformerv2.dd3d.datasets.nuscenes import MAX_NUM_ATTRIBUTES
-from projects.BEVFormerv3.bevformerv2.dd3d.structures.boxes3d import Boxes3D
-from projects.BEVFormerv3.bevformerv2.dd3d.structures.image_list import ImageList
-from projects.BEVFormerv3.bevformerv2.dd3d.utils.comm import reduce_sum
+from projects.BEVFormerv2.bevformerv2.dd3d.datasets.nuscenes import MAX_NUM_ATTRIBUTES
+from projects.BEVFormerv2.bevformerv2.dd3d.structures.boxes3d import Boxes3D
+from projects.BEVFormerv2.bevformerv2.dd3d.structures.image_list import ImageList
+from projects.BEVFormerv2.bevformerv2.dd3d.utils.comm import reduce_sum
 from torch import nn
 
 from mmdet3d.registry import MODELS

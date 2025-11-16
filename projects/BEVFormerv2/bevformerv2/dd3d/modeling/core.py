@@ -7,8 +7,8 @@ from detectron2.modeling.postprocessing import detector_postprocess as resize_in
 from detectron2.structures import Instances
 
 # from tridet.modeling.feature_extractor import build_feature_extractor
-from projects.BEVFormerv3.bevformerv2.dd3d.structures.image_list import ImageList
-from projects.BEVFormerv3.bevformerv2.dd3d.utils.tensor2d import (
+from projects.BEVFormerv2.bevformerv2.dd3d.structures.image_list import ImageList
+from projects.BEVFormerv2.bevformerv2.dd3d.utils.tensor2d import (
     compute_features_locations as compute_locations_per_level,
 )
 from torch import nn

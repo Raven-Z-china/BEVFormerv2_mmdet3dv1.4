@@ -3,7 +3,7 @@ import logging
 
 import torch
 import torch.nn as nn
-from projects.BEVFormerv3.bevformerv2.dd3d.layers.smooth_l1_loss import smooth_l1_loss
+from projects.BEVFormerv2.bevformerv2.dd3d.layers.smooth_l1_loss import smooth_l1_loss
 
 LOG = logging.getLogger(__name__)
 

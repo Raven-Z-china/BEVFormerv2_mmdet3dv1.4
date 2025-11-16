@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from detectron2.data import transforms as T
 from detectron2.structures import Boxes, BoxMode, Instances
-from projects.BEVFormerv3.bevformerv2.dd3d.structures.boxes3d import Boxes3D
+from projects.BEVFormerv2.bevformerv2.dd3d.structures.boxes3d import Boxes3D
 
 __all__ = ['transform_instance_annotations', 'annotations_to_instances']
 

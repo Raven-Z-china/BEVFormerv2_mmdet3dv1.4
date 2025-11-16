@@ -2,13 +2,13 @@
 import torch
 import torch.nn.functional as F
 from detectron2.layers import Conv2d, cat, get_norm
-from projects.BEVFormerv3.bevformerv2.dd3d.layers.normalization import (
+from projects.BEVFormerv2.bevformerv2.dd3d.layers.normalization import (
     ModuleListDial,
     Offset,
     Scale,
 )
-from projects.BEVFormerv3.bevformerv2.dd3d.structures.boxes3d import Boxes3D
-from projects.BEVFormerv3.bevformerv2.dd3d.utils.geometry import (
+from projects.BEVFormerv2.bevformerv2.dd3d.structures.boxes3d import Boxes3D
+from projects.BEVFormerv2.bevformerv2.dd3d.utils.geometry import (
     allocentric_to_egocentric,
     unproject_points2d,
 )

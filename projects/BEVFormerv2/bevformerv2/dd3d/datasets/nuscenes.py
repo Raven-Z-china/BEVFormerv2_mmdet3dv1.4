@@ -10,10 +10,10 @@ from nuscenes.nuscenes import NuScenes
 from nuscenes.utils.splits import create_splits_scenes
 
 # from tridet.data import collect_dataset_dicts
-from projects.BEVFormerv3.bevformerv2.dd3d.structures.boxes3d import GenericBoxes3D
-from projects.BEVFormerv3.bevformerv2.dd3d.structures.pose import Pose
-from projects.BEVFormerv3.bevformerv2.dd3d.utils.geometry import project_points3d
-from projects.BEVFormerv3.bevformerv2.dd3d.utils.visualization import (
+from projects.BEVFormerv2.bevformerv2.dd3d.structures.boxes3d import GenericBoxes3D
+from projects.BEVFormerv2.bevformerv2.dd3d.structures.pose import Pose
+from projects.BEVFormerv2.bevformerv2.dd3d.utils.geometry import project_points3d
+from projects.BEVFormerv2.bevformerv2.dd3d.utils.visualization import (
     float_to_uint8_color,
 )
 from torch.utils.data import Dataset

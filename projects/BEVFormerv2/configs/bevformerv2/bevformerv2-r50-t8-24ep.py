@@ -9,7 +9,7 @@ _base_ = ['../../../../configs/_base_/default_runtime.py']
 
 custom_imports = dict(
     imports=[
-        'projects.BEVFormerv3.bevformerv2',
+        'projects.BEVFormerv2.bevformerv2',
     ],
     allow_failed_imports=False,
 )
@@ -246,7 +246,7 @@ _num_levels_ = 4
 _num_mono_levels_ = 5
 
 model = dict(
-    type='BEVFormerV3',
+    type='BEVFormerV2',
     use_grid_mask=True,
     video_test_mode=False,
     num_levels=_num_levels_,

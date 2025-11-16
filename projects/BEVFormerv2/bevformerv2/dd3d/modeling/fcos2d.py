@@ -6,12 +6,12 @@ from detectron2.layers import Conv2d, batched_nms, cat, get_norm
 from detectron2.structures import Boxes, Instances
 from detectron2.utils.comm import get_world_size
 from fvcore.nn import sigmoid_focal_loss
-from projects.BEVFormerv3.bevformerv2.dd3d.layers.iou_loss import IOULoss
-from projects.BEVFormerv3.bevformerv2.dd3d.layers.normalization import (
+from projects.BEVFormerv2.bevformerv2.dd3d.layers.iou_loss import IOULoss
+from projects.BEVFormerv2.bevformerv2.dd3d.layers.normalization import (
     ModuleListDial,
     Scale,
 )
-from projects.BEVFormerv3.bevformerv2.dd3d.utils.comm import reduce_sum
+from projects.BEVFormerv2.bevformerv2.dd3d.utils.comm import reduce_sum
 from torch import nn
 from torch.nn import functional as F
 

@@ -2,11 +2,11 @@ import copy
 
 import numpy as np
 import torch
-from projects.BEVFormerv3.bevformerv2.dd3d.datasets.transform_utils import (
+from projects.BEVFormerv2.bevformerv2.dd3d.datasets.transform_utils import (
     annotations_to_instances,
 )
-from projects.BEVFormerv3.bevformerv2.dd3d.structures.pose import Pose
-from projects.BEVFormerv3.bevformerv2.dd3d.utils.tasks import TaskManager
+from projects.BEVFormerv2.bevformerv2.dd3d.structures.pose import Pose
+from projects.BEVFormerv2.bevformerv2.dd3d.utils.tasks import TaskManager
 
 from mmdet3d.registry import TRANSFORMS
 

@@ -1,2 +1,2 @@
 from .bevformer import BEVFormer
-from .bevformerV3 import BEVFormerV3
+from .bevformerV2 import BEVFormerV2
