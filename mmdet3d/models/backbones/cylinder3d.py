@@ -10,8 +10,7 @@ from typing import List, Optional
 import numpy as np
 import torch
 from mmcv.cnn import build_activation_layer, build_norm_layer
-from mmcv.ops import (SparseConv3d, SparseConvTensor, SparseInverseConv3d,
-                      SubMConv3d)
+from mmcv.ops import SparseConv3d, SparseConvTensor, SparseInverseConv3d, SubMConv3d
 from mmengine.model import BaseModule
 from torch import Tensor
 
@@ -32,12 +31,14 @@ class AsymmResBlock(BaseModule):
         indice_key (str, optional): Name of indice tables. Defaults to None.
     """
 
-    def __init__(self,
-                 in_channels: int,
-                 out_channels: int,
-                 norm_cfg: ConfigType,
-                 act_cfg: ConfigType = dict(type='LeakyReLU'),
-                 indice_key: Optional[str] = None):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        norm_cfg: ConfigType,
+        act_cfg: ConfigType = dict(type='LeakyReLU'),
+        indice_key: Optional[str] = None,
+    ):
         super().__init__()
 
         self.conv0_0 = SubMConv3d(
@@ -46,7 +47,8 @@ class AsymmResBlock(BaseModule):
             kernel_size=(1, 3, 3),
             padding=1,
             bias=False,
-            indice_key=indice_key + 'bef')
+            indice_key=indice_key + 'bef',
+        )
         self.act0_0 = build_activation_layer(act_cfg)
         self.bn0_0 = build_norm_layer(norm_cfg, out_channels)[1]
 
@@ -56,7 +58,8 @@ class AsymmResBlock(BaseModule):
             kernel_size=(3, 1, 3),
             padding=1,
             bias=False,
-            indice_key=indice_key + 'bef')
+            indice_key=indice_key + 'bef',
+        )
         self.act0_1 = build_activation_layer(act_cfg)
         self.bn0_1 = build_norm_layer(norm_cfg, out_channels)[1]
 
@@ -66,7 +69,8 @@ class AsymmResBlock(BaseModule):
             kernel_size=(3, 1, 3),
             padding=1,
             bias=False,
-            indice_key=indice_key + 'bef')
+            indice_key=indice_key + 'bef',
+        )
         self.act1_0 = build_activation_layer(act_cfg)
         self.bn1_0 = build_norm_layer(norm_cfg, out_channels)[1]
 
@@ -76,7 +80,8 @@ class AsymmResBlock(BaseModule):
             kernel_size=(1, 3, 3),
             padding=1,
             bias=False,
-            indice_key=indice_key + 'bef')
+            indice_key=indice_key + 'bef',
+        )
         self.act1_1 = build_activation_layer(act_cfg)
         self.bn1_1 = build_norm_layer(norm_cfg, out_channels)[1]
 
@@ -121,14 +126,16 @@ class AsymmeDownBlock(BaseModule):
        indice_key (str, optional): Name of indice tables. Defaults to None.
     """
 
-    def __init__(self,
-                 in_channels: int,
-                 out_channels: int,
-                 norm_cfg: ConfigType,
-                 act_cfg: ConfigType = dict(type='LeakyReLU'),
-                 pooling: bool = True,
-                 height_pooling: bool = False,
-                 indice_key: Optional[str] = None):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        norm_cfg: ConfigType,
+        act_cfg: ConfigType = dict(type='LeakyReLU'),
+        pooling: bool = True,
+        height_pooling: bool = False,
+        indice_key: Optional[str] = None,
+    ):
         super().__init__()
         self.pooling = pooling
 
@@ -138,7 +145,8 @@ class AsymmeDownBlock(BaseModule):
             kernel_size=(3, 1, 3),
             padding=1,
             bias=False,
-            indice_key=indice_key + 'bef')
+            indice_key=indice_key + 'bef',
+        )
         self.act0_0 = build_activation_layer(act_cfg)
         self.bn0_0 = build_norm_layer(norm_cfg, out_channels)[1]
 
@@ -148,7 +156,8 @@ class AsymmeDownBlock(BaseModule):
             kernel_size=(1, 3, 3),
             padding=1,
             bias=False,
-            indice_key=indice_key + 'bef')
+            indice_key=indice_key + 'bef',
+        )
         self.act0_1 = build_activation_layer(act_cfg)
         self.bn0_1 = build_norm_layer(norm_cfg, out_channels)[1]
 
@@ -158,7 +167,8 @@ class AsymmeDownBlock(BaseModule):
             kernel_size=(1, 3, 3),
             padding=1,
             bias=False,
-            indice_key=indice_key + 'bef')
+            indice_key=indice_key + 'bef',
+        )
         self.act1_0 = build_activation_layer(act_cfg)
         self.bn1_0 = build_norm_layer(norm_cfg, out_channels)[1]
 
@@ -168,7 +178,8 @@ class AsymmeDownBlock(BaseModule):
             kernel_size=(3, 1, 3),
             padding=1,
             bias=False,
-            indice_key=indice_key + 'bef')
+            indice_key=indice_key + 'bef',
+        )
         self.act1_1 = build_activation_layer(act_cfg)
         self.bn1_1 = build_norm_layer(norm_cfg, out_channels)[1]
 
@@ -181,7 +192,8 @@ class AsymmeDownBlock(BaseModule):
                     stride=2,
                     padding=1,
                     indice_key=indice_key,
-                    bias=False)
+                    bias=False,
+                )
             else:
                 self.pool = SparseConv3d(
                     out_channels,
@@ -190,7 +202,8 @@ class AsymmeDownBlock(BaseModule):
                     stride=(2, 2, 1),
                     padding=1,
                     indice_key=indice_key,
-                    bias=False)
+                    bias=False,
+                )
 
     def forward(self, x: SparseConvTensor) -> SparseConvTensor:
         """Forward pass."""
@@ -234,13 +247,15 @@ class AsymmeUpBlock(BaseModule):
             SparseInverseConv3d. Defaults to None.
     """
 
-    def __init__(self,
-                 in_channels: int,
-                 out_channels: int,
-                 norm_cfg: ConfigType,
-                 act_cfg: ConfigType = dict(type='LeakyReLU'),
-                 indice_key: Optional[str] = None,
-                 up_key: Optional[str] = None):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        norm_cfg: ConfigType,
+        act_cfg: ConfigType = dict(type='LeakyReLU'),
+        indice_key: Optional[str] = None,
+        up_key: Optional[str] = None,
+    ):
         super().__init__()
 
         self.trans_conv = SubMConv3d(
@@ -249,7 +264,8 @@ class AsymmeUpBlock(BaseModule):
             kernel_size=(3, 3, 3),
             padding=1,
             bias=False,
-            indice_key=indice_key + 'new_up')
+            indice_key=indice_key + 'new_up',
+        )
         self.trans_act = build_activation_layer(act_cfg)
         self.trans_bn = build_norm_layer(norm_cfg, out_channels)[1]
 
@@ -259,7 +275,8 @@ class AsymmeUpBlock(BaseModule):
             kernel_size=(1, 3, 3),
             padding=1,
             bias=False,
-            indice_key=indice_key)
+            indice_key=indice_key,
+        )
         self.act1 = build_activation_layer(act_cfg)
         self.bn1 = build_norm_layer(norm_cfg, out_channels)[1]
 
@@ -269,7 +286,8 @@ class AsymmeUpBlock(BaseModule):
             kernel_size=(3, 1, 3),
             padding=1,
             bias=False,
-            indice_key=indice_key)
+            indice_key=indice_key,
+        )
         self.act2 = build_activation_layer(act_cfg)
         self.bn2 = build_norm_layer(norm_cfg, out_channels)[1]
 
@@ -279,19 +297,16 @@ class AsymmeUpBlock(BaseModule):
             kernel_size=(3, 3, 3),
             padding=1,
             bias=False,
-            indice_key=indice_key)
+            indice_key=indice_key,
+        )
         self.act3 = build_activation_layer(act_cfg)
         self.bn3 = build_norm_layer(norm_cfg, out_channels)[1]
 
         self.up_subm = SparseInverseConv3d(
-            out_channels,
-            out_channels,
-            kernel_size=3,
-            indice_key=up_key,
-            bias=False)
+            out_channels, out_channels, kernel_size=3, indice_key=up_key, bias=False
+        )
 
-    def forward(self, x: SparseConvTensor,
-                skip: SparseConvTensor) -> SparseConvTensor:
+    def forward(self, x: SparseConvTensor, skip: SparseConvTensor) -> SparseConvTensor:
         """Forward pass."""
         x_trans = self.trans_conv(x)
         x_trans.features = self.trans_act(x_trans.features)
@@ -330,12 +345,14 @@ class DDCMBlock(BaseModule):
         indice_key (str, optional): Name of indice tables. Defaults to None.
     """
 
-    def __init__(self,
-                 in_channels: int,
-                 out_channels: int,
-                 norm_cfg: ConfigType,
-                 act_cfg: ConfigType = dict(type='Sigmoid'),
-                 indice_key: Optional[str] = None):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        norm_cfg: ConfigType,
+        act_cfg: ConfigType = dict(type='Sigmoid'),
+        indice_key: Optional[str] = None,
+    ):
         super().__init__()
 
         self.conv1 = SubMConv3d(
@@ -344,7 +361,8 @@ class DDCMBlock(BaseModule):
             kernel_size=(3, 1, 1),
             padding=1,
             bias=False,
-            indice_key=indice_key)
+            indice_key=indice_key,
+        )
         self.bn1 = build_norm_layer(norm_cfg, out_channels)[1]
         self.act1 = build_activation_layer(act_cfg)
 
@@ -354,7 +372,8 @@ class DDCMBlock(BaseModule):
             kernel_size=(1, 3, 1),
             padding=1,
             bias=False,
-            indice_key=indice_key)
+            indice_key=indice_key,
+        )
         self.bn2 = build_norm_layer(norm_cfg, out_channels)[1]
         self.act2 = build_activation_layer(act_cfg)
 
@@ -364,7 +383,8 @@ class DDCMBlock(BaseModule):
             kernel_size=(1, 1, 3),
             padding=1,
             bias=False,
-            indice_key=indice_key)
+            indice_key=indice_key,
+        )
         self.bn3 = build_norm_layer(norm_cfg, out_channels)[1]
         self.act3 = build_activation_layer(act_cfg)
 
@@ -381,8 +401,7 @@ class DDCMBlock(BaseModule):
         shortcut3 = self.conv3(x)
         shortcut3.features = self.bn3(shortcut3.features)
         shortcut3.features = self.act3(shortcut3.features)
-        shortcut.features = shortcut.features + \
-            shortcut2.features + shortcut3.features
+        shortcut.features = shortcut.features + shortcut2.features + shortcut3.features
 
         shortcut.features = shortcut.features * x.features
 
@@ -408,21 +427,23 @@ class Asymm3DSpconv(BaseModule):
             Defaults to None.
     """
 
-    def __init__(self,
-                 grid_size: int,
-                 input_channels: int,
-                 base_channels: int = 16,
-                 backbone_depth: int = 4,
-                 height_pooing: List[bool] = [True, True, False, False],
-                 norm_cfg: ConfigType = dict(
-                     type='BN1d', eps=1e-3, momentum=0.01),
-                 init_cfg=None):
+    def __init__(
+        self,
+        grid_size: int,
+        input_channels: int,
+        base_channels: int = 16,
+        backbone_depth: int = 4,
+        height_pooing: List[bool] = [True, True, False, False],
+        norm_cfg: ConfigType = dict(type='BN1d', eps=1e-3, momentum=0.01),
+        init_cfg=None,
+    ):
         super().__init__(init_cfg=init_cfg)
 
         self.grid_size = grid_size
         self.backbone_depth = backbone_depth
         self.down_context = AsymmResBlock(
-            input_channels, base_channels, indice_key='pre', norm_cfg=norm_cfg)
+            input_channels, base_channels, indice_key='pre', norm_cfg=norm_cfg
+        )
 
         self.down_block_list = torch.nn.ModuleList()
         self.up_block_list = torch.nn.ModuleList()
@@ -430,39 +451,45 @@ class Asymm3DSpconv(BaseModule):
             self.down_block_list.append(
                 AsymmeDownBlock(
                     2**i * base_channels,
-                    2**(i + 1) * base_channels,
+                    2 ** (i + 1) * base_channels,
                     height_pooling=height_pooing[i],
                     indice_key='down' + str(i),
-                    norm_cfg=norm_cfg))
+                    norm_cfg=norm_cfg,
+                )
+            )
             if i == self.backbone_depth - 1:
                 self.up_block_list.append(
                     AsymmeUpBlock(
-                        2**(i + 1) * base_channels,
-                        2**(i + 1) * base_channels,
+                        2 ** (i + 1) * base_channels,
+                        2 ** (i + 1) * base_channels,
                         up_key='down' + str(i),
                         indice_key='up' + str(self.backbone_depth - 1 - i),
-                        norm_cfg=norm_cfg))
+                        norm_cfg=norm_cfg,
+                    )
+                )
             else:
                 self.up_block_list.append(
                     AsymmeUpBlock(
-                        2**(i + 2) * base_channels,
-                        2**(i + 1) * base_channels,
+                        2 ** (i + 2) * base_channels,
+                        2 ** (i + 1) * base_channels,
                         up_key='down' + str(i),
                         indice_key='up' + str(self.backbone_depth - 1 - i),
-                        norm_cfg=norm_cfg))
+                        norm_cfg=norm_cfg,
+                    )
+                )
 
         self.ddcm = DDCMBlock(
-            2 * base_channels,
-            2 * base_channels,
-            indice_key='ddcm',
-            norm_cfg=norm_cfg)
+            2 * base_channels, 2 * base_channels, indice_key='ddcm', norm_cfg=norm_cfg
+        )
 
-    def forward(self, voxel_features: Tensor, coors: Tensor,
-                batch_size: int) -> SparseConvTensor:
+    def forward(
+        self, voxel_features: Tensor, coors: Tensor, batch_size: int
+    ) -> SparseConvTensor:
         """Forward pass."""
         coors = coors.int()
-        ret = SparseConvTensor(voxel_features, coors, np.array(self.grid_size),
-                               batch_size)
+        ret = SparseConvTensor(
+            voxel_features, coors, np.array(self.grid_size), batch_size
+        )
         ret = self.down_context(ret)
 
         down_skip_list = []

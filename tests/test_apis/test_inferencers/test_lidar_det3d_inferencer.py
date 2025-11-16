@@ -13,7 +13,6 @@ from mmdet3d.structures import Det3DDataSample
 
 
 class TestLidarDet3DInferencer(TestCase):
-
     def setUp(self):
         # init from alias
         self.inferencer = LidarDet3DInferencer('pointpillars_kitti-3class')
@@ -24,21 +23,21 @@ class TestLidarDet3DInferencer(TestCase):
         # init from cfg
         LidarDet3DInferencer(
             'configs/pointpillars/pointpillars_hv_secfpn_8xb6-160e_kitti-3d-3class.py',  # noqa
-            weights=  # noqa
-            'https://download.openmmlab.com/mmdetection3d/v1.0.0_models/pointpillars/hv_pointpillars_secfpn_6x8_160e_kitti-3d-3class/hv_pointpillars_secfpn_6x8_160e_kitti-3d-3class_20220301_150306-37dc2420.pth'  # noqa
+            weights='https://download.openmmlab.com/mmdetection3d/v1.0.0_models/pointpillars/hv_pointpillars_secfpn_6x8_160e_kitti-3d-3class/hv_pointpillars_secfpn_6x8_160e_kitti-3d-3class_20220301_150306-37dc2420.pth',  # noqa  # noqa
         )
 
     def assert_predictions_equal(self, preds1, preds2):
         for pred1, pred2 in zip(preds1, preds2):
             if 'bboxes_3d' in pred1:
                 self.assertTrue(
-                    np.allclose(pred1['bboxes_3d'], pred2['bboxes_3d'], 0.1))
+                    np.allclose(pred1['bboxes_3d'], pred2['bboxes_3d'], 0.1)
+                )
             if 'scores_3d' in pred1:
                 self.assertTrue(
-                    np.allclose(pred1['scores_3d'], pred2['scores_3d'], 0.1))
+                    np.allclose(pred1['scores_3d'], pred2['scores_3d'], 0.1)
+                )
             if 'labels_3d' in pred1:
-                self.assertTrue(
-                    np.allclose(pred1['labels_3d'], pred2['labels_3d']))
+                self.assertTrue(np.allclose(pred1['labels_3d'], pred2['labels_3d']))
 
     def test_call(self):
         if not torch.cuda.is_available():
@@ -53,15 +52,16 @@ class TestLidarDet3DInferencer(TestCase):
         points = points[:, :4]
         inputs = dict(points=points)
         res_ndarray = self.inferencer(inputs, return_vis=True)
-        self.assert_predictions_equal(res_path['predictions'],
-                                      res_ndarray['predictions'])
+        self.assert_predictions_equal(
+            res_path['predictions'], res_ndarray['predictions']
+        )
         self.assertIn('visualization', res_path)
         self.assertIn('visualization', res_ndarray)
 
         # multiple point clouds
         inputs = [
             dict(points='tests/data/kitti/training/velodyne/000000.bin'),
-            dict(points='tests/data/kitti/training/velodyne/000000.bin')
+            dict(points='tests/data/kitti/training/velodyne/000000.bin'),
         ]
         res_path = self.inferencer(inputs, return_vis=True)
         # list of ndarray
@@ -72,8 +72,9 @@ class TestLidarDet3DInferencer(TestCase):
             points = points.reshape(-1, 4)
             all_points.append(dict(points=points))
         res_ndarray = self.inferencer(all_points, return_vis=True)
-        self.assert_predictions_equal(res_path['predictions'],
-                                      res_ndarray['predictions'])
+        self.assert_predictions_equal(
+            res_path['predictions'], res_ndarray['predictions']
+        )
         self.assertIn('visualization', res_path)
         self.assertIn('visualization', res_ndarray)
 
@@ -86,7 +87,7 @@ class TestLidarDet3DInferencer(TestCase):
     def test_visualize(self):
         if not torch.cuda.is_available():
             return
-        inputs = dict(points='tests/data/kitti/training/velodyne/000000.bin'),
+        inputs = (dict(points='tests/data/kitti/training/velodyne/000000.bin'),)
         # img_out_dir
         with tempfile.TemporaryDirectory() as tmp_dir:
             self.inferencer(inputs, out_dir=tmp_dir)
@@ -105,6 +106,5 @@ class TestLidarDet3DInferencer(TestCase):
         # pred_out_dir
         with tempfile.TemporaryDirectory() as tmp_dir:
             res = self.inferencer(inputs, print_result=True, out_dir=tmp_dir)
-            dumped_res = mmengine.load(
-                osp.join(tmp_dir, 'preds', '000000.json'))
+            dumped_res = mmengine.load(osp.join(tmp_dir, 'preds', '000000.json'))
             self.assertEqual(res['predictions'][0], dumped_res)

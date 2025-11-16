@@ -7,9 +7,13 @@ import numpy as np
 import torch
 from mmengine.structures import InstanceData
 
-from mmdet3d.structures import (CameraInstance3DBoxes, DepthInstance3DBoxes,
-                                Det3DDataSample, LiDARInstance3DBoxes,
-                                PointData)
+from mmdet3d.structures import (
+    CameraInstance3DBoxes,
+    DepthInstance3DBoxes,
+    Det3DDataSample,
+    LiDARInstance3DBoxes,
+    PointData,
+)
 
 
 def setup_seed(seed):
@@ -28,6 +32,7 @@ def _get_config_directory():
     except NameError:
         # For IPython development when this __file__ is not defined
         import mmdet3d
+
         repo_dpath = dirname(dirname(mmdet3d.__file__))
     config_dpath = join(repo_dpath, 'configs')
     if not exists(config_dpath):
@@ -38,6 +43,7 @@ def _get_config_directory():
 def _get_config_module(fname):
     """Load a configuration as a python module."""
     from mmengine import Config
+
     config_dpath = _get_config_directory()
     config_fpath = join(config_dpath, fname)
     config_mod = Config.fromfile(config_fpath)
@@ -63,6 +69,7 @@ def get_detector_cfg(fname):
     influencing other tests.
     """
     import mmengine
+
     config = _get_config_module(fname)
     model = copy.deepcopy(config.model)
     train_cfg = mmengine.Config(copy.deepcopy(config.model.train_cfg))
@@ -73,35 +80,43 @@ def get_detector_cfg(fname):
     return model
 
 
-def create_detector_inputs(seed=0,
-                           with_points=True,
-                           with_img=False,
-                           img_size=10,
-                           num_gt_instance=20,
-                           num_points=10,
-                           points_feat_dim=4,
-                           num_classes=3,
-                           gt_bboxes_dim=7,
-                           with_pts_semantic_mask=False,
-                           with_pts_instance_mask=False,
-                           with_eval_ann_info=False,
-                           bboxes_3d_type='lidar'):
+def create_detector_inputs(
+    seed=0,
+    with_points=True,
+    with_img=False,
+    img_size=10,
+    num_gt_instance=20,
+    num_points=10,
+    points_feat_dim=4,
+    num_classes=3,
+    gt_bboxes_dim=7,
+    with_pts_semantic_mask=False,
+    with_pts_instance_mask=False,
+    with_eval_ann_info=False,
+    bboxes_3d_type='lidar',
+):
     setup_seed(seed)
     assert bboxes_3d_type in ('lidar', 'depth', 'cam')
     bbox_3d_class = {
         'lidar': LiDARInstance3DBoxes,
         'depth': DepthInstance3DBoxes,
-        'cam': CameraInstance3DBoxes
+        'cam': CameraInstance3DBoxes,
     }
     meta_info = dict()
     meta_info['depth2img'] = np.array(
-        [[5.23289349e+02, 3.68831943e+02, 6.10469439e+01],
-         [1.09560138e+02, 1.97404735e+02, -5.47377738e+02],
-         [1.25930002e-02, 9.92229998e-01, -1.23769999e-01]])
+        [
+            [5.23289349e02, 3.68831943e02, 6.10469439e01],
+            [1.09560138e02, 1.97404735e02, -5.47377738e02],
+            [1.25930002e-02, 9.92229998e-01, -1.23769999e-01],
+        ]
+    )
     meta_info['lidar2img'] = np.array(
-        [[5.23289349e+02, 3.68831943e+02, 6.10469439e+01],
-         [1.09560138e+02, 1.97404735e+02, -5.47377738e+02],
-         [1.25930002e-02, 9.92229998e-01, -1.23769999e-01]])
+        [
+            [5.23289349e02, 3.68831943e02, 6.10469439e01],
+            [1.09560138e02, 1.97404735e02, -5.47377738e02],
+            [1.25930002e-02, 9.92229998e-01, -1.23769999e-01],
+        ]
+    )
 
     inputs_dict = dict()
 
@@ -118,25 +133,25 @@ def create_detector_inputs(seed=0,
             img = torch.rand(3, img_size, img_size)
             meta_info['img_shape'] = (img_size, img_size)
             meta_info['ori_shape'] = (img_size, img_size)
-        meta_info['scale_factor'] = np.array([1., 1.])
+        meta_info['scale_factor'] = np.array([1.0, 1.0])
         inputs_dict['img'] = [img]
 
     gt_instance_3d = InstanceData()
 
     gt_instance_3d.bboxes_3d = bbox_3d_class[bboxes_3d_type](
-        torch.rand([num_gt_instance, gt_bboxes_dim]), box_dim=gt_bboxes_dim)
+        torch.rand([num_gt_instance, gt_bboxes_dim]), box_dim=gt_bboxes_dim
+    )
     gt_instance_3d.labels_3d = torch.randint(0, num_classes, [num_gt_instance])
     data_sample = Det3DDataSample(
-        metainfo=dict(box_type_3d=bbox_3d_class[bboxes_3d_type]))
+        metainfo=dict(box_type_3d=bbox_3d_class[bboxes_3d_type])
+    )
     data_sample.set_metainfo(meta_info)
     data_sample.gt_instances_3d = gt_instance_3d
 
     gt_instance = InstanceData()
     gt_instance.labels = torch.randint(0, num_classes, [num_gt_instance])
     gt_instance.bboxes = torch.rand(num_gt_instance, 4)
-    gt_instance.bboxes[:,
-                       2:] = gt_instance.bboxes[:, :2] + gt_instance.bboxes[:,
-                                                                            2:]
+    gt_instance.bboxes[:, 2:] = gt_instance.bboxes[:, :2] + gt_instance.bboxes[:, 2:]
 
     data_sample.gt_instances = gt_instance
     data_sample.gt_pts_seg = PointData()

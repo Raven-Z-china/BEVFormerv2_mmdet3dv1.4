@@ -1,10 +1,28 @@
 # dataset settings
 dataset_type = 'ScanNetSegDataset'
 data_root = './data/scannet/'
-class_names = ('wall', 'floor', 'cabinet', 'bed', 'chair', 'sofa', 'table',
-               'door', 'window', 'bookshelf', 'picture', 'counter', 'desk',
-               'curtain', 'refrigerator', 'showercurtrain', 'toilet', 'sink',
-               'bathtub', 'otherfurniture')
+class_names = (
+    'wall',
+    'floor',
+    'cabinet',
+    'bed',
+    'chair',
+    'sofa',
+    'table',
+    'door',
+    'window',
+    'bookshelf',
+    'picture',
+    'counter',
+    'desk',
+    'curtain',
+    'refrigerator',
+    'showercurtrain',
+    'toilet',
+    'sink',
+    'bathtub',
+    'otherfurniture',
+)
 num_points = 8192
 train_pipeline = [
     dict(
@@ -13,18 +31,41 @@ train_pipeline = [
         shift_height=False,
         use_color=True,
         load_dim=6,
-        use_dim=[0, 1, 2, 3, 4, 5]),
+        use_dim=[0, 1, 2, 3, 4, 5],
+    ),
     dict(
         type='LoadAnnotations3D',
         with_bbox_3d=False,
         with_label_3d=False,
         with_mask_3d=False,
-        with_seg_3d=True),
+        with_seg_3d=True,
+    ),
     dict(
         type='PointSegClassMapping',
-        valid_cat_ids=(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 24, 28,
-                       33, 34, 36, 39),
-        max_cat_id=40),
+        valid_cat_ids=(
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            14,
+            16,
+            24,
+            28,
+            33,
+            34,
+            36,
+            39,
+        ),
+        max_cat_id=40,
+    ),
     dict(
         type='IndoorPatchPointSample',
         num_points=num_points,
@@ -32,10 +73,11 @@ train_pipeline = [
         ignore_index=len(class_names),
         use_normalized_coord=False,
         enlarge_size=0.2,
-        min_unique_num=None),
+        min_unique_num=None,
+    ),
     dict(type='NormalizePointsColor', color_mean=None),
     dict(type='DefaultFormatBundle3D', class_names=class_names),
-    dict(type='Collect3D', keys=['points', 'pts_semantic_mask'])
+    dict(type='Collect3D', keys=['points', 'pts_semantic_mask']),
 ]
 test_pipeline = [
     dict(
@@ -44,7 +86,8 @@ test_pipeline = [
         shift_height=False,
         use_color=True,
         load_dim=6,
-        use_dim=[0, 1, 2, 3, 4, 5]),
+        use_dim=[0, 1, 2, 3, 4, 5],
+    ),
     dict(type='NormalizePointsColor', color_mean=None),
     dict(
         # a wrapper in order to successfully call test function
@@ -57,19 +100,21 @@ test_pipeline = [
             dict(
                 type='GlobalRotScaleTrans',
                 rot_range=[0, 0],
-                scale_ratio_range=[1., 1.],
-                translation_std=[0, 0, 0]),
+                scale_ratio_range=[1.0, 1.0],
+                translation_std=[0, 0, 0],
+            ),
             dict(
                 type='RandomFlip3D',
                 sync_2d=False,
                 flip_ratio_bev_horizontal=0.0,
-                flip_ratio_bev_vertical=0.0),
+                flip_ratio_bev_vertical=0.0,
+            ),
             dict(
-                type='DefaultFormatBundle3D',
-                class_names=class_names,
-                with_label=False),
-            dict(type='Collect3D', keys=['points'])
-        ])
+                type='DefaultFormatBundle3D', class_names=class_names, with_label=False
+            ),
+            dict(type='Collect3D', keys=['points']),
+        ],
+    ),
 ]
 # construct a pipeline for data and gt loading in show function
 # please keep its loading function consistent with test_pipeline (e.g. client)
@@ -81,23 +126,43 @@ eval_pipeline = [
         shift_height=False,
         use_color=True,
         load_dim=6,
-        use_dim=[0, 1, 2, 3, 4, 5]),
+        use_dim=[0, 1, 2, 3, 4, 5],
+    ),
     dict(
         type='LoadAnnotations3D',
         with_bbox_3d=False,
         with_label_3d=False,
         with_mask_3d=False,
-        with_seg_3d=True),
+        with_seg_3d=True,
+    ),
     dict(
         type='PointSegClassMapping',
-        valid_cat_ids=(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 24, 28,
-                       33, 34, 36, 39),
-        max_cat_id=40),
-    dict(
-        type='DefaultFormatBundle3D',
-        with_label=False,
-        class_names=class_names),
-    dict(type='Collect3D', keys=['points', 'pts_semantic_mask'])
+        valid_cat_ids=(
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            14,
+            16,
+            24,
+            28,
+            33,
+            34,
+            36,
+            39,
+        ),
+        max_cat_id=40,
+    ),
+    dict(type='DefaultFormatBundle3D', with_label=False, class_names=class_names),
+    dict(type='Collect3D', keys=['points', 'pts_semantic_mask']),
 ]
 
 data = dict(
@@ -111,7 +176,8 @@ data = dict(
         classes=class_names,
         test_mode=False,
         ignore_index=len(class_names),
-        scene_idxs=data_root + 'seg_info/train_resampled_scene_idxs.npy'),
+        scene_idxs=data_root + 'seg_info/train_resampled_scene_idxs.npy',
+    ),
     val=dict(
         type=dataset_type,
         data_root=data_root,
@@ -119,7 +185,8 @@ data = dict(
         pipeline=test_pipeline,
         classes=class_names,
         test_mode=True,
-        ignore_index=len(class_names)),
+        ignore_index=len(class_names),
+    ),
     test=dict(
         type=dataset_type,
         data_root=data_root,
@@ -127,6 +194,8 @@ data = dict(
         pipeline=test_pipeline,
         classes=class_names,
         test_mode=True,
-        ignore_index=len(class_names)))
+        ignore_index=len(class_names),
+    ),
+)
 
 evaluation = dict(pipeline=eval_pipeline)

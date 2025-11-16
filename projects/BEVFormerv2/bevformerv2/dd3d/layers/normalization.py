@@ -19,7 +19,7 @@ class Scale(nn.Module):
 
 
 class Offset(nn.Module):
-    def __init__(self, init_value=0.):
+    def __init__(self, init_value=0.0):
         super(Offset, self).__init__()
         self.bias = nn.Parameter(torch.FloatTensor([init_value]))
 

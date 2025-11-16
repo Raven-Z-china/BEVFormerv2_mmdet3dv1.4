@@ -28,12 +28,13 @@ class IndoorMetric(BaseMetric):
             be used instead. Defaults to None.
     """
 
-    def __init__(self,
-                 iou_thr: List[float] = [0.25, 0.5],
-                 collect_device: str = 'cpu',
-                 prefix: Optional[str] = None) -> None:
-        super(IndoorMetric, self).__init__(
-            prefix=prefix, collect_device=collect_device)
+    def __init__(
+        self,
+        iou_thr: List[float] = [0.25, 0.5],
+        collect_device: str = 'cpu',
+        prefix: Optional[str] = None,
+    ) -> None:
+        super(IndoorMetric, self).__init__(prefix=prefix, collect_device=collect_device)
         self.iou_thr = [iou_thr] if isinstance(iou_thr, float) else iou_thr
 
     def process(self, data_batch: dict, data_samples: Sequence[dict]) -> None:
@@ -77,7 +78,8 @@ class IndoorMetric(BaseMetric):
 
         # some checkpoints may not record the key "box_type_3d"
         box_type_3d, box_mode_3d = get_box_type(
-            self.dataset_meta.get('box_type_3d', 'depth'))
+            self.dataset_meta.get('box_type_3d', 'depth')
+        )
 
         ret_dict = indoor_eval(
             ann_infos,
@@ -85,14 +87,15 @@ class IndoorMetric(BaseMetric):
             self.iou_thr,
             self.dataset_meta['classes'],
             logger=logger,
-            box_mode_3d=box_mode_3d)
+            box_mode_3d=box_mode_3d,
+        )
 
         return ret_dict
 
 
 @METRICS.register_module()
 class Indoor2DMetric(BaseMetric):
-    """indoor 2d predictions evaluation metric.
+    """Indoor 2d predictions evaluation metric.
 
     Args:
         iou_thr (float or List[float]): List of iou threshold when calculate
@@ -106,12 +109,15 @@ class Indoor2DMetric(BaseMetric):
             be used instead. Defaults to None.
     """
 
-    def __init__(self,
-                 iou_thr: Union[float, List[float]] = [0.5],
-                 collect_device: str = 'cpu',
-                 prefix: Optional[str] = None):
+    def __init__(
+        self,
+        iou_thr: Union[float, List[float]] = [0.5],
+        collect_device: str = 'cpu',
+        prefix: Optional[str] = None,
+    ):
         super(Indoor2DMetric, self).__init__(
-            prefix=prefix, collect_device=collect_device)
+            prefix=prefix, collect_device=collect_device
+        )
         self.iou_thr = [iou_thr] if isinstance(iou_thr, float) else iou_thr
 
     def process(self, data_batch: dict, data_samples: Sequence[dict]) -> None:
@@ -129,7 +135,8 @@ class Indoor2DMetric(BaseMetric):
             eval_ann_info = data_sample['eval_ann_info']
             ann = dict(
                 labels=eval_ann_info['gt_bboxes_labels'],
-                bboxes=eval_ann_info['gt_bboxes'])
+                bboxes=eval_ann_info['gt_bboxes'],
+            )
 
             pred_bboxes = pred['bboxes'].cpu().numpy()
             pred_scores = pred['scores'].cpu().numpy()
@@ -139,7 +146,8 @@ class Indoor2DMetric(BaseMetric):
             for label in range(len(self.dataset_meta['classes'])):
                 index = np.where(pred_labels == label)[0]
                 pred_bbox_scores = np.hstack(
-                    [pred_bboxes[index], pred_scores[index].reshape((-1, 1))])
+                    [pred_bboxes[index], pred_scores[index].reshape((-1, 1))]
+                )
                 dets.append(pred_bbox_scores)
 
             self.results.append((ann, dets))
@@ -164,6 +172,7 @@ class Indoor2DMetric(BaseMetric):
                 scale_ranges=None,
                 iou_thr=iou_thr_2d_single,
                 dataset=self.dataset_meta['classes'],
-                logger=logger)
+                logger=logger,
+            )
             eval_results['mAP_' + str(iou_thr_2d_single)] = mean_ap
         return eval_results

@@ -28,18 +28,19 @@ class MultiBackbone(BaseModule):
             for each backbone.
     """
 
-    def __init__(self,
-                 num_streams: int,
-                 backbones: Union[List[dict], Dict],
-                 aggregation_mlp_channels: Optional[Sequence[int]] = None,
-                 conv_cfg: ConfigType = dict(type='Conv1d'),
-                 norm_cfg: ConfigType = dict(
-                     type='BN1d', eps=1e-5, momentum=0.01),
-                 act_cfg: ConfigType = dict(type='ReLU'),
-                 suffixes: Tuple[str] = ('net0', 'net1'),
-                 init_cfg: OptMultiConfig = None,
-                 pretrained: Optional[str] = None,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        num_streams: int,
+        backbones: Union[List[dict], Dict],
+        aggregation_mlp_channels: Optional[Sequence[int]] = None,
+        conv_cfg: ConfigType = dict(type='Conv1d'),
+        norm_cfg: ConfigType = dict(type='BN1d', eps=1e-5, momentum=0.01),
+        act_cfg: ConfigType = dict(type='ReLU'),
+        suffixes: Tuple[str] = ('net0', 'net1'),
+        init_cfg: OptMultiConfig = None,
+        pretrained: Optional[str] = None,
+        **kwargs,
+    ) -> None:
         super().__init__(init_cfg=init_cfg)
         assert isinstance(backbones, dict) or isinstance(backbones, list)
         if isinstance(backbones, dict):
@@ -64,8 +65,9 @@ class MultiBackbone(BaseModule):
         # Feature aggregation layers
         if aggregation_mlp_channels is None:
             aggregation_mlp_channels = [
-                out_channels, out_channels // 2,
-                out_channels // len(self.backbone_list)
+                out_channels,
+                out_channels // 2,
+                out_channels // len(self.backbone_list),
             ]
         else:
             aggregation_mlp_channels.insert(0, out_channels)
@@ -83,13 +85,18 @@ class MultiBackbone(BaseModule):
                     norm_cfg=norm_cfg,
                     act_cfg=act_cfg,
                     bias=True,
-                    inplace=True))
+                    inplace=True,
+                ),
+            )
 
-        assert not (init_cfg and pretrained), \
-            'init_cfg and pretrained cannot be setting at the same time'
+        assert not (
+            init_cfg and pretrained
+        ), 'init_cfg and pretrained cannot be setting at the same time'
         if isinstance(pretrained, str):
-            warnings.warn('DeprecationWarning: pretrained is a deprecated, '
-                          'please use "init_cfg" instead')
+            warnings.warn(
+                'DeprecationWarning: pretrained is a deprecated, '
+                'please use "init_cfg" instead'
+            )
             self.init_cfg = dict(type='Pretrained', checkpoint=pretrained)
 
     def forward(self, points: Tensor) -> dict:

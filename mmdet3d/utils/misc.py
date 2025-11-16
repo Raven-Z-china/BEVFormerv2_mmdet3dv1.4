@@ -4,14 +4,13 @@
 def replace_ceph_backend(cfg):
     cfg_pretty_text = cfg.pretty_text
 
-    replace_strs = \
-        r'''backend_args = dict(
+    replace_strs = r"""backend_args = dict(
             backend='petrel',
             path_mapping=dict({
                 './data/DATA/': 's3://openmmlab/datasets/detection3d/CEPH/',
                 'data/DATA/': 's3://openmmlab/datasets/detection3d/CEPH/'
             }))
-        '''
+        """
 
     if 'nuscenes' in cfg_pretty_text:
         replace_strs = replace_strs.replace('DATA', 'nuscenes')
@@ -53,54 +52,61 @@ def replace_ceph_backend(cfg):
 
     # replace LoadImageFromFile
     cfg_pretty_text = cfg_pretty_text.replace(
-        'LoadImageFromFile\'', 'LoadImageFromFile\',' + replace_strs)
+        "LoadImageFromFile'", "LoadImageFromFile'," + replace_strs
+    )
 
     # replace LoadImageFromFileMono3D
     cfg_pretty_text = cfg_pretty_text.replace(
-        'LoadImageFromFileMono3D\'',
-        'LoadImageFromFileMono3D\',' + replace_strs)
+        "LoadImageFromFileMono3D'", "LoadImageFromFileMono3D'," + replace_strs
+    )
 
     # replace LoadMultiViewImageFromFiles
     cfg_pretty_text = cfg_pretty_text.replace(
-        'LoadMultiViewImageFromFiles\'',
-        'LoadMultiViewImageFromFiles\',' + replace_strs)
+        "LoadMultiViewImageFromFiles'", "LoadMultiViewImageFromFiles'," + replace_strs
+    )
 
     # replace LoadPointsFromFile
     cfg_pretty_text = cfg_pretty_text.replace(
-        'LoadPointsFromFile\'', 'LoadPointsFromFile\',' + replace_strs)
+        "LoadPointsFromFile'", "LoadPointsFromFile'," + replace_strs
+    )
 
     # replace LoadPointsFromMultiSweeps
     cfg_pretty_text = cfg_pretty_text.replace(
-        'LoadPointsFromMultiSweeps\'',
-        'LoadPointsFromMultiSweeps\',' + replace_strs)
+        "LoadPointsFromMultiSweeps'", "LoadPointsFromMultiSweeps'," + replace_strs
+    )
 
     # replace LoadAnnotations
     cfg_pretty_text = cfg_pretty_text.replace(
-        'LoadAnnotations\'', 'LoadAnnotations\',' + replace_strs)
+        "LoadAnnotations'", "LoadAnnotations'," + replace_strs
+    )
 
     # replace LoadAnnotations3D
     cfg_pretty_text = cfg_pretty_text.replace(
-        'LoadAnnotations3D\'', 'LoadAnnotations3D\',' + replace_strs)
+        "LoadAnnotations3D'", "LoadAnnotations3D'," + replace_strs
+    )
 
     # replace KittiMetric
-    cfg_pretty_text = cfg_pretty_text.replace('KittiMetric\'',
-                                              'KittiMetric\',' + replace_strs)
+    cfg_pretty_text = cfg_pretty_text.replace(
+        "KittiMetric'", "KittiMetric'," + replace_strs
+    )
 
     # replace LyftMetric
-    cfg_pretty_text = cfg_pretty_text.replace('LyftMetric\'',
-                                              'LyftMetric\',' + replace_strs)
+    cfg_pretty_text = cfg_pretty_text.replace(
+        "LyftMetric'", "LyftMetric'," + replace_strs
+    )
 
     # replace NuScenesMetric
     cfg_pretty_text = cfg_pretty_text.replace(
-        'NuScenesMetric\'', 'NuScenesMetric\',' + replace_strs)
+        "NuScenesMetric'", "NuScenesMetric'," + replace_strs
+    )
 
     # replace WaymoMetric
-    cfg_pretty_text = cfg_pretty_text.replace('WaymoMetric\'',
-                                              'WaymoMetric\',' + replace_strs)
+    cfg_pretty_text = cfg_pretty_text.replace(
+        "WaymoMetric'", "WaymoMetric'," + replace_strs
+    )
 
     # replace dbsampler
-    cfg_pretty_text = cfg_pretty_text.replace('info_path',
-                                              replace_strs + ', info_path')
+    cfg_pretty_text = cfg_pretty_text.replace('info_path', replace_strs + ', info_path')
 
     cfg = cfg.fromstring(cfg_pretty_text, file_format='.py')
     return cfg

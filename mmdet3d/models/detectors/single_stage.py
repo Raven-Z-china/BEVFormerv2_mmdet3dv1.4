@@ -34,16 +34,17 @@ class SingleStage3DDetector(Base3DDetector):
             initialization. Defaults to None.
     """
 
-    def __init__(self,
-                 backbone: ConfigType,
-                 neck: OptConfigType = None,
-                 bbox_head: OptConfigType = None,
-                 train_cfg: OptConfigType = None,
-                 test_cfg: OptConfigType = None,
-                 data_preprocessor: OptConfigType = None,
-                 init_cfg: OptMultiConfig = None) -> None:
-        super().__init__(
-            data_preprocessor=data_preprocessor, init_cfg=init_cfg)
+    def __init__(
+        self,
+        backbone: ConfigType,
+        neck: OptConfigType = None,
+        bbox_head: OptConfigType = None,
+        train_cfg: OptConfigType = None,
+        test_cfg: OptConfigType = None,
+        data_preprocessor: OptConfigType = None,
+        init_cfg: OptMultiConfig = None,
+    ) -> None:
+        super().__init__(data_preprocessor=data_preprocessor, init_cfg=init_cfg)
         self.backbone = MODELS.build(backbone)
         if neck is not None:
             self.neck = MODELS.build(neck)
@@ -53,8 +54,9 @@ class SingleStage3DDetector(Base3DDetector):
         self.train_cfg = train_cfg
         self.test_cfg = test_cfg
 
-    def loss(self, batch_inputs_dict: dict, batch_data_samples: SampleList,
-             **kwargs) -> Union[dict, list]:
+    def loss(
+        self, batch_inputs_dict: dict, batch_data_samples: SampleList, **kwargs
+    ) -> Union[dict, list]:
         """Calculate losses from a batch of inputs dict and data samples.
 
         Args:
@@ -75,8 +77,9 @@ class SingleStage3DDetector(Base3DDetector):
         losses = self.bbox_head.loss(x, batch_data_samples, **kwargs)
         return losses
 
-    def predict(self, batch_inputs_dict: dict, batch_data_samples: SampleList,
-                **kwargs) -> SampleList:
+    def predict(
+        self, batch_inputs_dict: dict, batch_data_samples: SampleList, **kwargs
+    ) -> SampleList:
         """Predict results from a batch of inputs and data samples with post-
         processing.
 
@@ -108,14 +111,12 @@ class SingleStage3DDetector(Base3DDetector):
         """
         x = self.extract_feat(batch_inputs_dict)
         results_list = self.bbox_head.predict(x, batch_data_samples, **kwargs)
-        predictions = self.add_pred_to_datasample(batch_data_samples,
-                                                  results_list)
+        predictions = self.add_pred_to_datasample(batch_data_samples, results_list)
         return predictions
 
-    def _forward(self,
-                 batch_inputs_dict: dict,
-                 data_samples: OptSampleList = None,
-                 **kwargs) -> Tuple[List[torch.Tensor]]:
+    def _forward(
+        self, batch_inputs_dict: dict, data_samples: OptSampleList = None, **kwargs
+    ) -> Tuple[List[torch.Tensor]]:
         """Network forward process. Usually includes backbone, neck and head
         forward without any post-processing.
 

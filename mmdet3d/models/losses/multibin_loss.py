@@ -11,9 +11,9 @@ from mmdet3d.registry import MODELS
 
 
 @weighted_loss
-def multibin_loss(pred_orientations: Tensor,
-                  gt_orientations: Tensor,
-                  num_dir_bins: int = 4) -> Tensor:
+def multibin_loss(
+    pred_orientations: Tensor, gt_orientations: Tensor, num_dir_bins: int = 4
+) -> Tensor:
     """Multi-Bin Loss.
 
     Args:
@@ -35,26 +35,22 @@ def multibin_loss(pred_orientations: Tensor,
     for i in range(num_dir_bins):
         # bin cls loss
         cls_ce_loss = F.cross_entropy(
-            pred_orientations[:, (i * 2):(i * 2 + 2)],
+            pred_orientations[:, (i * 2) : (i * 2 + 2)],
             gt_orientations[:, i].long(),
-            reduction='mean')
+            reduction='mean',
+        )
         # regression loss
-        valid_mask_i = (gt_orientations[:, i] == 1)
+        valid_mask_i = gt_orientations[:, i] == 1
         cls_losses += cls_ce_loss
         if valid_mask_i.sum() > 0:
             start = num_dir_bins * 2 + i * 2
             end = start + 2
-            pred_offset = F.normalize(pred_orientations[valid_mask_i,
-                                                        start:end])
-            gt_offset_sin = torch.sin(gt_orientations[valid_mask_i,
-                                                      num_dir_bins + i])
-            gt_offset_cos = torch.cos(gt_orientations[valid_mask_i,
-                                                      num_dir_bins + i])
-            reg_loss = \
-                F.l1_loss(pred_offset[:, 0], gt_offset_sin,
-                          reduction='none') + \
-                F.l1_loss(pred_offset[:, 1], gt_offset_cos,
-                          reduction='none')
+            pred_offset = F.normalize(pred_orientations[valid_mask_i, start:end])
+            gt_offset_sin = torch.sin(gt_orientations[valid_mask_i, num_dir_bins + i])
+            gt_offset_cos = torch.cos(gt_orientations[valid_mask_i, num_dir_bins + i])
+            reg_loss = F.l1_loss(
+                pred_offset[:, 0], gt_offset_sin, reduction='none'
+            ) + F.l1_loss(pred_offset[:, 1], gt_offset_cos, reduction='none')
 
             reg_losses += reg_loss.sum()
             reg_cnt += valid_mask_i.sum()
@@ -73,19 +69,19 @@ class MultiBinLoss(nn.Module):
             to 1.0.
     """
 
-    def __init__(self,
-                 reduction: str = 'none',
-                 loss_weight: float = 1.0) -> None:
+    def __init__(self, reduction: str = 'none', loss_weight: float = 1.0) -> None:
         super(MultiBinLoss, self).__init__()
         assert reduction in ['none', 'sum', 'mean']
         self.reduction = reduction
         self.loss_weight = loss_weight
 
-    def forward(self,
-                pred: Tensor,
-                target: Tensor,
-                num_dir_bins: int,
-                reduction_override: Optional[str] = None) -> Tensor:
+    def forward(
+        self,
+        pred: Tensor,
+        target: Tensor,
+        num_dir_bins: int,
+        reduction_override: Optional[str] = None,
+    ) -> Tensor:
         """Forward function.
 
         Args:
@@ -100,8 +96,8 @@ class MultiBinLoss(nn.Module):
             Tensor: Loss tensor.
         """
         assert reduction_override in (None, 'none', 'mean', 'sum')
-        reduction = (
-            reduction_override if reduction_override else self.reduction)
+        reduction = reduction_override if reduction_override else self.reduction
         loss = self.loss_weight * multibin_loss(
-            pred, target, num_dir_bins=num_dir_bins, reduction=reduction)
+            pred, target, num_dir_bins=num_dir_bins, reduction=reduction
+        )
         return loss

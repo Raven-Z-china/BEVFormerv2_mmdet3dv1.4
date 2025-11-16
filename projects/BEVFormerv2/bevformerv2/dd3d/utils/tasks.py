@@ -4,7 +4,7 @@ from collections import OrderedDict
 # from detectron2.config import configurable
 
 
-class Task():
+class Task:
     def __init__(self, name, is_detection_task, is_dense_prediction_task):
         self.name = name
         self.is_detection_task = is_detection_task
@@ -14,17 +14,17 @@ class Task():
 # yapf: disable
 TASKS = [
     Task(
-        name="box2d",
+        name='box2d',
         is_detection_task=True,
         is_dense_prediction_task=False,
     ),
     Task(
-        name="box3d",
+        name='box3d',
         is_detection_task=True,
         is_dense_prediction_task=False,
     ),
     Task(
-        name="depth",
+        name='depth',
         is_detection_task=False,
         is_dense_prediction_task=True,
     )
@@ -34,13 +34,13 @@ TASKS = [
 NAME_TO_TASK = OrderedDict([(task.name, task) for task in TASKS])
 
 
-class TaskManager():
-    #@configurable
+class TaskManager:
+    # @configurable
     def __init__(self, box2d_on=False, box3d_on=False, depth_on=False):
-        """
-        configurable is experimental.
-        """
-        self._box2d_on = self._mask2d_on = self._box3d_on = self._semseg2d_on = self._depth_on = False
+        """Configurable is experimental."""
+        self._box2d_on = (
+            self._mask2d_on
+        ) = self._box3d_on = self._semseg2d_on = self._depth_on = False
         tasks = []
         if box2d_on:
             tasks.append(NAME_TO_TASK['box2d'])
@@ -53,7 +53,7 @@ class TaskManager():
             self._depth_on = True
 
         if not tasks:
-            raise ValueError("No task specified.")
+            raise ValueError('No task specified.')
 
         self._tasks = tasks
 
@@ -61,7 +61,7 @@ class TaskManager():
     def tasks(self):
         return self._tasks
 
-    '''@classmethod
+    """@classmethod
     def from_config(cls, cfg):
         # yapf: disable
         return OrderedDict(
@@ -69,7 +69,7 @@ class TaskManager():
             box3d_on    = cfg.MODEL.BOX3D_ON,
             depth_on    = cfg.MODEL.DEPTH_ON,
         )
-        # yapf: enable'''
+        # yapf: enable"""
 
     # Indicators that tells if each task is enabled.
     @property

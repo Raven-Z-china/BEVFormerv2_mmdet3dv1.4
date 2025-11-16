@@ -26,15 +26,17 @@ class EvalPanoptic:
             Defaults to None.
     """
 
-    def __init__(self,
-                 classes: List[str],
-                 thing_classes: List[str],
-                 stuff_classes: List[str],
-                 min_num_points: int,
-                 id_offset: int,
-                 label2cat: Dict[str, str],
-                 ignore_index: List[str],
-                 logger: MMLogger = None):
+    def __init__(
+        self,
+        classes: List[str],
+        thing_classes: List[str],
+        stuff_classes: List[str],
+        min_num_points: int,
+        id_offset: int,
+        label2cat: Dict[str, str],
+        ignore_index: List[str],
+        logger: MMLogger = None,
+    ):
         self.classes = classes
         self.thing_classes = thing_classes
         self.stuff_classes = stuff_classes
@@ -44,7 +46,8 @@ class EvalPanoptic:
         self.logger = logger
         self.include = np.array(
             [n for n in range(self.num_classes) if n not in self.ignore_index],
-            dtype=int)
+            dtype=int,
+        )
         self.id_offset = id_offset
         self.eps = 1e-15
         self.min_num_points = min_num_points
@@ -54,8 +57,9 @@ class EvalPanoptic:
         """Reset class variables."""
         # general things
         # iou stuff
-        self.confusion_matrix = np.zeros((self.num_classes, self.num_classes),
-                                         dtype=int)
+        self.confusion_matrix = np.zeros(
+            (self.num_classes, self.num_classes), dtype=int
+        )
         # panoptic stuff
         self.pan_tp = np.zeros(self.num_classes, dtype=int)
         self.pan_iou = np.zeros(self.num_classes, dtype=np.double)
@@ -64,8 +68,11 @@ class EvalPanoptic:
 
         self.evaluated_fnames = []
 
-    def evaluate(self, gt_labels: List[Dict[str, np.ndarray]],
-                 seg_preds: List[Dict[str, np.ndarray]]) -> Dict[str, float]:
+    def evaluate(
+        self,
+        gt_labels: List[Dict[str, np.ndarray]],
+        seg_preds: List[Dict[str, np.ndarray]],
+    ) -> Dict[str, float]:
         """Evaluate the predictions.
 
         Args:
@@ -84,8 +91,9 @@ class EvalPanoptic:
             pred_instance_seg = seg_preds[f]['pts_instance_mask'].astype(int)
 
             self.add_semantic_sample(pred_semantic_seg, gt_semantic_seg)
-            self.add_panoptic_sample(pred_semantic_seg, gt_semantic_seg,
-                                     pred_instance_seg, gt_instance_seg)
+            self.add_panoptic_sample(
+                pred_semantic_seg, gt_semantic_seg, pred_instance_seg, gt_instance_seg
+            )
 
         result_dicts = self.print_results()
 
@@ -119,8 +127,7 @@ class EvalPanoptic:
         output_dict['all']['sq'] = sq
         output_dict['all']['rq'] = rq
         output_dict['all']['miou'] = miou
-        for idx, (_pq, _sq, _rq,
-                  _iou) in enumerate(zip(all_pq, all_sq, all_rq, iou)):
+        for idx, (_pq, _sq, _rq, _iou) in enumerate(zip(all_pq, all_sq, all_rq, iou)):
             class_str = self.classes[idx]
             output_dict[class_str] = {}
             output_dict[class_str]['pq'] = _pq
@@ -129,22 +136,17 @@ class EvalPanoptic:
             output_dict[class_str]['miou'] = _iou
 
         pq_dagger = np.mean(
-            [float(output_dict[c]['pq']) for c in self.thing_classes] +
-            [float(output_dict[c]['miou']) for c in self.stuff_classes])
+            [float(output_dict[c]['pq']) for c in self.thing_classes]
+            + [float(output_dict[c]['miou']) for c in self.stuff_classes]
+        )
 
-        pq_things = np.mean(
-            [float(output_dict[c]['pq']) for c in self.thing_classes])
-        rq_things = np.mean(
-            [float(output_dict[c]['rq']) for c in self.thing_classes])
-        sq_things = np.mean(
-            [float(output_dict[c]['sq']) for c in self.thing_classes])
+        pq_things = np.mean([float(output_dict[c]['pq']) for c in self.thing_classes])
+        rq_things = np.mean([float(output_dict[c]['rq']) for c in self.thing_classes])
+        sq_things = np.mean([float(output_dict[c]['sq']) for c in self.thing_classes])
 
-        pq_stuff = np.mean(
-            [float(output_dict[c]['pq']) for c in self.stuff_classes])
-        rq_stuff = np.mean(
-            [float(output_dict[c]['rq']) for c in self.stuff_classes])
-        sq_stuff = np.mean(
-            [float(output_dict[c]['sq']) for c in self.stuff_classes])
+        pq_stuff = np.mean([float(output_dict[c]['pq']) for c in self.stuff_classes])
+        rq_stuff = np.mean([float(output_dict[c]['rq']) for c in self.stuff_classes])
+        sq_stuff = np.mean([float(output_dict[c]['sq']) for c in self.stuff_classes])
 
         result_dicts = {}
         result_dicts['pq'] = float(pq)
@@ -160,13 +162,14 @@ class EvalPanoptic:
         result_dicts['sq_things'] = float(sq_things)
 
         if self.logger is not None:
-            print_log('|        |   IoU   |   PQ   |   RQ   |  SQ   |',
-                      self.logger)
+            print_log('|        |   IoU   |   PQ   |   RQ   |  SQ   |', self.logger)
             for k, v in output_dict.items():
                 print_log(
                     '|{}| {:.4f} | {:.4f} | {:.4f} | {:.4f} |'.format(
-                        k.ljust(8)[-8:], v['miou'], v['pq'], v['rq'], v['sq']),
-                    self.logger)
+                        k.ljust(8)[-8:], v['miou'], v['pq'], v['rq'], v['sq']
+                    ),
+                    self.logger,
+                )
             print_log('True Positive: ', self.logger)
             print_log('\t|\t'.join([str(x) for x in self.pan_tp]), self.logger)
             print_log('False Positive: ')
@@ -177,8 +180,11 @@ class EvalPanoptic:
         else:
             print('|        |   IoU   |   PQ   |   RQ   |  SQ   |')
             for k, v in output_dict.items():
-                print('|{}| {:.4f} | {:.4f} | {:.4f} | {:.4f} |'.format(
-                    k.ljust(8)[-8:], v['miou'], v['pq'], v['rq'], v['sq']))
+                print(
+                    '|{}| {:.4f} | {:.4f} | {:.4f} | {:.4f} |'.format(
+                        k.ljust(8)[-8:], v['miou'], v['pq'], v['rq'], v['sq']
+                    )
+                )
             print('True Positive: ')
             print('\t|\t'.join([str(x) for x in self.pan_tp]))
             print('False Positive: ')
@@ -196,10 +202,14 @@ class EvalPanoptic:
         """
         # get PQ and first calculate for all classes
         sq_all = self.pan_iou.astype(np.double) / np.maximum(
-            self.pan_tp.astype(np.double), self.eps)
+            self.pan_tp.astype(np.double), self.eps
+        )
         rq_all = self.pan_tp.astype(np.double) / np.maximum(
-            self.pan_tp.astype(np.double) + 0.5 * self.pan_fp.astype(np.double)
-            + 0.5 * self.pan_fn.astype(np.double), self.eps)
+            self.pan_tp.astype(np.double)
+            + 0.5 * self.pan_fp.astype(np.double)
+            + 0.5 * self.pan_fn.astype(np.double),
+            self.eps,
+        )
         pq_all = sq_all * rq_all
 
         # then do the REAL mean (no ignored classes)
@@ -220,8 +230,10 @@ class EvalPanoptic:
         union = tp + fp + fn
         union = np.maximum(union, self.eps)
         iou = intersection.astype(np.double) / union.astype(np.double)
-        iou_mean = (intersection[self.include].astype(np.double) /
-                    union[self.include].astype(np.double)).mean()
+        iou_mean = (
+            intersection[self.include].astype(np.double)
+            / union[self.include].astype(np.double)
+        ).mean()
 
         return iou_mean, iou
 
@@ -245,8 +257,7 @@ class EvalPanoptic:
         fn = conf.sum(axis=0) - tp
         return tp, fp, fn
 
-    def add_semantic_sample(self, semantic_preds: np.ndarray,
-                            gt_semantics: np.ndarray):
+    def add_semantic_sample(self, semantic_preds: np.ndarray, gt_semantics: np.ndarray):
         """Add one batch of semantic predictions and ground truths.
 
         Args:
@@ -257,10 +268,13 @@ class EvalPanoptic:
         # make confusion matrix (cols = gt, rows = pred)
         np.add.at(self.confusion_matrix, tuple(idxs), 1)
 
-    def add_panoptic_sample(self, semantic_preds: np.ndarray,
-                            gt_semantics: np.ndarray,
-                            instance_preds: np.ndarray,
-                            gt_instances: np.ndarray):
+    def add_panoptic_sample(
+        self,
+        semantic_preds: np.ndarray,
+        gt_semantics: np.ndarray,
+        instance_preds: np.ndarray,
+        gt_instances: np.ndarray,
+    ):
         """Add one sample of panoptic predictions and ground truths for
         evaluation.
 
@@ -298,31 +312,32 @@ class EvalPanoptic:
 
             # generate the areas for each unique instance prediction
             unique_pred, counts_pred = np.unique(
-                pred_inst_in_cl[pred_inst_in_cl > 0], return_counts=True)
+                pred_inst_in_cl[pred_inst_in_cl > 0], return_counts=True
+            )
             id2idx_pred = {id: idx for idx, id in enumerate(unique_pred)}
             matched_pred = np.array([False] * unique_pred.shape[0])
 
             # generate the areas for each unique instance gt_np
             unique_gt, counts_gt = np.unique(
-                gt_inst_in_cl[gt_inst_in_cl > 0], return_counts=True)
+                gt_inst_in_cl[gt_inst_in_cl > 0], return_counts=True
+            )
             id2idx_gt = {id: idx for idx, id in enumerate(unique_gt)}
             matched_gt = np.array([False] * unique_gt.shape[0])
 
             # generate intersection using offset
-            valid_combos = np.logical_and(pred_inst_in_cl > 0,
-                                          gt_inst_in_cl > 0)
-            id_offset_combo = pred_inst_in_cl[
-                valid_combos] + self.id_offset * gt_inst_in_cl[valid_combos]
-            unique_combo, counts_combo = np.unique(
-                id_offset_combo, return_counts=True)
+            valid_combos = np.logical_and(pred_inst_in_cl > 0, gt_inst_in_cl > 0)
+            id_offset_combo = (
+                pred_inst_in_cl[valid_combos]
+                + self.id_offset * gt_inst_in_cl[valid_combos]
+            )
+            unique_combo, counts_combo = np.unique(id_offset_combo, return_counts=True)
 
             # generate an intersection map
             # count the intersections with over 0.5 IoU as TP
             gt_labels = unique_combo // self.id_offset
             pred_labels = unique_combo % self.id_offset
             gt_areas = np.array([counts_gt[id2idx_gt[id]] for id in gt_labels])
-            pred_areas = np.array(
-                [counts_pred[id2idx_pred[id]] for id in pred_labels])
+            pred_areas = np.array([counts_pred[id2idx_pred[id]] for id in pred_labels])
             intersections = counts_combo
             unions = gt_areas + pred_areas - intersections
             ious = intersections.astype(float) / unions.astype(float)
@@ -332,32 +347,33 @@ class EvalPanoptic:
             self.pan_iou[cl] += np.sum(ious[tp_indexes])
 
             matched_gt[[id2idx_gt[id] for id in gt_labels[tp_indexes]]] = True
-            matched_pred[[id2idx_pred[id]
-                          for id in pred_labels[tp_indexes]]] = True
+            matched_pred[[id2idx_pred[id] for id in pred_labels[tp_indexes]]] = True
 
             # count the FN
             if len(counts_gt) > 0:
                 self.pan_fn[cl] += np.sum(
-                    np.logical_and(counts_gt >= self.min_num_points,
-                                   ~matched_gt))
+                    np.logical_and(counts_gt >= self.min_num_points, ~matched_gt)
+                )
 
             # count the FP
             if len(matched_pred) > 0:
                 self.pan_fp[cl] += np.sum(
-                    np.logical_and(counts_pred >= self.min_num_points,
-                                   ~matched_pred))
+                    np.logical_and(counts_pred >= self.min_num_points, ~matched_pred)
+                )
 
 
-def panoptic_seg_eval(gt_labels: List[np.ndarray],
-                      seg_preds: List[np.ndarray],
-                      classes: List[str],
-                      thing_classes: List[str],
-                      stuff_classes: List[str],
-                      min_num_points: int,
-                      id_offset: int,
-                      label2cat: Dict[str, str],
-                      ignore_index: List[int],
-                      logger: MMLogger = None) -> Dict[str, float]:
+def panoptic_seg_eval(
+    gt_labels: List[np.ndarray],
+    seg_preds: List[np.ndarray],
+    classes: List[str],
+    thing_classes: List[str],
+    stuff_classes: List[str],
+    min_num_points: int,
+    id_offset: int,
+    label2cat: Dict[str, str],
+    ignore_index: List[int],
+    logger: MMLogger = None,
+) -> Dict[str, float]:
     """Panoptic Segmentation Evaluation.
 
     Evaluate the result of the panoptic segmentation.
@@ -380,8 +396,15 @@ def panoptic_seg_eval(gt_labels: List[np.ndarray],
     Returns:
         dict[float]: Dict of results.
     """
-    panoptic_seg_eval = EvalPanoptic(classes, thing_classes, stuff_classes,
-                                     min_num_points, id_offset, label2cat,
-                                     ignore_index, logger)
+    panoptic_seg_eval = EvalPanoptic(
+        classes,
+        thing_classes,
+        stuff_classes,
+        min_num_points,
+        id_offset,
+        label2cat,
+        ignore_index,
+        logger,
+    )
     ret_dict = panoptic_seg_eval.evaluate(gt_labels, seg_preds)
     return ret_dict

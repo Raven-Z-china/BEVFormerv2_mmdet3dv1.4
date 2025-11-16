@@ -37,20 +37,21 @@ class ImVoxelNet(Base3DDetector):
             config. Defaults to None.
     """
 
-    def __init__(self,
-                 backbone: ConfigType,
-                 neck: ConfigType,
-                 neck_3d: ConfigType,
-                 bbox_head: ConfigType,
-                 prior_generator: ConfigType,
-                 n_voxels: List,
-                 coord_type: str,
-                 train_cfg: OptConfigType = None,
-                 test_cfg: OptConfigType = None,
-                 data_preprocessor: OptConfigType = None,
-                 init_cfg: OptConfigType = None):
-        super().__init__(
-            data_preprocessor=data_preprocessor, init_cfg=init_cfg)
+    def __init__(
+        self,
+        backbone: ConfigType,
+        neck: ConfigType,
+        neck_3d: ConfigType,
+        bbox_head: ConfigType,
+        prior_generator: ConfigType,
+        n_voxels: List,
+        coord_type: str,
+        train_cfg: OptConfigType = None,
+        test_cfg: OptConfigType = None,
+        data_preprocessor: OptConfigType = None,
+        init_cfg: OptConfigType = None,
+    ):
+        super().__init__(data_preprocessor=data_preprocessor, init_cfg=init_cfg)
         self.backbone = MODELS.build(backbone)
         self.neck = MODELS.build(neck)
         self.neck_3d = MODELS.build(neck_3d)
@@ -63,8 +64,7 @@ class ImVoxelNet(Base3DDetector):
         self.train_cfg = train_cfg
         self.test_cfg = test_cfg
 
-    def extract_feat(self, batch_inputs_dict: dict,
-                     batch_data_samples: SampleList):
+    def extract_feat(self, batch_inputs_dict: dict, batch_data_samples: SampleList):
         """Extract 3d features from the backbone -> fpn -> 3d projection.
 
         -> 3d neck -> bbox_head.
@@ -84,24 +84,28 @@ class ImVoxelNet(Base3DDetector):
             - torch.Tensor: Valid mask of shape (N, 1, N_x, N_y, N_z).
         """
         img = batch_inputs_dict['imgs']
-        batch_img_metas = [
-            data_samples.metainfo for data_samples in batch_data_samples
-        ]
+        batch_img_metas = [data_samples.metainfo for data_samples in batch_data_samples]
         x = self.backbone(img)
         x = self.neck(x)[0]
-        points = self.prior_generator.grid_anchors([self.n_voxels[::-1]],
-                                                   device=img.device)[0][:, :3]
+        points = self.prior_generator.grid_anchors(
+            [self.n_voxels[::-1]], device=img.device
+        )[0][:, :3]
         volumes, valid_preds = [], []
         for feature, img_meta in zip(x, batch_img_metas):
             img_scale_factor = (
                 points.new_tensor(img_meta['scale_factor'][:2])
-                if 'scale_factor' in img_meta.keys() else 1)
+                if 'scale_factor' in img_meta.keys()
+                else 1
+            )
             img_flip = img_meta['flip'] if 'flip' in img_meta.keys() else False
             img_crop_offset = (
                 points.new_tensor(img_meta['img_crop_offset'])
-                if 'img_crop_offset' in img_meta.keys() else 0)
+                if 'img_crop_offset' in img_meta.keys()
+                else 0
+            )
             proj_mat = points.new_tensor(
-                get_proj_mat_by_coord_type(img_meta, self.coord_type))
+                get_proj_mat_by_coord_type(img_meta, self.coord_type)
+            )
             volume = point_sample(
                 img_meta,
                 img_features=feature[None, ...],
@@ -113,17 +117,19 @@ class ImVoxelNet(Base3DDetector):
                 img_flip=img_flip,
                 img_pad_shape=img.shape[-2:],
                 img_shape=img_meta['img_shape'][:2],
-                aligned=False)
+                aligned=False,
+            )
             volumes.append(
-                volume.reshape(self.n_voxels[::-1] + [-1]).permute(3, 2, 1, 0))
-            valid_preds.append(
-                ~torch.all(volumes[-1] == 0, dim=0, keepdim=True))
+                volume.reshape(self.n_voxels[::-1] + [-1]).permute(3, 2, 1, 0)
+            )
+            valid_preds.append(~torch.all(volumes[-1] == 0, dim=0, keepdim=True))
         x = torch.stack(volumes)
         x = self.neck_3d(x)
         return x, torch.stack(valid_preds).float()
 
-    def loss(self, batch_inputs_dict: dict, batch_data_samples: SampleList,
-             **kwargs) -> Union[dict, list]:
+    def loss(
+        self, batch_inputs_dict: dict, batch_data_samples: SampleList, **kwargs
+    ) -> Union[dict, list]:
         """Calculate losses from a batch of inputs and data samples.
 
         Args:
@@ -138,17 +144,17 @@ class ImVoxelNet(Base3DDetector):
         Returns:
             dict: A dictionary of loss components.
         """
-        x, valid_preds = self.extract_feat(batch_inputs_dict,
-                                           batch_data_samples)
+        x, valid_preds = self.extract_feat(batch_inputs_dict, batch_data_samples)
         # For indoor datasets ImVoxelNet uses ImVoxelHead that handles
         # mask of visible voxels.
         if self.coord_type == 'DEPTH':
-            x += (valid_preds, )
+            x += (valid_preds,)
         losses = self.bbox_head.loss(x, batch_data_samples, **kwargs)
         return losses
 
-    def predict(self, batch_inputs_dict: dict, batch_data_samples: SampleList,
-                **kwargs) -> SampleList:
+    def predict(
+        self, batch_inputs_dict: dict, batch_data_samples: SampleList, **kwargs
+    ) -> SampleList:
         """Predict results from a batch of inputs and data samples with post-
         processing.
 
@@ -175,20 +181,18 @@ class ImVoxelNet(Base3DDetector):
                 - bboxes_3d (Tensor): Contains a tensor with shape
                     (num_instances, C) where C >=7.
         """
-        x, valid_preds = self.extract_feat(batch_inputs_dict,
-                                           batch_data_samples)
+        x, valid_preds = self.extract_feat(batch_inputs_dict, batch_data_samples)
         # For indoor datasets ImVoxelNet uses ImVoxelHead that handles
         # mask of visible voxels.
         if self.coord_type == 'DEPTH':
-            x += (valid_preds, )
-        results_list = \
-            self.bbox_head.predict(x, batch_data_samples, **kwargs)
-        predictions = self.add_pred_to_datasample(batch_data_samples,
-                                                  results_list)
+            x += (valid_preds,)
+        results_list = self.bbox_head.predict(x, batch_data_samples, **kwargs)
+        predictions = self.add_pred_to_datasample(batch_data_samples, results_list)
         return predictions
 
-    def _forward(self, batch_inputs_dict: dict, batch_data_samples: SampleList,
-                 *args, **kwargs) -> Tuple[List[torch.Tensor]]:
+    def _forward(
+        self, batch_inputs_dict: dict, batch_data_samples: SampleList, *args, **kwargs
+    ) -> Tuple[List[torch.Tensor]]:
         """Network forward process. Usually includes backbone, neck and head
         forward without any post-processing.
 
@@ -204,12 +208,11 @@ class ImVoxelNet(Base3DDetector):
         Returns:
             tuple[list]: A tuple of features from ``bbox_head`` forward.
         """
-        x, valid_preds = self.extract_feat(batch_inputs_dict,
-                                           batch_data_samples)
+        x, valid_preds = self.extract_feat(batch_inputs_dict, batch_data_samples)
         # For indoor datasets ImVoxelNet uses ImVoxelHead that handles
         # mask of visible voxels.
         if self.coord_type == 'DEPTH':
-            x += (valid_preds, )
+            x += (valid_preds,)
         results = self.bbox_head.forward(x)
         return results
 
@@ -256,18 +259,14 @@ class ImVoxelNet(Base3DDetector):
               (num_instances, 4).
         """
 
-        assert (data_instances_2d is not None) or \
-               (data_instances_3d is not None),\
-               'please pass at least one type of data_samples'
+        assert (data_instances_2d is not None) or (
+            data_instances_3d is not None
+        ), 'please pass at least one type of data_samples'
 
         if data_instances_2d is None:
-            data_instances_2d = [
-                InstanceData() for _ in range(len(data_instances_3d))
-            ]
+            data_instances_2d = [InstanceData() for _ in range(len(data_instances_3d))]
         if data_instances_3d is None:
-            data_instances_3d = [
-                InstanceData() for _ in range(len(data_instances_2d))
-            ]
+            data_instances_3d = [InstanceData() for _ in range(len(data_instances_2d))]
 
         for i, data_sample in enumerate(data_samples):
             data_sample.pred_instances_3d = data_instances_3d[i]

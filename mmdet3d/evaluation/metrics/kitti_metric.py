@@ -12,8 +12,12 @@ from mmengine.logging import MMLogger, print_log
 
 from mmdet3d.evaluation import kitti_eval
 from mmdet3d.registry import METRICS
-from mmdet3d.structures import (Box3DMode, CameraInstance3DBoxes,
-                                LiDARInstance3DBoxes, points_cam2img)
+from mmdet3d.structures import (
+    Box3DMode,
+    CameraInstance3DBoxes,
+    LiDARInstance3DBoxes,
+    points_cam2img,
+)
 
 
 @METRICS.register_module()
@@ -49,20 +53,21 @@ class KittiMetric(BaseMetric):
             corresponding backend. Defaults to None.
     """
 
-    def __init__(self,
-                 ann_file: str,
-                 metric: Union[str, List[str]] = 'bbox',
-                 pcd_limit_range: List[float] = [0, -40, -3, 70.4, 40, 0.0],
-                 prefix: Optional[str] = None,
-                 pklfile_prefix: Optional[str] = None,
-                 default_cam_key: str = 'CAM2',
-                 format_only: bool = False,
-                 submission_prefix: Optional[str] = None,
-                 collect_device: str = 'cpu',
-                 backend_args: Optional[dict] = None) -> None:
+    def __init__(
+        self,
+        ann_file: str,
+        metric: Union[str, List[str]] = 'bbox',
+        pcd_limit_range: List[float] = [0, -40, -3, 70.4, 40, 0.0],
+        prefix: Optional[str] = None,
+        pklfile_prefix: Optional[str] = None,
+        default_cam_key: str = 'CAM2',
+        format_only: bool = False,
+        submission_prefix: Optional[str] = None,
+        collect_device: str = 'cpu',
+        backend_args: Optional[dict] = None,
+    ) -> None:
         self.default_prefix = 'Kitti metric'
-        super(KittiMetric, self).__init__(
-            collect_device=collect_device, prefix=prefix)
+        super(KittiMetric, self).__init__(collect_device=collect_device, prefix=prefix)
         self.pcd_limit_range = pcd_limit_range
         self.ann_file = ann_file
         self.pklfile_prefix = pklfile_prefix
@@ -81,8 +86,9 @@ class KittiMetric(BaseMetric):
         self.metrics = metric if isinstance(metric, list) else [metric]
         for metric in self.metrics:
             if metric not in allowed_metrics:
-                raise KeyError("metric should be one of 'bbox', 'img_bbox', "
-                               f'but got {metric}.')
+                raise KeyError(
+                    "metric should be one of 'bbox', 'img_bbox', " f'but got {metric}.'
+                )
 
     def convert_annos_to_kitti_annos(self, data_infos: dict) -> List[dict]:
         """Convert loading annotations to Kitti annotations.
@@ -122,7 +128,7 @@ class KittiMetric(BaseMetric):
                         'location': [],
                         'dimensions': [],
                         'rotation_y': [],
-                        'score': []
+                        'score': [],
                     }
                     for instance in annos['instances']:
                         label = instance['bbox_label']
@@ -132,10 +138,8 @@ class KittiMetric(BaseMetric):
                         kitti_annos['alpha'].append(instance['alpha'])
                         kitti_annos['bbox'].append(instance['bbox'])
                         kitti_annos['location'].append(instance['bbox_3d'][:3])
-                        kitti_annos['dimensions'].append(
-                            instance['bbox_3d'][3:6])
-                        kitti_annos['rotation_y'].append(
-                            instance['bbox_3d'][6])
+                        kitti_annos['dimensions'].append(instance['bbox_3d'][3:6])
+                        kitti_annos['rotation_y'].append(instance['bbox_3d'][6])
                         kitti_annos['score'].append(instance['score'])
                     for name in kitti_annos:
                         kitti_annos[name] = np.array(kitti_annos[name])
@@ -187,18 +191,17 @@ class KittiMetric(BaseMetric):
             results,
             pklfile_prefix=self.pklfile_prefix,
             submission_prefix=self.submission_prefix,
-            classes=self.classes)
+            classes=self.classes,
+        )
 
         metric_dict = {}
 
         if self.format_only:
-            logger.info(
-                f'results are saved in {osp.dirname(self.submission_prefix)}')
+            logger.info(f'results are saved in {osp.dirname(self.submission_prefix)}')
             return metric_dict
 
         gt_annos = [
-            self.data_infos[result['sample_idx']]['kitti_annos']
-            for result in results
+            self.data_infos[result['sample_idx']]['kitti_annos'] for result in results
         ]
 
         for metric in self.metrics:
@@ -207,7 +210,8 @@ class KittiMetric(BaseMetric):
                 gt_annos,
                 metric=metric,
                 logger=logger,
-                classes=self.classes)
+                classes=self.classes,
+            )
             for result in ap_dict:
                 metric_dict[result] = ap_dict[result]
 
@@ -215,12 +219,14 @@ class KittiMetric(BaseMetric):
             tmp_dir.cleanup()
         return metric_dict
 
-    def kitti_evaluate(self,
-                       results_dict: dict,
-                       gt_annos: List[dict],
-                       metric: Optional[str] = None,
-                       classes: Optional[List[str]] = None,
-                       logger: Optional[MMLogger] = None) -> Dict[str, float]:
+    def kitti_evaluate(
+        self,
+        results_dict: dict,
+        gt_annos: List[dict],
+        metric: Optional[str] = None,
+        classes: Optional[List[str]] = None,
+        logger: Optional[MMLogger] = None,
+    ) -> Dict[str, float]:
         """Evaluation in KITTI protocol.
 
         Args:
@@ -242,7 +248,8 @@ class KittiMetric(BaseMetric):
             else:
                 eval_types = ['bbox', 'bev', '3d']
             ap_result_str, ap_dict_ = kitti_eval(
-                gt_annos, results_dict[name], classes, eval_types=eval_types)
+                gt_annos, results_dict[name], classes, eval_types=eval_types
+            )
             for ap_type, ap in ap_dict_.items():
                 ap_dict[f'{name}/{ap_type}'] = float(f'{ap:.4f}')
 
@@ -255,7 +262,7 @@ class KittiMetric(BaseMetric):
         results: List[dict],
         pklfile_prefix: Optional[str] = None,
         submission_prefix: Optional[str] = None,
-        classes: Optional[List[str]] = None
+        classes: Optional[List[str]] = None,
     ) -> Tuple[dict, Union[tempfile.TemporaryDirectory, None]]:
         """Format the results to pkl file.
 
@@ -293,30 +300,41 @@ class KittiMetric(BaseMetric):
                 pklfile_prefix_ = osp.join(pklfile_prefix, name) + '.pkl'
             else:
                 pklfile_prefix_ = None
-            if 'pred_instances' in name and '3d' in name and name[
-                    0] != '_' and results[0][name]:
+            if (
+                'pred_instances' in name
+                and '3d' in name
+                and name[0] != '_'
+                and results[0][name]
+            ):
                 net_outputs = [result[name] for result in results]
-                result_list_ = self.bbox2result_kitti(net_outputs,
-                                                      sample_idx_list, classes,
-                                                      pklfile_prefix_,
-                                                      submission_prefix_)
+                result_list_ = self.bbox2result_kitti(
+                    net_outputs,
+                    sample_idx_list,
+                    classes,
+                    pklfile_prefix_,
+                    submission_prefix_,
+                )
                 result_dict[name] = result_list_
-            elif name == 'pred_instances' and name[0] != '_' and results[0][
-                    name]:
+            elif name == 'pred_instances' and name[0] != '_' and results[0][name]:
                 net_outputs = [result[name] for result in results]
                 result_list_ = self.bbox2result_kitti2d(
-                    net_outputs, sample_idx_list, classes, pklfile_prefix_,
-                    submission_prefix_)
+                    net_outputs,
+                    sample_idx_list,
+                    classes,
+                    pklfile_prefix_,
+                    submission_prefix_,
+                )
                 result_dict[name] = result_list_
         return result_dict, tmp_dir
 
     def bbox2result_kitti(
-            self,
-            net_outputs: List[dict],
-            sample_idx_list: List[int],
-            class_names: List[str],
-            pklfile_prefix: Optional[str] = None,
-            submission_prefix: Optional[str] = None) -> List[dict]:
+        self,
+        net_outputs: List[dict],
+        sample_idx_list: List[int],
+        class_names: List[str],
+        pklfile_prefix: Optional[str] = None,
+        submission_prefix: Optional[str] = None,
+    ) -> List[dict]:
         """Convert 3D detection results to kitti format for evaluation and test
         submission.
 
@@ -333,21 +351,23 @@ class KittiMetric(BaseMetric):
         Returns:
             List[dict]: A list of dictionaries with the kitti format.
         """
-        assert len(net_outputs) == len(self.data_infos), \
-            'invalid list length of network outputs'
+        assert len(net_outputs) == len(
+            self.data_infos
+        ), 'invalid list length of network outputs'
         if submission_prefix is not None:
             mmengine.mkdir_or_exist(submission_prefix)
 
         det_annos = []
         print('\nConverting 3D prediction to KITTI format')
-        for idx, pred_dicts in enumerate(
-                mmengine.track_iter_progress(net_outputs)):
+        for idx, pred_dicts in enumerate(mmengine.track_iter_progress(net_outputs)):
             sample_idx = sample_idx_list[idx]
             info = self.data_infos[sample_idx]
             # Here default used 'CAM2' to compute metric. If you want to
             # use another camera, please modify it.
-            image_shape = (info['images'][self.default_cam_key]['height'],
-                           info['images'][self.default_cam_key]['width'])
+            image_shape = (
+                info['images'][self.default_cam_key]['height'],
+                info['images'][self.default_cam_key]['width'],
+            )
             box_dict = self.convert_valid_bboxes(pred_dicts, info)
             anno = {
                 'name': [],
@@ -358,7 +378,7 @@ class KittiMetric(BaseMetric):
                 'dimensions': [],
                 'location': [],
                 'rotation_y': [],
-                'score': []
+                'score': [],
             }
             if len(box_dict['bbox']) > 0:
                 box_2d_preds = box_dict['bbox']
@@ -369,19 +389,19 @@ class KittiMetric(BaseMetric):
                 pred_box_type_3d = box_dict['pred_box_type_3d']
 
                 for box, box_lidar, bbox, score, label in zip(
-                        box_preds, box_preds_lidar, box_2d_preds, scores,
-                        label_preds):
+                    box_preds, box_preds_lidar, box_2d_preds, scores, label_preds
+                ):
                     bbox[2:] = np.minimum(bbox[2:], image_shape[::-1])
                     bbox[:2] = np.maximum(bbox[:2], [0, 0])
                     anno['name'].append(class_names[int(label)])
                     anno['truncated'].append(0.0)
                     anno['occluded'].append(0)
                     if pred_box_type_3d == CameraInstance3DBoxes:
-                        anno['alpha'].append(-np.arctan2(box[0], box[2]) +
-                                             box[6])
+                        anno['alpha'].append(-np.arctan2(box[0], box[2]) + box[6])
                     elif pred_box_type_3d == LiDARInstance3DBoxes:
                         anno['alpha'].append(
-                            -np.arctan2(-box_lidar[1], box_lidar[0]) + box[6])
+                            -np.arctan2(-box_lidar[1], box_lidar[0]) + box[6]
+                        )
                     anno['bbox'].append(bbox)
                     anno['dimensions'].append(box[3:6])
                     anno['location'].append(box[:3])
@@ -414,16 +434,27 @@ class KittiMetric(BaseMetric):
                             '{} -1 -1 {:.4f} {:.4f} {:.4f} {:.4f} '
                             '{:.4f} {:.4f} {:.4f} '
                             '{:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {:.4f}'.format(
-                                anno['name'][idx], anno['alpha'][idx],
-                                bbox[idx][0], bbox[idx][1], bbox[idx][2],
-                                bbox[idx][3], dims[idx][1], dims[idx][2],
-                                dims[idx][0], loc[idx][0], loc[idx][1],
-                                loc[idx][2], anno['rotation_y'][idx],
-                                anno['score'][idx]),
-                            file=f)
+                                anno['name'][idx],
+                                anno['alpha'][idx],
+                                bbox[idx][0],
+                                bbox[idx][1],
+                                bbox[idx][2],
+                                bbox[idx][3],
+                                dims[idx][1],
+                                dims[idx][2],
+                                dims[idx][0],
+                                loc[idx][0],
+                                loc[idx][1],
+                                loc[idx][2],
+                                anno['rotation_y'][idx],
+                                anno['score'][idx],
+                            ),
+                            file=f,
+                        )
 
             anno['sample_idx'] = np.array(
-                [sample_idx] * len(anno['score']), dtype=np.int64)
+                [sample_idx] * len(anno['score']), dtype=np.int64
+            )
 
             det_annos.append(anno)
 
@@ -438,12 +469,13 @@ class KittiMetric(BaseMetric):
         return det_annos
 
     def bbox2result_kitti2d(
-            self,
-            net_outputs: List[dict],
-            sample_idx_list: List[int],
-            class_names: List[str],
-            pklfile_prefix: Optional[str] = None,
-            submission_prefix: Optional[str] = None) -> List[dict]:
+        self,
+        net_outputs: List[dict],
+        sample_idx_list: List[int],
+        class_names: List[str],
+        pklfile_prefix: Optional[str] = None,
+        submission_prefix: Optional[str] = None,
+    ) -> List[dict]:
         """Convert 2D detection results to kitti format for evaluation and test
         submission.
 
@@ -460,12 +492,14 @@ class KittiMetric(BaseMetric):
         Returns:
             List[dict]: A list of dictionaries with the kitti format.
         """
-        assert len(net_outputs) == len(self.data_infos), \
-            'invalid list length of network outputs'
+        assert len(net_outputs) == len(
+            self.data_infos
+        ), 'invalid list length of network outputs'
         det_annos = []
         print('\nConverting 2D prediction to KITTI format')
         for i, bboxes_per_sample in enumerate(
-                mmengine.track_iter_progress(net_outputs)):
+            mmengine.track_iter_progress(net_outputs)
+        ):
             anno = dict(
                 name=[],
                 truncated=[],
@@ -475,24 +509,24 @@ class KittiMetric(BaseMetric):
                 dimensions=[],
                 location=[],
                 rotation_y=[],
-                score=[])
+                score=[],
+            )
             sample_idx = sample_idx_list[i]
 
             num_example = 0
             bbox = bboxes_per_sample['bboxes']
             for i in range(bbox.shape[0]):
-                anno['name'].append(class_names[int(
-                    bboxes_per_sample['labels'][i])])
+                anno['name'].append(class_names[int(bboxes_per_sample['labels'][i])])
                 anno['truncated'].append(0.0)
                 anno['occluded'].append(0)
                 anno['alpha'].append(0.0)
                 anno['bbox'].append(bbox[i, :4])
                 # set dimensions (height, width, length) to zero
-                anno['dimensions'].append(
-                    np.zeros(shape=[3], dtype=np.float32))
+                anno['dimensions'].append(np.zeros(shape=[3], dtype=np.float32))
                 # set the 3D translation to (-1000, -1000, -1000)
                 anno['location'].append(
-                    np.ones(shape=[3], dtype=np.float32) * (-1000.0))
+                    np.ones(shape=[3], dtype=np.float32) * (-1000.0)
+                )
                 anno['rotation_y'].append(0.0)
                 anno['score'].append(bboxes_per_sample['scores'][i])
                 num_example += 1
@@ -512,8 +546,7 @@ class KittiMetric(BaseMetric):
             else:
                 anno = {k: np.stack(v) for k, v in anno.items()}
 
-            anno['sample_idx'] = np.array(
-                [sample_idx] * num_example, dtype=np.int64)
+            anno['sample_idx'] = np.array([sample_idx] * num_example, dtype=np.int64)
             det_annos.append(anno)
 
         if pklfile_prefix is not None:
@@ -545,7 +578,8 @@ class KittiMetric(BaseMetric):
                                 *dims[idx],  # 3 float
                                 *loc[idx],  # 3 float
                                 anno['rotation_y'][idx],
-                                anno['score'][idx]),
+                                anno['score'][idx],
+                            ),
                             file=f,
                         )
             print(f'Result is saved to {submission_prefix}')
@@ -589,16 +623,20 @@ class KittiMetric(BaseMetric):
                 box3d_lidar=np.zeros([0, 7]),
                 scores=np.zeros([0]),
                 label_preds=np.zeros([0, 4]),
-                sample_idx=sample_idx)
+                sample_idx=sample_idx,
+            )
         # Here default used 'CAM2' to compute metric. If you want to
         # use another camera, please modify it.
-        lidar2cam = np.array(
-            info['images'][self.default_cam_key]['lidar2cam']).astype(
-                np.float32)
+        lidar2cam = np.array(info['images'][self.default_cam_key]['lidar2cam']).astype(
+            np.float32
+        )
         P2 = np.array(info['images'][self.default_cam_key]['cam2img']).astype(
-            np.float32)
-        img_shape = (info['images'][self.default_cam_key]['height'],
-                     info['images'][self.default_cam_key]['width'])
+            np.float32
+        )
+        img_shape = (
+            info['images'][self.default_cam_key]['height'],
+            info['images'][self.default_cam_key]['width'],
+        )
         P2 = box_preds.tensor.new_tensor(P2)
 
         if isinstance(box_preds, LiDARInstance3DBoxes):
@@ -606,8 +644,9 @@ class KittiMetric(BaseMetric):
             box_preds_lidar = box_preds
         elif isinstance(box_preds, CameraInstance3DBoxes):
             box_preds_camera = box_preds
-            box_preds_lidar = box_preds.convert_to(Box3DMode.LIDAR,
-                                                   np.linalg.inv(lidar2cam))
+            box_preds_lidar = box_preds.convert_to(
+                Box3DMode.LIDAR, np.linalg.inv(lidar2cam)
+            )
 
         box_corners = box_preds_camera.corners
         box_corners_in_image = points_cam2img(box_corners, P2)
@@ -618,14 +657,18 @@ class KittiMetric(BaseMetric):
         # Post-processing
         # check box_preds_camera
         image_shape = box_preds.tensor.new_tensor(img_shape)
-        valid_cam_inds = ((box_2d_preds[:, 0] < image_shape[1]) &
-                          (box_2d_preds[:, 1] < image_shape[0]) &
-                          (box_2d_preds[:, 2] > 0) & (box_2d_preds[:, 3] > 0))
+        valid_cam_inds = (
+            (box_2d_preds[:, 0] < image_shape[1])
+            & (box_2d_preds[:, 1] < image_shape[0])
+            & (box_2d_preds[:, 2] > 0)
+            & (box_2d_preds[:, 3] > 0)
+        )
         # check box_preds_lidar
         if isinstance(box_preds, LiDARInstance3DBoxes):
             limit_range = box_preds.tensor.new_tensor(self.pcd_limit_range)
-            valid_pcd_inds = ((box_preds_lidar.center > limit_range[:3]) &
-                              (box_preds_lidar.center < limit_range[3:]))
+            valid_pcd_inds = (box_preds_lidar.center > limit_range[:3]) & (
+                box_preds_lidar.center < limit_range[3:]
+            )
             valid_inds = valid_cam_inds & valid_pcd_inds.all(-1)
         else:
             valid_inds = valid_cam_inds
@@ -638,7 +681,8 @@ class KittiMetric(BaseMetric):
                 box3d_lidar=box_preds_lidar[valid_inds].numpy(),
                 scores=scores[valid_inds].numpy(),
                 label_preds=labels[valid_inds].numpy(),
-                sample_idx=sample_idx)
+                sample_idx=sample_idx,
+            )
         else:
             return dict(
                 bbox=np.zeros([0, 4]),
@@ -647,4 +691,5 @@ class KittiMetric(BaseMetric):
                 box3d_lidar=np.zeros([0, 7]),
                 scores=np.zeros([0]),
                 label_preds=np.zeros([0]),
-                sample_idx=sample_idx)
+                sample_idx=sample_idx,
+            )

@@ -27,7 +27,8 @@ def test_seg_VFE():
         grid_shape=[480, 360, 32],
         with_voxel_center=True,
         feat_compression=16,
-        return_point_feats=True)
+        return_point_feats=True,
+    )
     seg_VFE = MODELS.build(seg_VFE_cfg)
     seg_VFE = seg_VFE.cuda()
     features = torch.rand([240000, 6]).cuda()

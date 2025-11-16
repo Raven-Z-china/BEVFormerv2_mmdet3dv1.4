@@ -40,26 +40,38 @@ class CenterPoint(MVXTwoStageDetector):
             config of :class:`Det3DDataPreprocessor`. Defaults to None.
     """
 
-    def __init__(self,
-                 pts_voxel_encoder: Optional[dict] = None,
-                 pts_middle_encoder: Optional[dict] = None,
-                 pts_fusion_layer: Optional[dict] = None,
-                 img_backbone: Optional[dict] = None,
-                 pts_backbone: Optional[dict] = None,
-                 img_neck: Optional[dict] = None,
-                 pts_neck: Optional[dict] = None,
-                 pts_bbox_head: Optional[dict] = None,
-                 img_roi_head: Optional[dict] = None,
-                 img_rpn_head: Optional[dict] = None,
-                 train_cfg: Optional[dict] = None,
-                 test_cfg: Optional[dict] = None,
-                 init_cfg: Optional[dict] = None,
-                 data_preprocessor: Optional[dict] = None,
-                 **kwargs):
-
-        super(CenterPoint,
-              self).__init__(pts_voxel_encoder, pts_middle_encoder,
-                             pts_fusion_layer, img_backbone, pts_backbone,
-                             img_neck, pts_neck, pts_bbox_head, img_roi_head,
-                             img_rpn_head, train_cfg, test_cfg, init_cfg,
-                             data_preprocessor, **kwargs)
+    def __init__(
+        self,
+        pts_voxel_encoder: Optional[dict] = None,
+        pts_middle_encoder: Optional[dict] = None,
+        pts_fusion_layer: Optional[dict] = None,
+        img_backbone: Optional[dict] = None,
+        pts_backbone: Optional[dict] = None,
+        img_neck: Optional[dict] = None,
+        pts_neck: Optional[dict] = None,
+        pts_bbox_head: Optional[dict] = None,
+        img_roi_head: Optional[dict] = None,
+        img_rpn_head: Optional[dict] = None,
+        train_cfg: Optional[dict] = None,
+        test_cfg: Optional[dict] = None,
+        init_cfg: Optional[dict] = None,
+        data_preprocessor: Optional[dict] = None,
+        **kwargs
+    ):
+        super(CenterPoint, self).__init__(
+            pts_voxel_encoder,
+            pts_middle_encoder,
+            pts_fusion_layer,
+            img_backbone,
+            pts_backbone,
+            img_neck,
+            pts_neck,
+            pts_bbox_head,
+            img_roi_head,
+            img_rpn_head,
+            train_cfg,
+            test_cfg,
+            init_cfg,
+            data_preprocessor,
+            **kwargs
+        )

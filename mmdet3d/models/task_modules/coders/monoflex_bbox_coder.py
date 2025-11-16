@@ -38,20 +38,22 @@ class MonoFlexCoder(BaseBBoxCoder):
             stability. Default 1e-3.
     """
 
-    def __init__(self,
-                 depth_mode: str,
-                 base_depth: Tuple[float],
-                 depth_range: list,
-                 combine_depth: bool,
-                 uncertainty_range: list,
-                 base_dims: Tuple[Tuple[float]],
-                 dims_mode: str,
-                 multibin: bool,
-                 num_dir_bins: int,
-                 bin_centers: List[float],
-                 bin_margin: float,
-                 code_size: int,
-                 eps: float = 1e-3) -> None:
+    def __init__(
+        self,
+        depth_mode: str,
+        base_depth: Tuple[float],
+        depth_range: list,
+        combine_depth: bool,
+        uncertainty_range: list,
+        base_dims: Tuple[Tuple[float]],
+        dims_mode: str,
+        multibin: bool,
+        num_dir_bins: int,
+        bin_centers: List[float],
+        bin_margin: float,
+        code_size: int,
+        eps: float = 1e-3,
+    ) -> None:
         super(MonoFlexCoder, self).__init__()
 
         # depth related
@@ -88,7 +90,8 @@ class MonoFlexCoder(BaseBBoxCoder):
         local_yaw = gt_bboxes_3d.local_yaw
         # encode local yaw (-pi ~ pi) to multibin format
         encode_local_yaw = local_yaw.new_zeros(
-            [local_yaw.shape[0], self.num_dir_bins * 2])
+            [local_yaw.shape[0], self.num_dir_bins * 2]
+        )
         bin_size = 2 * np.pi / self.num_dir_bins
         margin_size = bin_size * self.bin_margin
 
@@ -109,8 +112,14 @@ class MonoFlexCoder(BaseBBoxCoder):
 
         return orientation_target
 
-    def decode(self, bbox: Tensor, base_centers2d: Tensor, labels: Tensor,
-               downsample_ratio: int, cam2imgs: Tensor) -> Dict[str, Tensor]:
+    def decode(
+        self,
+        bbox: Tensor,
+        base_centers2d: Tensor,
+        labels: Tensor,
+        downsample_ratio: int,
+        cam2imgs: Tensor,
+    ) -> Dict[str, Tensor]:
         """Decode bounding box regression into 3D predictions.
 
         Args:
@@ -178,26 +187,35 @@ class MonoFlexCoder(BaseBBoxCoder):
         # decode the pred residual dimensions to real dimensions
         pred_dimensions = self.decode_dims(labels, pred_dimensions_offsets3d)
         pred_direct_depth = self.decode_direct_depth(pred_direct_depth_offsets)
-        pred_keypoints_depth = self.keypoints2depth(pred_keypoints2d,
-                                                    pred_dimensions, cam2imgs,
-                                                    downsample_ratio)
+        pred_keypoints_depth = self.keypoints2depth(
+            pred_keypoints2d, pred_dimensions, cam2imgs, downsample_ratio
+        )
 
         pred_direct_depth_uncertainty = torch.clamp(
-            pred_direct_depth_uncertainty, self.uncertainty_range[0],
-            self.uncertainty_range[1])
+            pred_direct_depth_uncertainty,
+            self.uncertainty_range[0],
+            self.uncertainty_range[1],
+        )
         pred_keypoints_depth_uncertainty = torch.clamp(
-            pred_keypoints_depth_uncertainty, self.uncertainty_range[0],
-            self.uncertainty_range[1])
+            pred_keypoints_depth_uncertainty,
+            self.uncertainty_range[0],
+            self.uncertainty_range[1],
+        )
 
         if self.combine_depth:
             pred_depth_uncertainty = torch.cat(
-                (pred_direct_depth_uncertainty.unsqueeze(-1),
-                 pred_keypoints_depth_uncertainty),
-                dim=1).exp()
+                (
+                    pred_direct_depth_uncertainty.unsqueeze(-1),
+                    pred_keypoints_depth_uncertainty,
+                ),
+                dim=1,
+            ).exp()
             pred_depth = torch.cat(
-                (pred_direct_depth.unsqueeze(-1), pred_keypoints_depth), dim=1)
-            pred_combined_depth = \
-                self.combine_depths(pred_depth, pred_depth_uncertainty)
+                (pred_direct_depth.unsqueeze(-1), pred_keypoints_depth), dim=1
+            )
+            pred_combined_depth = self.combine_depths(
+                pred_depth, pred_depth_uncertainty
+            )
         else:
             pred_combined_depth = None
 
@@ -239,17 +257,20 @@ class MonoFlexCoder(BaseBBoxCoder):
 
         if self.depth_range is not None:
             direct_depth = torch.clamp(
-                direct_depth, min=self.depth_range[0], max=self.depth_range[1])
+                direct_depth, min=self.depth_range[0], max=self.depth_range[1]
+            )
 
         return direct_depth
 
-    def decode_location(self,
-                        base_centers2d: Tensor,
-                        offsets2d: Tensor,
-                        depths: Tensor,
-                        cam2imgs: Tensor,
-                        downsample_ratio: Tensor,
-                        pad_mode: str = 'default') -> Tuple[Tensor]:
+    def decode_location(
+        self,
+        base_centers2d: Tensor,
+        offsets2d: Tensor,
+        depths: Tensor,
+        cam2imgs: Tensor,
+        downsample_ratio: Tensor,
+        pad_mode: str = 'default',
+    ) -> Tuple[Tensor]:
         """Retrieve object location.
 
         Args:
@@ -278,25 +299,24 @@ class MonoFlexCoder(BaseBBoxCoder):
         else:
             raise NotImplementedError
         # (N, 3)
-        centers2d_img = \
-            torch.cat((centers2d_img, depths.unsqueeze(-1)), dim=1)
+        centers2d_img = torch.cat((centers2d_img, depths.unsqueeze(-1)), dim=1)
         # (N, 4, 1)
-        centers2d_extend = \
-            torch.cat((centers2d_img, centers2d_img.new_ones(N, 1)),
-                      dim=1).unsqueeze(-1)
+        centers2d_extend = torch.cat(
+            (centers2d_img, centers2d_img.new_ones(N, 1)), dim=1
+        ).unsqueeze(-1)
         locations = torch.matmul(cam2imgs_inv, centers2d_extend).squeeze(-1)
 
         return locations[:, :3]
 
     def keypoints2depth(
-            self,
-            keypoints2d: Tensor,
-            dimensions: Tensor,
-            cam2imgs: Tensor,
-            downsample_ratio: int = 4,
-            group0_index: List[Tuple[int]] = [(7, 3), (0, 4)],
-            group1_index: List[Tuple[int]] = [(2, 6),
-                                              (1, 5)]) -> Tuple[Tensor]:
+        self,
+        keypoints2d: Tensor,
+        dimensions: Tensor,
+        cam2imgs: Tensor,
+        downsample_ratio: int = 4,
+        group0_index: List[Tuple[int]] = [(7, 3), (0, 4)],
+        group1_index: List[Tuple[int]] = [(2, 6), (1, 5)],
+    ) -> Tuple[Tensor]:
         """Decode depth form three groups of keypoints and geometry projection
         model. 2D keypoints inlucding 8 coreners and top/bottom centers will be
         divided into three groups which will be used to calculate three depths
@@ -369,24 +389,31 @@ class MonoFlexCoder(BaseBBoxCoder):
         pred_height_3d = dimensions[:, 1].clone()
         f_u = cam2imgs[:, 0, 0]
         center_height = keypoints2d[:, -2, 1] - keypoints2d[:, -1, 1]
-        corner_group0_height = keypoints2d[:, group0_index[0], 1] \
-            - keypoints2d[:, group0_index[1], 1]
-        corner_group1_height = keypoints2d[:, group1_index[0], 1] \
-            - keypoints2d[:, group1_index[1], 1]
-        center_depth = f_u * pred_height_3d / (
-            F.relu(center_height) * downsample_ratio + self.eps)
+        corner_group0_height = (
+            keypoints2d[:, group0_index[0], 1] - keypoints2d[:, group0_index[1], 1]
+        )
+        corner_group1_height = (
+            keypoints2d[:, group1_index[0], 1] - keypoints2d[:, group1_index[1], 1]
+        )
+        center_depth = (
+            f_u * pred_height_3d / (F.relu(center_height) * downsample_ratio + self.eps)
+        )
         corner_group0_depth = (f_u * pred_height_3d).unsqueeze(-1) / (
-            F.relu(corner_group0_height) * downsample_ratio + self.eps)
+            F.relu(corner_group0_height) * downsample_ratio + self.eps
+        )
         corner_group1_depth = (f_u * pred_height_3d).unsqueeze(-1) / (
-            F.relu(corner_group1_height) * downsample_ratio + self.eps)
+            F.relu(corner_group1_height) * downsample_ratio + self.eps
+        )
 
         corner_group0_depth = corner_group0_depth.mean(dim=1)
         corner_group1_depth = corner_group1_depth.mean(dim=1)
 
         keypoints_depth = torch.stack(
-            (center_depth, corner_group0_depth, corner_group1_depth), dim=1)
+            (center_depth, corner_group0_depth, corner_group1_depth), dim=1
+        )
         keypoints_depth = torch.clamp(
-            keypoints_depth, min=self.depth_range[0], max=self.depth_range[1])
+            keypoints_depth, min=self.depth_range[0], max=self.depth_range[1]
+        )
 
         return keypoints_depth
 
@@ -418,8 +445,9 @@ class MonoFlexCoder(BaseBBoxCoder):
 
         return dimensions
 
-    def decode_orientation(self, ori_vector: Tensor,
-                           locations: Tensor) -> Tuple[Tensor]:
+    def decode_orientation(
+        self, ori_vector: Tensor, locations: Tensor
+    ) -> Tuple[Tensor]:
         """Retrieve object orientation.
 
         Args:
@@ -433,17 +461,20 @@ class MonoFlexCoder(BaseBBoxCoder):
             tuple[torch.Tensor]: yaws and local yaws of 3d bboxes.
         """
         if self.multibin:
-            pred_bin_cls = ori_vector[:, :self.num_dir_bins * 2].view(
-                -1, self.num_dir_bins, 2)
+            pred_bin_cls = ori_vector[:, : self.num_dir_bins * 2].view(
+                -1, self.num_dir_bins, 2
+            )
             pred_bin_cls = pred_bin_cls.softmax(dim=2)[..., 1]
             orientations = ori_vector.new_zeros(ori_vector.shape[0])
             for i in range(self.num_dir_bins):
-                mask_i = (pred_bin_cls.argmax(dim=1) == i)
+                mask_i = pred_bin_cls.argmax(dim=1) == i
                 start_bin = self.num_dir_bins * 2 + i * 2
                 end_bin = start_bin + 2
                 pred_bin_offset = ori_vector[mask_i, start_bin:end_bin]
-                orientations[mask_i] = pred_bin_offset[:, 0].atan2(
-                    pred_bin_offset[:, 1]) + self.bin_centers[i]
+                orientations[mask_i] = (
+                    pred_bin_offset[:, 0].atan2(pred_bin_offset[:, 1])
+                    + self.bin_centers[i]
+                )
         else:
             axis_cls = ori_vector[:, :2].softmax(dim=1)
             axis_cls = axis_cls[:, 0] < axis_cls[:, 1]
@@ -475,8 +506,7 @@ class MonoFlexCoder(BaseBBoxCoder):
 
         return yaws, local_yaws
 
-    def decode_bboxes2d(self, reg_bboxes2d: Tensor,
-                        base_centers2d: Tensor) -> Tensor:
+    def decode_bboxes2d(self, reg_bboxes2d: Tensor, base_centers2d: Tensor) -> Tensor:
         """Retrieve [x1, y1, x2, y2] format 2D bboxes.
 
         Args:
@@ -501,8 +531,7 @@ class MonoFlexCoder(BaseBBoxCoder):
 
         return bboxes2d
 
-    def combine_depths(self, depth: Tensor,
-                       depth_uncertainty: Tensor) -> Tensor:
+    def combine_depths(self, depth: Tensor, depth_uncertainty: Tensor) -> Tensor:
         """Combine all the prediced depths with depth uncertainty.
 
         Args:
@@ -517,9 +546,9 @@ class MonoFlexCoder(BaseBBoxCoder):
             torch.Tenosr: combined depth.
         """
         uncertainty_weights = 1 / depth_uncertainty
-        uncertainty_weights = \
-            uncertainty_weights / \
-            uncertainty_weights.sum(dim=1, keepdim=True)
+        uncertainty_weights = uncertainty_weights / uncertainty_weights.sum(
+            dim=1, keepdim=True
+        )
         combined_depth = torch.sum(depth * uncertainty_weights, dim=1)
 
         return combined_depth

@@ -71,7 +71,7 @@ class Box3DMode(IntEnum):
         dst: 'Box3DMode',
         rt_mat: Optional[Union[np.ndarray, Tensor]] = None,
         with_yaw: bool = True,
-        correct_yaw: bool = False
+        correct_yaw: bool = False,
     ) -> Union[Sequence[float], np.ndarray, Tensor, BaseInstance3DBoxes]:
         """Convert boxes from ``src`` mode to ``dst`` mode.
 
@@ -106,7 +106,8 @@ class Box3DMode(IntEnum):
         if single_box:
             assert len(box) >= 7, (
                 'Box3DMode.convert takes either a k-tuple/list or '
-                'an Nxk array/tensor, where k >= 7')
+                'an Nxk array/tensor, where k >= 7'
+            )
             arr = torch.tensor(box)[None, :]
         else:
             # avoid modifying the input box
@@ -130,12 +131,9 @@ class Box3DMode(IntEnum):
             xyz_size = torch.cat([x_size, z_size, y_size], dim=-1)
             if with_yaw:
                 if correct_yaw:
-                    yaw_vector = torch.cat([
-                        torch.cos(yaw),
-                        torch.sin(yaw),
-                        torch.zeros_like(yaw)
-                    ],
-                                           dim=1)
+                    yaw_vector = torch.cat(
+                        [torch.cos(yaw), torch.sin(yaw), torch.zeros_like(yaw)], dim=1
+                    )
                 else:
                     yaw = -yaw - np.pi / 2
                     yaw = limit_period(yaw, period=np.pi * 2)
@@ -145,12 +143,9 @@ class Box3DMode(IntEnum):
             xyz_size = torch.cat([x_size, z_size, y_size], dim=-1)
             if with_yaw:
                 if correct_yaw:
-                    yaw_vector = torch.cat([
-                        torch.cos(-yaw),
-                        torch.zeros_like(yaw),
-                        torch.sin(-yaw)
-                    ],
-                                           dim=1)
+                    yaw_vector = torch.cat(
+                        [torch.cos(-yaw), torch.zeros_like(yaw), torch.sin(-yaw)], dim=1
+                    )
                 else:
                     yaw = -yaw - np.pi / 2
                     yaw = limit_period(yaw, period=np.pi * 2)
@@ -160,12 +155,9 @@ class Box3DMode(IntEnum):
             xyz_size = torch.cat([x_size, z_size, y_size], dim=-1)
             if with_yaw:
                 if correct_yaw:
-                    yaw_vector = torch.cat([
-                        torch.cos(yaw),
-                        torch.sin(yaw),
-                        torch.zeros_like(yaw)
-                    ],
-                                           dim=1)
+                    yaw_vector = torch.cat(
+                        [torch.cos(yaw), torch.sin(yaw), torch.zeros_like(yaw)], dim=1
+                    )
                 else:
                     yaw = -yaw
         elif src == Box3DMode.CAM and dst == Box3DMode.DEPTH:
@@ -174,12 +166,9 @@ class Box3DMode(IntEnum):
             xyz_size = torch.cat([x_size, z_size, y_size], dim=-1)
             if with_yaw:
                 if correct_yaw:
-                    yaw_vector = torch.cat([
-                        torch.cos(-yaw),
-                        torch.zeros_like(yaw),
-                        torch.sin(-yaw)
-                    ],
-                                           dim=1)
+                    yaw_vector = torch.cat(
+                        [torch.cos(-yaw), torch.zeros_like(yaw), torch.sin(-yaw)], dim=1
+                    )
                 else:
                     yaw = -yaw
         elif src == Box3DMode.LIDAR and dst == Box3DMode.DEPTH:
@@ -188,12 +177,9 @@ class Box3DMode(IntEnum):
             xyz_size = torch.cat([x_size, y_size, z_size], dim=-1)
             if with_yaw:
                 if correct_yaw:
-                    yaw_vector = torch.cat([
-                        torch.cos(yaw),
-                        torch.sin(yaw),
-                        torch.zeros_like(yaw)
-                    ],
-                                           dim=1)
+                    yaw_vector = torch.cat(
+                        [torch.cos(yaw), torch.sin(yaw), torch.zeros_like(yaw)], dim=1
+                    )
                 else:
                     yaw = yaw + np.pi / 2
                     yaw = limit_period(yaw, period=np.pi * 2)
@@ -203,25 +189,23 @@ class Box3DMode(IntEnum):
             xyz_size = torch.cat([x_size, y_size, z_size], dim=-1)
             if with_yaw:
                 if correct_yaw:
-                    yaw_vector = torch.cat([
-                        torch.cos(yaw),
-                        torch.sin(yaw),
-                        torch.zeros_like(yaw)
-                    ],
-                                           dim=1)
+                    yaw_vector = torch.cat(
+                        [torch.cos(yaw), torch.sin(yaw), torch.zeros_like(yaw)], dim=1
+                    )
                 else:
                     yaw = yaw - np.pi / 2
                     yaw = limit_period(yaw, period=np.pi * 2)
         else:
             raise NotImplementedError(
-                f'Conversion from Box3DMode {src} to {dst} '
-                'is not supported yet')
+                f'Conversion from Box3DMode {src} to {dst} ' 'is not supported yet'
+            )
 
         if not isinstance(rt_mat, Tensor):
             rt_mat = arr.new_tensor(rt_mat)
         if rt_mat.size(1) == 4:
             extended_xyz = torch.cat(
-                [arr[..., :3], arr.new_ones(arr.size(0), 1)], dim=-1)
+                [arr[..., :3], arr.new_ones(arr.size(0), 1)], dim=-1
+            )
             xyz = extended_xyz @ rt_mat.t()
         else:
             xyz = arr[..., :3] @ rt_mat.t()
@@ -231,11 +215,9 @@ class Box3DMode(IntEnum):
         if with_yaw and correct_yaw:
             rot_yaw_vector = yaw_vector @ rt_mat[:3, :3].t()
             if dst == Box3DMode.CAM:
-                yaw = torch.atan2(-rot_yaw_vector[:, [2]], rot_yaw_vector[:,
-                                                                          [0]])
+                yaw = torch.atan2(-rot_yaw_vector[:, [2]], rot_yaw_vector[:, [0]])
             elif dst in [Box3DMode.LIDAR, Box3DMode.DEPTH]:
-                yaw = torch.atan2(rot_yaw_vector[:, [1]], rot_yaw_vector[:,
-                                                                         [0]])
+                yaw = torch.atan2(rot_yaw_vector[:, [1]], rot_yaw_vector[:, [0]])
             yaw = limit_period(yaw, period=np.pi * 2)
 
         if with_yaw:
@@ -261,7 +243,8 @@ class Box3DMode(IntEnum):
             else:
                 raise NotImplementedError(
                     f'Conversion to {dst} through {original_type} '
-                    'is not supported yet')
+                    'is not supported yet'
+                )
             return target_type(arr, box_dim=arr.size(-1), with_yaw=with_yaw)
         else:
             return arr

@@ -1,12 +1,15 @@
+import math
+
 import torch
-from torch.autograd import Function
 import triton
 import triton.language as tl
-from torch.amp import custom_fwd, custom_bwd
-import math
+from torch.amp import custom_bwd, custom_fwd
+from torch.autograd import Function
+
 
 def _grid(numel: int, bs: int) -> tuple:
     return (triton.cdiv(numel, bs),)
+
 
 @triton.jit
 def _idx(i, n: int, c: int, h: int, w: int):
@@ -17,12 +20,22 @@ def _idx(i, n: int, c: int, h: int, w: int):
     m = i < (n * c * h * w)
     return ni, ci, hi, wi, m
 
+
 @triton.jit
 def ska_fwd(
-    x_ptr, w_ptr, o_ptr,
-    n, ic, h, w, ks, pad, wc,
+    x_ptr,
+    w_ptr,
+    o_ptr,
+    n,
+    ic,
+    h,
+    w,
+    ks,
+    pad,
+    wc,
     BS: tl.constexpr,
-    CT: tl.constexpr, AT: tl.constexpr
+    CT: tl.constexpr,
+    AT: tl.constexpr,
 ):
     pid = tl.program_id(0)
     start = pid * BS
@@ -39,7 +52,9 @@ def ska_fwd(
             b = hb & (win >= 0) & (win < w)
 
             x_off = ((ni * ic + ci) * h + hin) * w + win
-            w_off = ((ni * wc + ci % wc) * ks * ks + (kh * ks + kw)) * h * w + hi * w + wi
+            w_off = (
+                ((ni * wc + ci % wc) * ks * ks + (kh * ks + kw)) * h * w + hi * w + wi
+            )
 
             x_val = tl.load(x_ptr + x_off, mask=m & b, other=0.0).to(CT)
             w_val = tl.load(w_ptr + w_off, mask=m, other=0.0).to(CT)
@@ -47,12 +62,22 @@ def ska_fwd(
 
     tl.store(o_ptr + offs, val.to(CT), mask=m)
 
+
 @triton.jit
 def ska_bwd_x(
-    go_ptr, w_ptr, gi_ptr,
-    n, ic, h, w, ks, pad, wc,
+    go_ptr,
+    w_ptr,
+    gi_ptr,
+    n,
+    ic,
+    h,
+    w,
+    ks,
+    pad,
+    wc,
     BS: tl.constexpr,
-    CT: tl.constexpr, AT: tl.constexpr
+    CT: tl.constexpr,
+    AT: tl.constexpr,
 ):
     pid = tl.program_id(0)
     start = pid * BS
@@ -69,7 +94,9 @@ def ska_bwd_x(
             b = hb & (wo >= 0) & (wo < w)
 
             go_off = ((ni * ic + ci) * h + ho) * w + wo
-            w_off = ((ni * wc + ci % wc) * ks * ks + (kh * ks + kw)) * h * w + ho * w + wo
+            w_off = (
+                ((ni * wc + ci % wc) * ks * ks + (kh * ks + kw)) * h * w + ho * w + wo
+            )
 
             go_val = tl.load(go_ptr + go_off, mask=m & b, other=0.0).to(CT)
             w_val = tl.load(w_ptr + w_off, mask=m, other=0.0).to(CT)
@@ -77,12 +104,22 @@ def ska_bwd_x(
 
     tl.store(gi_ptr + offs, val.to(CT), mask=m)
 
+
 @triton.jit
 def ska_bwd_w(
-    go_ptr, x_ptr, gw_ptr,
-    n, wc, h, w, ic, ks, pad,
+    go_ptr,
+    x_ptr,
+    gw_ptr,
+    n,
+    wc,
+    h,
+    w,
+    ic,
+    ks,
+    pad,
     BS: tl.constexpr,
-    CT: tl.constexpr, AT: tl.constexpr
+    CT: tl.constexpr,
+    AT: tl.constexpr,
 ):
     pid = tl.program_id(0)
     start = pid * BS
@@ -113,6 +150,7 @@ def ska_bwd_w(
 
             tl.store(gw_ptr + w_off, val.to(CT), mask=m)
 
+
 class SkaFn(Function):
     @staticmethod
     @custom_fwd(device_type='cuda')
@@ -128,9 +166,13 @@ class SkaFn(Function):
         x = x.contiguous()
         w = w.contiguous()
 
-        grid = lambda meta: _grid(numel, meta["BS"])
+        grid = lambda meta: _grid(numel, meta['BS'])
 
-        ct = tl.float16 if x.dtype == torch.float16 else (tl.float32 if x.dtype == torch.float32 else tl.float64)
+        ct = (
+            tl.float16
+            if x.dtype == torch.float16
+            else (tl.float32 if x.dtype == torch.float32 else tl.float64)
+        )
         at = tl.float32 if x.dtype == torch.float16 else ct
 
         ska_fwd[grid](x, w, o, n, ic, h, width, ks, pad, wc, BS=1024, CT=ct, AT=at)
@@ -154,15 +196,20 @@ class SkaFn(Function):
         if ctx.needs_input_grad[0]:
             gx = torch.empty_like(x)
             numel = gx.numel()
-            ska_bwd_x[lambda meta: _grid(numel, meta["BS"])](go, w, gx, n, ic, h, width, ks, pad, wc, BS=1024, CT=ct, AT=at)
+            ska_bwd_x[lambda meta: _grid(numel, meta['BS'])](
+                go, w, gx, n, ic, h, width, ks, pad, wc, BS=1024, CT=ct, AT=at
+            )
 
         if ctx.needs_input_grad[1]:
             gw = torch.empty_like(w)
             numel = gw.numel() // w.shape[2]
-            ska_bwd_w[lambda meta: _grid(numel, meta["BS"])](go, x, gw, n, wc, h, width, ic, ks, pad, BS=1024, CT=ct, AT=at)
+            ska_bwd_w[lambda meta: _grid(numel, meta['BS'])](
+                go, x, gw, n, wc, h, width, ic, ks, pad, BS=1024, CT=ct, AT=at
+            )
 
         return gx, gw, None, None
 
+
 class SKA(torch.nn.Module):
     def forward(self, x: torch.Tensor, w: torch.Tensor) -> torch.Tensor:
-        return SkaFn.apply(x, w) # type: ignore
+        return SkaFn.apply(x, w)  # type: ignore

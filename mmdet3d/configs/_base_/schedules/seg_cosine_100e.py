@@ -8,16 +8,13 @@ from torch.optim.sgd import SGD
 optim_wrapper = dict(
     type=OptimWrapper,
     optimizer=dict(type=SGD, lr=0.1, momentum=0.9, weight_decay=0.001),
-    clip_grad=None)
+    clip_grad=None,
+)
 
 param_scheduler = [
     dict(
-        type=CosineAnnealingLR,
-        T_max=100,
-        eta_min=1e-5,
-        by_epoch=True,
-        begin=0,
-        end=100)
+        type=CosineAnnealingLR, T_max=100, eta_min=1e-5, by_epoch=True, begin=0, end=100
+    )
 ]
 
 # runtime settings

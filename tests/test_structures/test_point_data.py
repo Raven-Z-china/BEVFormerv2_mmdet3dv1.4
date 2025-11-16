@@ -10,7 +10,6 @@ from mmdet3d.structures import PointData
 
 
 class TestPointData(TestCase):
-
     def setup_data(self):
         metainfo = dict(sample_idx=random.randint(0, 100))
         points = torch.rand((5, 3))
@@ -57,7 +56,7 @@ class TestPointData(TestCase):
             point_data[item.bool()]
 
         # test LongTensor
-        long_tensor = torch.randint(5, (2, ))
+        long_tensor = torch.randint(5, (2,))
         long_index_point_data = point_data[long_tensor]
         assert len(long_index_point_data) == len(long_tensor)
 

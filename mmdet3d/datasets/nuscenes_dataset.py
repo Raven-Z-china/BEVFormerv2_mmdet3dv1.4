@@ -56,11 +56,19 @@ class NuScenesDataset(Det3DDataset):
             Defaults to False.
     """
     METAINFO = {
-        'classes':
-        ('car', 'truck', 'trailer', 'bus', 'construction_vehicle', 'bicycle',
-         'motorcycle', 'pedestrian', 'traffic_cone', 'barrier'),
-        'version':
-        'v1.0-trainval',
+        'classes': (
+            'car',
+            'truck',
+            'trailer',
+            'bus',
+            'construction_vehicle',
+            'bicycle',
+            'motorcycle',
+            'pedestrian',
+            'traffic_cone',
+            'barrier',
+        ),
+        'version': 'v1.0-trainval',
         'palette': [
             (255, 158, 0),  # Orange
             (255, 99, 71),  # Tomato
@@ -72,30 +80,31 @@ class NuScenesDataset(Det3DDataset):
             (0, 0, 230),  # Blue
             (47, 79, 79),  # Darkslategrey
             (112, 128, 144),  # Slategrey
-        ]
+        ],
     }
 
-    def __init__(self,
-                 data_root: str,
-                 ann_file: str,
-                 pipeline: List[Union[dict, Callable]] = [],
-                 box_type_3d: str = 'LiDAR',
-                 load_type: str = 'frame_based',
-                 modality: dict = dict(
-                     use_camera=False,
-                     use_lidar=True,
-                 ),
-                 filter_empty_gt: bool = True,
-                 test_mode: bool = False,
-                 with_velocity: bool = True,
-                 use_valid_flag: bool = False,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        data_root: str,
+        ann_file: str,
+        pipeline: List[Union[dict, Callable]] = [],
+        box_type_3d: str = 'LiDAR',
+        load_type: str = 'frame_based',
+        modality: dict = dict(
+            use_camera=False,
+            use_lidar=True,
+        ),
+        filter_empty_gt: bool = True,
+        test_mode: bool = False,
+        with_velocity: bool = True,
+        use_valid_flag: bool = False,
+        **kwargs
+    ) -> None:
         self.use_valid_flag = use_valid_flag
         self.with_velocity = with_velocity
 
         # TODO: Redesign multi-view data process in the future
-        assert load_type in ('frame_based', 'mv_image_based',
-                             'fov_image_based')
+        assert load_type in ('frame_based', 'mv_image_based', 'fov_image_based')
         self.load_type = load_type
 
         assert box_type_3d.lower() in ('lidar', 'camera')
@@ -107,7 +116,8 @@ class NuScenesDataset(Det3DDataset):
             box_type_3d=box_type_3d,
             filter_empty_gt=filter_empty_gt,
             test_mode=test_mode,
-            **kwargs)
+            **kwargs
+        )
 
     def _filter_with_mask(self, ann_info: dict) -> dict:
         """Remove annotations that do not need to be cared.
@@ -125,7 +135,7 @@ class NuScenesDataset(Det3DDataset):
             filter_mask = ann_info['num_lidar_pts'] > 0
         for key in ann_info.keys():
             if key != 'instances':
-                filtered_annotations[key] = (ann_info[key][filter_mask])
+                filtered_annotations[key] = ann_info[key][filter_mask]
             else:
                 filtered_annotations[key] = ann_info[key]
         return filtered_annotations
@@ -145,7 +155,6 @@ class NuScenesDataset(Det3DDataset):
         """
         ann_info = super().parse_ann_info(info)
         if ann_info is not None:
-
             ann_info = self._filter_with_mask(ann_info)
 
             if self.with_velocity:
@@ -153,8 +162,7 @@ class NuScenesDataset(Det3DDataset):
                 gt_velocities = ann_info['velocities']
                 nan_mask = np.isnan(gt_velocities[:, 0])
                 gt_velocities[nan_mask] = [0.0, 0.0]
-                gt_bboxes_3d = np.concatenate([gt_bboxes_3d, gt_velocities],
-                                              axis=-1)
+                gt_bboxes_3d = np.concatenate([gt_bboxes_3d, gt_velocities], axis=-1)
                 ann_info['gt_bboxes_3d'] = gt_bboxes_3d
         else:
             # empty instance
@@ -179,12 +187,14 @@ class NuScenesDataset(Det3DDataset):
             gt_bboxes_3d = CameraInstance3DBoxes(
                 ann_info['gt_bboxes_3d'],
                 box_dim=ann_info['gt_bboxes_3d'].shape[-1],
-                origin=(0.5, 0.5, 0.5))
+                origin=(0.5, 0.5, 0.5),
+            )
         else:
             gt_bboxes_3d = LiDARInstance3DBoxes(
                 ann_info['gt_bboxes_3d'],
                 box_dim=ann_info['gt_bboxes_3d'].shape[-1],
-                origin=(0.5, 0.5, 0.5)).convert_to(self.box_mode_3d)
+                origin=(0.5, 0.5, 0.5),
+            ).convert_to(self.box_mode_3d)
 
         ann_info['gt_bboxes_3d'] = gt_bboxes_3d
 
@@ -206,10 +216,9 @@ class NuScenesDataset(Det3DDataset):
         if self.load_type == 'mv_image_based':
             data_list = []
             if self.modality['use_lidar']:
-                info['lidar_points']['lidar_path'] = \
-                    osp.join(
-                        self.data_prefix.get('pts', ''),
-                        info['lidar_points']['lidar_path'])
+                info['lidar_points']['lidar_path'] = osp.join(
+                    self.data_prefix.get('pts', ''), info['lidar_points']['lidar_path']
+                )
 
             if self.modality['use_camera']:
                 for cam_id, img_info in info['images'].items():
@@ -219,7 +228,8 @@ class NuScenesDataset(Det3DDataset):
                         else:
                             cam_prefix = self.data_prefix.get('img', '')
                         img_info['img_path'] = osp.join(
-                            cam_prefix, img_info['img_path'])
+                            cam_prefix, img_info['img_path']
+                        )
 
             for idx, (cam_id, img_info) in enumerate(info['images'].items()):
                 camera_info = dict()
@@ -239,8 +249,7 @@ class NuScenesDataset(Det3DDataset):
                     # used in traing
                     camera_info['ann_info'] = self.parse_ann_info(camera_info)
                 if self.test_mode and self.load_eval_anns:
-                    camera_info['eval_ann_info'] = \
-                        self.parse_ann_info(camera_info)
+                    camera_info['eval_ann_info'] = self.parse_ann_info(camera_info)
                 data_list.append(camera_info)
             return data_list
         else:

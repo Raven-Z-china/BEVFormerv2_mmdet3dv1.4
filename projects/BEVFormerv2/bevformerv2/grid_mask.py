@@ -5,15 +5,9 @@ from PIL import Image
 
 
 class Grid(object):
-
-    def __init__(self,
-                 use_h,
-                 use_w,
-                 rotate=1,
-                 offset=False,
-                 ratio=0.5,
-                 mode=0,
-                 prob=1.):
+    def __init__(
+        self, use_h, use_w, rotate=1, offset=False, ratio=0.5, mode=0, prob=1.0
+    ):
         self.use_h = use_h
         self.use_w = use_w
         self.rotate = rotate
@@ -58,8 +52,9 @@ class Grid(object):
         mask = Image.fromarray(np.uint8(mask))
         mask = mask.rotate(r)
         mask = np.asarray(mask)
-        mask = mask[(hh - h) // 2:(hh - h) // 2 + h,
-                    (ww - w) // 2:(ww - w) // 2 + w]
+        mask = mask[
+            (hh - h) // 2 : (hh - h) // 2 + h, (ww - w) // 2 : (ww - w) // 2 + w
+        ]
 
         mask = torch.from_numpy(mask).float()
         if self.mode == 1:
@@ -77,15 +72,9 @@ class Grid(object):
 
 
 class GridMask(nn.Module):
-
-    def __init__(self,
-                 use_h,
-                 use_w,
-                 rotate=1,
-                 offset=False,
-                 ratio=0.5,
-                 mode=0,
-                 prob=1.):
+    def __init__(
+        self, use_h, use_w, rotate=1, offset=False, ratio=0.5, mode=0, prob=1.0
+    ):
         super(GridMask, self).__init__()
         self.use_h = use_h
         self.use_w = use_w
@@ -126,8 +115,9 @@ class GridMask(nn.Module):
         mask = Image.fromarray(np.uint8(mask))
         mask = mask.rotate(r)
         mask = np.asarray(mask)
-        mask = mask[(hh - h) // 2:(hh - h) // 2 + h,
-                    (ww - w) // 2:(ww - w) // 2 + w]
+        mask = mask[
+            (hh - h) // 2 : (hh - h) // 2 + h, (ww - w) // 2 : (ww - w) // 2 + w
+        ]
 
         mask = torch.from_numpy(mask).to(x)
         if self.mode == 1:

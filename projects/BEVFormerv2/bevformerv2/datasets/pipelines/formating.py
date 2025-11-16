@@ -1,11 +1,10 @@
-
 # Copyright (c) OpenMMLab. All rights reserved.
 import numpy as np
 
+from mmdet3d.datasets.transforms.formating import to_tensor
+from mmdet3d.registry import TRANSFORMS
 from mmdet3d.structures.bbox_3d import BaseInstance3DBoxes
 from mmdet3d.structures.points import BasePoints
-from mmdet3d.registry import TRANSFORMS
-from mmdet3d.datasets.transforms.formating import to_tensor
 
 
 @TRANSFORMS.register_module()
@@ -26,7 +25,9 @@ class DefaultFormatBundle(object):
                        (3)to DataContainer (stack=True)
     """
 
-    def __init__(self, ):
+    def __init__(
+        self,
+    ):
         return
 
     def __call__(self, results):
@@ -49,9 +50,16 @@ class DefaultFormatBundle(object):
                 img = np.ascontiguousarray(results['img'].transpose(2, 0, 1))
                 results['img'] = np.stack(to_tensor(img), axis=0)
         for key in [
-                'proposals', 'gt_bboxes', 'gt_bboxes_ignore', 'gt_labels',
-                'gt_labels_3d', 'attr_labels', 'pts_instance_mask',
-                'pts_semantic_mask', 'centers2d', 'depths'
+            'proposals',
+            'gt_bboxes',
+            'gt_bboxes_ignore',
+            'gt_labels',
+            'gt_labels_3d',
+            'attr_labels',
+            'pts_instance_mask',
+            'pts_semantic_mask',
+            'centers2d',
+            'depths',
         ]:
             if key not in results:
                 continue
@@ -68,13 +76,14 @@ class DefaultFormatBundle(object):
         if 'gt_masks' in results:
             results['gt_masks'] = results['gt_masks']
         if 'gt_semantic_seg' in results:
-            results['gt_semantic_seg'] = np.stack(to_tensor(results['gt_semantic_seg'][None, ...]), axis=0)
+            results['gt_semantic_seg'] = np.stack(
+                to_tensor(results['gt_semantic_seg'][None, ...]), axis=0
+            )
 
         return results
 
     def __repr__(self):
         return self.__class__.__name__
-
 
 
 @TRANSFORMS.register_module()
@@ -123,14 +132,11 @@ class DefaultFormatBundle3D(DefaultFormatBundle):
             # Clean GT bboxes in the final
             if 'gt_bboxes_3d_mask' in results:
                 gt_bboxes_3d_mask = results['gt_bboxes_3d_mask']
-                results['gt_bboxes_3d'] = results['gt_bboxes_3d'][
-                    gt_bboxes_3d_mask]
+                results['gt_bboxes_3d'] = results['gt_bboxes_3d'][gt_bboxes_3d_mask]
                 if 'gt_names_3d' in results:
-                    results['gt_names_3d'] = results['gt_names_3d'][
-                        gt_bboxes_3d_mask]
+                    results['gt_names_3d'] = results['gt_names_3d'][gt_bboxes_3d_mask]
                 if 'centers2d' in results:
-                    results['centers2d'] = results['centers2d'][
-                        gt_bboxes_3d_mask]
+                    results['centers2d'] = results['centers2d'][gt_bboxes_3d_mask]
                 if 'depths' in results:
                     results['depths'] = results['depths'][gt_bboxes_3d_mask]
             if 'gt_bboxes_mask' in results:
@@ -142,26 +148,26 @@ class DefaultFormatBundle3D(DefaultFormatBundle):
                 if 'gt_names' in results and len(results['gt_names']) == 0:
                     results['gt_labels'] = np.array([], dtype=np.int64)
                     results['attr_labels'] = np.array([], dtype=np.int64)
-                elif 'gt_names' in results and isinstance(
-                        results['gt_names'][0], list):
+                elif 'gt_names' in results and isinstance(results['gt_names'][0], list):
                     # gt_labels might be a list of list in multi-view setting
                     results['gt_labels'] = [
-                        np.array([self.class_names.index(n) for n in res],
-                                 dtype=np.int64) for res in results['gt_names']
+                        np.array(
+                            [self.class_names.index(n) for n in res], dtype=np.int64
+                        )
+                        for res in results['gt_names']
                     ]
                 elif 'gt_names' in results:
-                    results['gt_labels'] = np.array([
-                        self.class_names.index(n) for n in results['gt_names']
-                    ],
-                                                    dtype=np.int64)
+                    results['gt_labels'] = np.array(
+                        [self.class_names.index(n) for n in results['gt_names']],
+                        dtype=np.int64,
+                    )
                 # we still assume one pipeline for one frame LiDAR
                 # thus, the 3D name is list[string]
                 if 'gt_names_3d' in results:
-                    results['gt_labels_3d'] = np.array([
-                        self.class_names.index(n)
-                        for n in results['gt_names_3d']
-                    ],
-                                                       dtype=np.int64)
+                    results['gt_labels_3d'] = np.array(
+                        [self.class_names.index(n) for n in results['gt_names_3d']],
+                        dtype=np.int64,
+                    )
         results = super(DefaultFormatBundle3D, self).__call__(results)
         return results
 
@@ -171,4 +177,3 @@ class DefaultFormatBundle3D(DefaultFormatBundle):
         repr_str += f'(class_names={self.class_names}, '
         repr_str += f'with_gt={self.with_gt}, with_label={self.with_label})'
         return repr_str
-

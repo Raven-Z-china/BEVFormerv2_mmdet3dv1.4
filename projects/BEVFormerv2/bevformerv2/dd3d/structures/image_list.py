@@ -1,20 +1,19 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 # Copyright 2021 Toyota Research Institute.  All rights reserved.
 from __future__ import division
-
 from typing import Any, List, Sequence, Tuple
 
 import torch
+from detectron2.utils.env import TORCH_VERSION
 from torch import device
 from torch.nn import functional as F
 
-from detectron2.utils.env import TORCH_VERSION
-
 
 def _as_tensor(x: Tuple[int, int]) -> torch.Tensor:
-    """
-    An equivalent of `torch.as_tensor`, but works under tracing if input
-    is a list of tensor. `torch.as_tensor` will record a constant in tracing,
+    """An equivalent of `torch.as_tensor`, but works under tracing if input is
+    a list of tensor.
+
+    `torch.as_tensor` will record a constant in tracing,
     but this function will use `torch.stack` instead.
     """
     if torch.jit.is_scripting():
@@ -42,7 +41,14 @@ class ImageList(object):
     Attributes:
         image_sizes (list[tuple[int, int]]): each tuple is (h, w)
     """
-    def __init__(self, tensor: torch.Tensor, image_sizes: List[Tuple[int, int]], intrinsics=None, image_paths=None):
+
+    def __init__(
+        self,
+        tensor: torch.Tensor,
+        image_sizes: List[Tuple[int, int]],
+        intrinsics=None,
+        image_paths=None,
+    ):
         """
         Arguments:
             tensor (Tensor): of shape (N, H, W) or (N, C_1, ..., C_K, H, W) where K >= 1
@@ -56,9 +62,11 @@ class ImageList(object):
 
     @property
     def intrinsics(self):
-        if torch.allclose(self._intrinsics[0], torch.eye(3, device=self._intrinsics.device)):
+        if torch.allclose(
+            self._intrinsics[0], torch.eye(3, device=self._intrinsics.device)
+        ):
             # TODO: torch.inverse(images.intrinsics) often return identity, when it shouldn't. Is it pytorch bug?
-            raise ValueError("Intrinsics is Identity.")
+            raise ValueError('Intrinsics is Identity.')
         return self._intrinsics
 
     @property
@@ -69,8 +77,7 @@ class ImageList(object):
         return len(self.image_sizes)
 
     def __getitem__(self, idx) -> torch.Tensor:
-        """
-        Access the individual image in its original size.
+        """Access the individual image in its original size.
 
         Args:
             idx: int or slice
@@ -79,10 +86,10 @@ class ImageList(object):
             Tensor: an image of shape (H, W) or (C_1, ..., C_K, H, W) where K >= 1
         """
         size = self.image_sizes[idx]
-        return self.tensor[idx, ..., :size[0], :size[1]]
+        return self.tensor[idx, ..., : size[0], : size[1]]
 
     @torch.jit.unused
-    def to(self, *args: Any, **kwargs: Any) -> "ImageList":
+    def to(self, *args: Any, **kwargs: Any) -> 'ImageList':
         cast_tensor = self.tensor.to(*args, **kwargs)
         return ImageList(cast_tensor, self.image_sizes, intrinsics=self.intrinsics)
 
@@ -96,8 +103,8 @@ class ImageList(object):
         size_divisibility: int = 0,
         pad_value: float = 0.0,
         intrinsics=None,
-        image_paths=None
-    ) -> "ImageList":
+        image_paths=None,
+    ) -> 'ImageList':
         """
         Args:
             tensors: a tuple or list of `torch.Tensor`, each of shape (Hi, Wi) or
@@ -124,7 +131,10 @@ class ImageList(object):
         if size_divisibility > 1:
             stride = size_divisibility
             # the last two dims are H,W, both subject to divisibility requirement
-            max_size = torch.div(max_size + (stride - 1),  stride, rounding_mode='floor') * stride
+            max_size = (
+                torch.div(max_size + (stride - 1), stride, rounding_mode='floor')
+                * stride
+            )
 
         # handle weirdness of scripting and tracing ...
         if torch.jit.is_scripting():
@@ -138,14 +148,21 @@ class ImageList(object):
             # This seems slightly (2%) faster.
             # TODO: check whether it's faster for multiple images as well
             image_size = image_sizes[0]
-            padding_size = [0, max_size[-1] - image_size[1], 0, max_size[-2] - image_size[0]]
-            batched_imgs = F.pad(tensors[0], padding_size, value=pad_value).unsqueeze_(0)
+            padding_size = [
+                0,
+                max_size[-1] - image_size[1],
+                0,
+                max_size[-2] - image_size[0],
+            ]
+            batched_imgs = F.pad(tensors[0], padding_size, value=pad_value).unsqueeze_(
+                0
+            )
         else:
             # max_size can be a tensor in tracing mode, therefore convert to list
             batch_shape = [len(tensors)] + list(tensors[0].shape[:-2]) + list(max_size)
             batched_imgs = tensors[0].new_full(batch_shape, pad_value)
             for img, pad_img in zip(tensors, batched_imgs):
-                pad_img[..., :img.shape[-2], :img.shape[-1]].copy_(img)
+                pad_img[..., : img.shape[-2], : img.shape[-1]].copy_(img)
 
         if intrinsics is not None:
             assert isinstance(intrinsics, (tuple, list))
@@ -155,4 +172,6 @@ class ImageList(object):
         if image_paths is not None:
             assert len(image_paths) == len(tensors)
 
-        return ImageList(batched_imgs.contiguous(), image_sizes, intrinsics, image_paths)
+        return ImageList(
+            batched_imgs.contiguous(), image_sizes, intrinsics, image_paths
+        )

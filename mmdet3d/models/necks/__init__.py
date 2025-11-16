@@ -7,6 +7,10 @@ from .pointnet2_fp_neck import PointNetFPNeck
 from .second_fpn import SECONDFPN
 
 __all__ = [
-    'FPN', 'SECONDFPN', 'OutdoorImVoxelNeck', 'PointNetFPNeck', 'DLANeck',
-    'IndoorImVoxelNeck'
+    'FPN',
+    'SECONDFPN',
+    'OutdoorImVoxelNeck',
+    'PointNetFPNeck',
+    'DLANeck',
+    'IndoorImVoxelNeck',
 ]

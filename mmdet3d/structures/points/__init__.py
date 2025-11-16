@@ -25,7 +25,9 @@ def get_points_type(points_type: str) -> type:
     elif points_type_upper == 'DEPTH':
         points_cls = DepthPoints
     else:
-        raise ValueError('Only "points_type" of "CAMERA", "LIDAR" and "DEPTH" '
-                         f'are supported, got {points_type}')
+        raise ValueError(
+            'Only "points_type" of "CAMERA", "LIDAR" and "DEPTH" '
+            f'are supported, got {points_type}'
+        )
 
     return points_cls

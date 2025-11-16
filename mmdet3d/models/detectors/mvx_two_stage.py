@@ -46,24 +46,27 @@ class MVXTwoStageDetector(Base3DDetector):
             config of :class:`Det3DDataPreprocessor`. Defaults to None.
     """
 
-    def __init__(self,
-                 pts_voxel_encoder: Optional[dict] = None,
-                 pts_middle_encoder: Optional[dict] = None,
-                 pts_fusion_layer: Optional[dict] = None,
-                 img_backbone: Optional[dict] = None,
-                 pts_backbone: Optional[dict] = None,
-                 img_neck: Optional[dict] = None,
-                 pts_neck: Optional[dict] = None,
-                 pts_bbox_head: Optional[dict] = None,
-                 img_roi_head: Optional[dict] = None,
-                 img_rpn_head: Optional[dict] = None,
-                 train_cfg: Optional[dict] = None,
-                 test_cfg: Optional[dict] = None,
-                 init_cfg: Optional[dict] = None,
-                 data_preprocessor: Optional[dict] = None,
-                 **kwargs):
+    def __init__(
+        self,
+        pts_voxel_encoder: Optional[dict] = None,
+        pts_middle_encoder: Optional[dict] = None,
+        pts_fusion_layer: Optional[dict] = None,
+        img_backbone: Optional[dict] = None,
+        pts_backbone: Optional[dict] = None,
+        img_neck: Optional[dict] = None,
+        pts_neck: Optional[dict] = None,
+        pts_bbox_head: Optional[dict] = None,
+        img_roi_head: Optional[dict] = None,
+        img_rpn_head: Optional[dict] = None,
+        train_cfg: Optional[dict] = None,
+        test_cfg: Optional[dict] = None,
+        init_cfg: Optional[dict] = None,
+        data_preprocessor: Optional[dict] = None,
+        **kwargs,
+    ):
         super(MVXTwoStageDetector, self).__init__(
-            init_cfg=init_cfg, data_preprocessor=data_preprocessor, **kwargs)
+            init_cfg=init_cfg, data_preprocessor=data_preprocessor, **kwargs
+        )
 
         if pts_voxel_encoder:
             self.pts_voxel_encoder = MODELS.build(pts_voxel_encoder)
@@ -97,20 +100,17 @@ class MVXTwoStageDetector(Base3DDetector):
     @property
     def with_img_shared_head(self):
         """bool: Whether the detector has a shared head in image branch."""
-        return hasattr(self,
-                       'img_shared_head') and self.img_shared_head is not None
+        return hasattr(self, 'img_shared_head') and self.img_shared_head is not None
 
     @property
     def with_pts_bbox(self):
         """bool: Whether the detector has a 3D box head."""
-        return hasattr(self,
-                       'pts_bbox_head') and self.pts_bbox_head is not None
+        return hasattr(self, 'pts_bbox_head') and self.pts_bbox_head is not None
 
     @property
     def with_img_bbox(self):
         """bool: Whether the detector has a 2D image box head."""
-        return hasattr(self,
-                       'img_bbox_head') and self.img_bbox_head is not None
+        return hasattr(self, 'img_bbox_head') and self.img_bbox_head is not None
 
     @property
     def with_img_backbone(self):
@@ -125,8 +125,7 @@ class MVXTwoStageDetector(Base3DDetector):
     @property
     def with_fusion(self):
         """bool: Whether the detector has a fusion layer."""
-        return hasattr(self,
-                       'pts_fusion_layer') and self.fusion_layer is not None
+        return hasattr(self, 'pts_fusion_layer') and self.fusion_layer is not None
 
     @property
     def with_img_neck(self):
@@ -151,14 +150,12 @@ class MVXTwoStageDetector(Base3DDetector):
     @property
     def with_voxel_encoder(self):
         """bool: Whether the detector has a voxel encoder."""
-        return hasattr(self,
-                       'voxel_encoder') and self.voxel_encoder is not None
+        return hasattr(self, 'voxel_encoder') and self.voxel_encoder is not None
 
     @property
     def with_middle_encoder(self):
         """bool: Whether the detector has a middle encoder."""
-        return hasattr(self,
-                       'middle_encoder') and self.middle_encoder is not None
+        return hasattr(self, 'middle_encoder') and self.middle_encoder is not None
 
     def _forward(self):
         pass
@@ -184,11 +181,11 @@ class MVXTwoStageDetector(Base3DDetector):
         return img_feats
 
     def extract_pts_feat(
-            self,
-            voxel_dict: Dict[str, Tensor],
-            points: Optional[List[Tensor]] = None,
-            img_feats: Optional[Sequence[Tensor]] = None,
-            batch_input_metas: Optional[List[dict]] = None
+        self,
+        voxel_dict: Dict[str, Tensor],
+        points: Optional[List[Tensor]] = None,
+        img_feats: Optional[Sequence[Tensor]] = None,
+        batch_input_metas: Optional[List[dict]] = None,
     ) -> Sequence[Tensor]:
         """Extract features of points.
 
@@ -206,20 +203,23 @@ class MVXTwoStageDetector(Base3DDetector):
         """
         if not self.with_pts_bbox:
             return None
-        voxel_features = self.pts_voxel_encoder(voxel_dict['voxels'],
-                                                voxel_dict['num_points'],
-                                                voxel_dict['coors'], img_feats,
-                                                batch_input_metas)
+        voxel_features = self.pts_voxel_encoder(
+            voxel_dict['voxels'],
+            voxel_dict['num_points'],
+            voxel_dict['coors'],
+            img_feats,
+            batch_input_metas,
+        )
         batch_size = voxel_dict['coors'][-1, 0] + 1
-        x = self.pts_middle_encoder(voxel_features, voxel_dict['coors'],
-                                    batch_size)
+        x = self.pts_middle_encoder(voxel_features, voxel_dict['coors'], batch_size)
         x = self.pts_backbone(x)
         if self.with_pts_neck:
             x = self.pts_neck(x)
         return x
 
-    def extract_feat(self, batch_inputs_dict: dict,
-                     batch_input_metas: List[dict]) -> tuple:
+    def extract_feat(
+        self, batch_inputs_dict: dict, batch_input_metas: List[dict]
+    ) -> tuple:
         """Extract features from images and points.
 
         Args:
@@ -243,12 +243,16 @@ class MVXTwoStageDetector(Base3DDetector):
             voxel_dict,
             points=points,
             img_feats=img_feats,
-            batch_input_metas=batch_input_metas)
+            batch_input_metas=batch_input_metas,
+        )
         return (img_feats, pts_feats)
 
-    def loss(self, batch_inputs_dict: Dict[List, torch.Tensor],
-             batch_data_samples: List[Det3DDataSample],
-             **kwargs) -> List[Det3DDataSample]:
+    def loss(
+        self,
+        batch_inputs_dict: Dict[List, torch.Tensor],
+        batch_data_samples: List[Det3DDataSample],
+        **kwargs,
+    ) -> List[Det3DDataSample]:
         """
         Args:
             batch_inputs_dict (dict): The model input dict which include
@@ -267,20 +271,21 @@ class MVXTwoStageDetector(Base3DDetector):
         """
 
         batch_input_metas = [item.metainfo for item in batch_data_samples]
-        img_feats, pts_feats = self.extract_feat(batch_inputs_dict,
-                                                 batch_input_metas)
+        img_feats, pts_feats = self.extract_feat(batch_inputs_dict, batch_input_metas)
         losses = dict()
         if pts_feats:
-            losses_pts = self.pts_bbox_head.loss(pts_feats, batch_data_samples,
-                                                 **kwargs)
+            losses_pts = self.pts_bbox_head.loss(
+                pts_feats, batch_data_samples, **kwargs
+            )
             losses.update(losses_pts)
         if img_feats:
             losses_img = self.loss_imgs(img_feats, batch_data_samples)
             losses.update(losses_img)
         return losses
 
-    def loss_imgs(self, x: List[Tensor],
-                  batch_data_samples: List[Det3DDataSample], **kwargs):
+    def loss_imgs(
+        self, x: List[Tensor], batch_data_samples: List[Det3DDataSample], **kwargs
+    ):
         """Forward function for image branch.
 
         This function works similar to the forward function of Faster R-CNN.
@@ -302,10 +307,12 @@ class MVXTwoStageDetector(Base3DDetector):
             rpn_data_samples = copy.deepcopy(batch_data_samples)
             # set cat_id of gt_labels to 0 in RPN
             for data_sample in rpn_data_samples:
-                data_sample.gt_instances.labels = \
-                    torch.zeros_like(data_sample.gt_instances.labels)
+                data_sample.gt_instances.labels = torch.zeros_like(
+                    data_sample.gt_instances.labels
+                )
             rpn_losses, rpn_results_list = self.img_rpn_head.loss_and_predict(
-                x, rpn_data_samples, proposal_cfg=proposal_cfg, **kwargs)
+                x, rpn_data_samples, proposal_cfg=proposal_cfg, **kwargs
+            )
             # avoid get same name with roi_head loss
             keys = rpn_losses.keys()
             for key in keys:
@@ -325,16 +332,19 @@ class MVXTwoStageDetector(Base3DDetector):
                 rpn_results_list = None
         # bbox head forward and loss
         if self.with_img_bbox:
-            roi_losses = self.img_roi_head.loss(x, rpn_results_list,
-                                                batch_data_samples, **kwargs)
+            roi_losses = self.img_roi_head.loss(
+                x, rpn_results_list, batch_data_samples, **kwargs
+            )
             losses.update(roi_losses)
         return losses
 
-    def predict_imgs(self,
-                     x: List[Tensor],
-                     batch_data_samples: List[Det3DDataSample],
-                     rescale: bool = True,
-                     **kwargs) -> InstanceData:
+    def predict_imgs(
+        self,
+        x: List[Tensor],
+        batch_data_samples: List[Det3DDataSample],
+        rescale: bool = True,
+        **kwargs,
+    ) -> InstanceData:
         """Predict results from a batch of inputs and data samples with post-
         processing.
 
@@ -349,18 +359,23 @@ class MVXTwoStageDetector(Base3DDetector):
 
         if batch_data_samples[0].get('proposals', None) is None:
             rpn_results_list = self.img_rpn_head.predict(
-                x, batch_data_samples, rescale=False)
+                x, batch_data_samples, rescale=False
+            )
         else:
             rpn_results_list = [
                 data_sample.proposals for data_sample in batch_data_samples
             ]
         results_list = self.img_roi_head.predict(
-            x, rpn_results_list, batch_data_samples, rescale=rescale, **kwargs)
+            x, rpn_results_list, batch_data_samples, rescale=rescale, **kwargs
+        )
         return results_list
 
-    def predict(self, batch_inputs_dict: Dict[str, Optional[Tensor]],
-                batch_data_samples: List[Det3DDataSample],
-                **kwargs) -> List[Det3DDataSample]:
+    def predict(
+        self,
+        batch_inputs_dict: Dict[str, Optional[Tensor]],
+        batch_data_samples: List[Det3DDataSample],
+        **kwargs,
+    ) -> List[Det3DDataSample]:
         """Forward of testing.
 
         Args:
@@ -386,22 +401,21 @@ class MVXTwoStageDetector(Base3DDetector):
                 contains a tensor with shape (num_instances, 7).
         """
         batch_input_metas = [item.metainfo for item in batch_data_samples]
-        img_feats, pts_feats = self.extract_feat(batch_inputs_dict,
-                                                 batch_input_metas)
+        img_feats, pts_feats = self.extract_feat(batch_inputs_dict, batch_input_metas)
         if pts_feats and self.with_pts_bbox:
             results_list_3d = self.pts_bbox_head.predict(
-                pts_feats, batch_data_samples, **kwargs)
+                pts_feats, batch_data_samples, **kwargs
+            )
         else:
             results_list_3d = None
 
         if img_feats and self.with_img_bbox:
             # TODO check this for camera modality
-            results_list_2d = self.predict_imgs(img_feats, batch_data_samples,
-                                                **kwargs)
+            results_list_2d = self.predict_imgs(img_feats, batch_data_samples, **kwargs)
         else:
             results_list_2d = None
 
-        detsamples = self.add_pred_to_datasample(batch_data_samples,
-                                                 results_list_3d,
-                                                 results_list_2d)
+        detsamples = self.add_pred_to_datasample(
+            batch_data_samples, results_list_3d, results_list_2d
+        )
         return detsamples

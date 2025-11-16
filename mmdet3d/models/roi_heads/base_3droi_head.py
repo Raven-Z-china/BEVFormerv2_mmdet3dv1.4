@@ -7,14 +7,16 @@ from mmdet3d.registry import MODELS, TASK_UTILS
 class Base3DRoIHead(BaseRoIHead):
     """Base class for 3d RoIHeads."""
 
-    def __init__(self,
-                 bbox_head=None,
-                 bbox_roi_extractor=None,
-                 mask_head=None,
-                 mask_roi_extractor=None,
-                 train_cfg=None,
-                 test_cfg=None,
-                 init_cfg=None):
+    def __init__(
+        self,
+        bbox_head=None,
+        bbox_roi_extractor=None,
+        mask_head=None,
+        mask_roi_extractor=None,
+        train_cfg=None,
+        test_cfg=None,
+        init_cfg=None,
+    ):
         super(Base3DRoIHead, self).__init__(
             bbox_head=bbox_head,
             bbox_roi_extractor=bbox_roi_extractor,
@@ -22,10 +24,10 @@ class Base3DRoIHead(BaseRoIHead):
             mask_roi_extractor=mask_roi_extractor,
             train_cfg=train_cfg,
             test_cfg=test_cfg,
-            init_cfg=init_cfg)
+            init_cfg=init_cfg,
+        )
 
-    def init_bbox_head(self, bbox_roi_extractor: dict,
-                       bbox_head: dict) -> None:
+    def init_bbox_head(self, bbox_roi_extractor: dict, bbox_head: dict) -> None:
         """Initialize box head and box roi extractor.
 
         Args:

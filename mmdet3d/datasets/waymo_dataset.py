@@ -70,37 +70,41 @@ class WaymoDataset(KittiDataset):
         load_interval (int): load frame interval. Defaults to 1.
         max_sweeps (int): max sweep for each frame. Defaults to 0.
     """
+
     METAINFO = {
         'classes': ('Car', 'Pedestrian', 'Cyclist'),
         'palette': [
             (0, 120, 255),  # Waymo Blue
             (0, 232, 157),  # Waymo Green
-            (255, 205, 85)  # Amber
-        ]
+            (255, 205, 85),  # Amber
+        ],
     }
 
-    def __init__(self,
-                 data_root: str,
-                 ann_file: str,
-                 data_prefix: dict = dict(
-                     pts='velodyne',
-                     CAM_FRONT='image_0',
-                     CAM_FRONT_LEFT='image_1',
-                     CAM_FRONT_RIGHT='image_2',
-                     CAM_SIDE_LEFT='image_3',
-                     CAM_SIDE_RIGHT='image_4'),
-                 pipeline: List[Union[dict, Callable]] = [],
-                 modality: dict = dict(use_lidar=True),
-                 default_cam_key: str = 'CAM_FRONT',
-                 box_type_3d: str = 'LiDAR',
-                 load_type: str = 'frame_based',
-                 filter_empty_gt: bool = True,
-                 test_mode: bool = False,
-                 pcd_limit_range: List[float] = [0, -40, -3, 70.4, 40, 0.0],
-                 cam_sync_instances: bool = False,
-                 load_interval: int = 1,
-                 max_sweeps: int = 0,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        data_root: str,
+        ann_file: str,
+        data_prefix: dict = dict(
+            pts='velodyne',
+            CAM_FRONT='image_0',
+            CAM_FRONT_LEFT='image_1',
+            CAM_FRONT_RIGHT='image_2',
+            CAM_SIDE_LEFT='image_3',
+            CAM_SIDE_RIGHT='image_4',
+        ),
+        pipeline: List[Union[dict, Callable]] = [],
+        modality: dict = dict(use_lidar=True),
+        default_cam_key: str = 'CAM_FRONT',
+        box_type_3d: str = 'LiDAR',
+        load_type: str = 'frame_based',
+        filter_empty_gt: bool = True,
+        test_mode: bool = False,
+        pcd_limit_range: List[float] = [0, -40, -3, 70.4, 40, 0.0],
+        cam_sync_instances: bool = False,
+        load_interval: int = 1,
+        max_sweeps: int = 0,
+        **kwargs,
+    ) -> None:
         self.load_interval = load_interval
         # set loading mode for different task settings
         self.cam_sync_instances = cam_sync_instances
@@ -123,7 +127,8 @@ class WaymoDataset(KittiDataset):
             data_prefix=data_prefix,
             test_mode=test_mode,
             load_type=load_type,
-            **kwargs)
+            **kwargs,
+        )
 
     def parse_ann_info(self, info: dict) -> dict:
         """Process the `instances` in data info to `ann_info`.
@@ -176,7 +181,8 @@ class WaymoDataset(KittiDataset):
             gt_bboxes=gt_bboxes,
             gt_bboxes_labels=gt_bboxes_labels,
             centers_2d=centers_2d,
-            depths=depths)
+            depths=depths,
+        )
 
         return anns_results
 
@@ -190,19 +196,21 @@ class WaymoDataset(KittiDataset):
         # `self.root=None` or relative path if `self.root=/path/to/data/`.
         annotations = load(self.ann_file)
         if not isinstance(annotations, dict):
-            raise TypeError(f'The annotations loaded from annotation file '
-                            f'should be a dict, but got {type(annotations)}!')
+            raise TypeError(
+                f'The annotations loaded from annotation file '
+                f'should be a dict, but got {type(annotations)}!'
+            )
         if 'data_list' not in annotations or 'metainfo' not in annotations:
-            raise ValueError('Annotation must have data_list and metainfo '
-                             'keys')
+            raise ValueError('Annotation must have data_list and metainfo ' 'keys')
         metainfo = annotations['metainfo']
         raw_data_list = annotations['data_list']
-        raw_data_list = raw_data_list[::self.load_interval]
+        raw_data_list = raw_data_list[:: self.load_interval]
         if self.load_interval > 1:
             print_log(
                 f'Sample size will be reduced to 1/{self.load_interval} of'
                 ' the original data sample',
-                logger='current')
+                logger='current',
+            )
 
         # Meta information load from annotation file will not influence the
         # existed meta information load from `BaseDataset.METAINFO` and
@@ -226,17 +234,20 @@ class WaymoDataset(KittiDataset):
                 #  dict(video_path='xxx', timestamps=...)]
                 for item in data_info:
                     if not isinstance(item, dict):
-                        raise TypeError('data_info must be list of dict, but '
-                                        f'got {type(item)}')
+                        raise TypeError(
+                            'data_info must be list of dict, but ' f'got {type(item)}'
+                        )
                 data_list.extend(data_info)
             else:
-                raise TypeError('data_info should be a dict or list of dict, '
-                                f'but got {type(data_info)}')
+                raise TypeError(
+                    'data_info should be a dict or list of dict, '
+                    f'but got {type(data_info)}'
+                )
 
         return data_list
 
     def parse_data_info(self, info: dict) -> Union[dict, List[dict]]:
-        """if task is lidar or multiview det, use super() method elif task is
+        """If task is lidar or multiview det, use super() method elif task is
         mono3d, split the info from frame-wise to img-wise."""
 
         if self.cam_sync_instances:
@@ -247,8 +258,7 @@ class WaymoDataset(KittiDataset):
         elif self.load_type == 'fov_image_based':
             # only loading the fov image and the fov instance
             new_image_info = {}
-            new_image_info[self.default_cam_key] = \
-                info['images'][self.default_cam_key]
+            new_image_info[self.default_cam_key] = info['images'][self.default_cam_key]
             info['images'] = new_image_info
             info['instances'] = info['cam_instances'][self.default_cam_key]
             return Det3DDataset.parse_data_info(self, info)
@@ -256,7 +266,7 @@ class WaymoDataset(KittiDataset):
             # in the mono3d, the instances is from cam sync.
             # Convert frame-based infos to multi-view image-based
             data_list = []
-            for (cam_key, img_info) in info['images'].items():
+            for cam_key, img_info in info['images'].items():
                 camera_info = dict()
                 camera_info['sample_idx'] = info['sample_idx']
                 camera_info['timestamp'] = info['timestamp']
@@ -266,7 +276,8 @@ class WaymoDataset(KittiDataset):
                 if 'img_path' in img_info:
                     cam_prefix = self.data_prefix.get(cam_key, '')
                     camera_info['images'][cam_key]['img_path'] = osp.join(
-                        cam_prefix, img_info['img_path'])
+                        cam_prefix, img_info['img_path']
+                    )
                 if 'lidar2cam' in img_info:
                     camera_info['lidar2cam'] = np.array(img_info['lidar2cam'])
                 if 'cam2img' in img_info:
@@ -274,8 +285,9 @@ class WaymoDataset(KittiDataset):
                 if 'lidar2img' in img_info:
                     camera_info['lidar2img'] = np.array(img_info['lidar2img'])
                 else:
-                    camera_info['lidar2img'] = camera_info[
-                        'cam2img'] @ camera_info['lidar2cam']
+                    camera_info['lidar2img'] = (
+                        camera_info['cam2img'] @ camera_info['lidar2cam']
+                    )
 
                 if not self.test_mode:
                     # used in training
@@ -283,7 +295,6 @@ class WaymoDataset(KittiDataset):
                     camera_info['ann_info'] = self.parse_ann_info(camera_info)
                 if self.test_mode and self.load_eval_anns:
                     camera_info['instances'] = info['cam_instances'][cam_key]
-                    camera_info['eval_ann_info'] = self.parse_ann_info(
-                        camera_info)
+                    camera_info['eval_ann_info'] = self.parse_ann_info(camera_info)
                 data_list.append(camera_info)
             return data_list

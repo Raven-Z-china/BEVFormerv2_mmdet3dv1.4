@@ -59,9 +59,8 @@ def test_setup_multi_processes():
 
     # test manually set opencv threads and mp start method
     config = dict(
-        data=dict(workers_per_gpu=2),
-        opencv_num_threads=4,
-        mp_start_method='spawn')
+        data=dict(workers_per_gpu=2), opencv_num_threads=4, mp_start_method='spawn'
+    )
     cfg = Config(config)
     setup_multi_processes(cfg)
     assert cv2.getNumThreads() == 4

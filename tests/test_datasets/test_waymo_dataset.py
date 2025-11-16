@@ -20,7 +20,6 @@ def _generate_waymo_dataset_config():
 
         @TRANSFORMS.register_module()
         class Identity(BaseTransform):
-
             def transform(self, info):
                 if 'ann_info' in info:
                     info['gt_labels_3d'] = info['ann_info']['gt_labels_3d']
@@ -37,13 +36,20 @@ def _generate_waymo_dataset_config():
 
     modality = dict(use_lidar=True, use_camera=True)
     data_prefix = data_prefix = dict(
-        pts='training/velodyne', CAM_FRONT='training/image_0')
+        pts='training/velodyne', CAM_FRONT='training/image_0'
+    )
     return data_root, ann_file, classes, data_prefix, pipeline, modality
 
 
 def test_getitem():
-    data_root, ann_file, classes, data_prefix, \
-        pipeline, modality, = _generate_waymo_dataset_config()
+    (
+        data_root,
+        ann_file,
+        classes,
+        data_prefix,
+        pipeline,
+        modality,
+    ) = _generate_waymo_dataset_config()
 
     waymo_dataset = WaymoDataset(
         data_root,
@@ -51,7 +57,8 @@ def test_getitem():
         data_prefix=data_prefix,
         pipeline=pipeline,
         metainfo=dict(classes=classes),
-        modality=modality)
+        modality=modality,
+    )
 
     waymo_dataset.prepare_data(0)
     input_dict = waymo_dataset.get_data_info(0)
@@ -72,8 +79,7 @@ def test_getitem():
 
     assert 'gt_bboxes_3d' in ann_info
     assert isinstance(ann_info['gt_bboxes_3d'], LiDARInstance3DBoxes)
-    assert torch.allclose(ann_info['gt_bboxes_3d'].tensor.sum(),
-                          torch.tensor(43.3103))
+    assert torch.allclose(ann_info['gt_bboxes_3d'].tensor.sum(), torch.tensor(43.3103))
     assert 'centers_2d' in ann_info
     assert ann_info['centers_2d'].dtype == np.float32
     assert 'depths' in ann_info

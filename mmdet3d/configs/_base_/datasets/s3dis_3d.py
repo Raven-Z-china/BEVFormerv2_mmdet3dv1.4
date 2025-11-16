@@ -5,13 +5,17 @@ from mmengine.visualization.vis_backend import LocalVisBackend
 
 from mmdet3d.datasets.s3dis_dataset import S3DISDataset
 from mmdet3d.datasets.transforms.formating import Pack3DDetInputs
-from mmdet3d.datasets.transforms.loading import (LoadAnnotations3D,
-                                                 LoadPointsFromFile,
-                                                 NormalizePointsColor)
+from mmdet3d.datasets.transforms.loading import (
+    LoadAnnotations3D,
+    LoadPointsFromFile,
+    NormalizePointsColor,
+)
 from mmdet3d.datasets.transforms.test_time_aug import MultiScaleFlipAug3D
-from mmdet3d.datasets.transforms.transforms_3d import (GlobalRotScaleTrans,
-                                                       PointSample,
-                                                       RandomFlip3D)
+from mmdet3d.datasets.transforms.transforms_3d import (
+    GlobalRotScaleTrans,
+    PointSample,
+    RandomFlip3D,
+)
 from mmdet3d.evaluation.metrics.indoor_metric import IndoorMetric
 from mmdet3d.visualization.local_visualizer import Det3DLocalVisualizer
 
@@ -46,23 +50,25 @@ train_pipeline = [
         use_color=True,
         load_dim=6,
         use_dim=[0, 1, 2, 3, 4, 5],
-        backend_args=backend_args),
+        backend_args=backend_args,
+    ),
     dict(type=LoadAnnotations3D, with_bbox_3d=True, with_label_3d=True),
     dict(type=PointSample, num_points=100000),
     dict(
         type=RandomFlip3D,
         sync_2d=False,
         flip_ratio_bev_horizontal=0.5,
-        flip_ratio_bev_vertical=0.5),
+        flip_ratio_bev_vertical=0.5,
+    ),
     dict(
         type=GlobalRotScaleTrans,
         rot_range=[-0.087266, 0.087266],
         scale_ratio_range=[0.9, 1.1],
-        translation_std=[.1, .1, .1],
-        shift_height=False),
+        translation_std=[0.1, 0.1, 0.1],
+        shift_height=False,
+    ),
     dict(type=NormalizePointsColor, color_mean=None),
-    dict(
-        type=Pack3DDetInputs, keys=['points', 'gt_bboxes_3d', 'gt_labels_3d'])
+    dict(type=Pack3DDetInputs, keys=['points', 'gt_bboxes_3d', 'gt_labels_3d']),
 ]
 test_pipeline = [
     dict(
@@ -72,7 +78,8 @@ test_pipeline = [
         use_color=True,
         load_dim=6,
         use_dim=[0, 1, 2, 3, 4, 5],
-        backend_args=backend_args),
+        backend_args=backend_args,
+    ),
     dict(
         type=MultiScaleFlipAug3D,
         img_scale=(1333, 800),
@@ -82,17 +89,20 @@ test_pipeline = [
             dict(
                 type=GlobalRotScaleTrans,
                 rot_range=[0, 0],
-                scale_ratio_range=[1., 1.],
-                translation_std=[0, 0, 0]),
+                scale_ratio_range=[1.0, 1.0],
+                translation_std=[0, 0, 0],
+            ),
             dict(
                 type=RandomFlip3D,
                 sync_2d=False,
                 flip_ratio_bev_horizontal=0.5,
-                flip_ratio_bev_vertical=0.5),
+                flip_ratio_bev_vertical=0.5,
+            ),
             dict(type=PointSample, num_points=100000),
             dict(type=NormalizePointsColor, color_mean=None),
-        ]),
-    dict(type=Pack3DDetInputs, keys=['points'])
+        ],
+    ),
+    dict(type=Pack3DDetInputs, keys=['points']),
 ]
 
 train_dataloader = dict(
@@ -113,8 +123,13 @@ train_dataloader = dict(
                     filter_empty_gt=True,
                     metainfo=metainfo,
                     box_type_3d='Depth',
-                    backend_args=backend_args) for i in train_area
-            ])))
+                    backend_args=backend_args,
+                )
+                for i in train_area
+            ],
+        ),
+    ),
+)
 
 val_dataloader = dict(
     batch_size=1,
@@ -128,7 +143,9 @@ val_dataloader = dict(
         metainfo=metainfo,
         test_mode=True,
         box_type_3d='Depth',
-        backend_args=backend_args))
+        backend_args=backend_args,
+    ),
+)
 test_dataloader = dict(
     batch_size=1,
     num_workers=1,
@@ -141,10 +158,13 @@ test_dataloader = dict(
         metainfo=metainfo,
         test_mode=True,
         box_type_3d='Depth',
-        backend_args=backend_args))
+        backend_args=backend_args,
+    ),
+)
 val_evaluator = dict(type=IndoorMetric)
 test_evaluator = val_evaluator
 
 vis_backends = [dict(type=LocalVisBackend)]
 visualizer = dict(
-    type=Det3DLocalVisualizer, vis_backends=vis_backends, name='visualizer')
+    type=Det3DLocalVisualizer, vis_backends=vis_backends, name='visualizer'
+)

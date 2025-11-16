@@ -15,7 +15,8 @@ def test_pillar_feature_net():
         with_distance=False,
         voxel_size=(0.2, 0.2, 8),
         point_cloud_range=(-51.2, -51.2, -5.0, 51.2, 51.2, 3.0),
-        norm_cfg=dict(type='BN1d', eps=1e-3, momentum=0.01))
+        norm_cfg=dict(type='BN1d', eps=1e-3, momentum=0.01),
+    )
     pillar_feature_net = MODELS.build(pillar_feature_net_cfg)
 
     features = torch.rand([97297, 20, 5])

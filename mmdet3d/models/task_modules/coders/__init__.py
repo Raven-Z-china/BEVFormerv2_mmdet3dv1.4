@@ -11,8 +11,14 @@ from .point_xyzwhlr_bbox_coder import PointXYZWHLRBBoxCoder
 from .smoke_bbox_coder import SMOKECoder
 
 __all__ = [
-    'DeltaXYZWLHRBBoxCoder', 'PartialBinBasedBBoxCoder',
-    'CenterPointBBoxCoder', 'AnchorFreeBBoxCoder', 'GroupFree3DBBoxCoder',
-    'PointXYZWHLRBBoxCoder', 'FCOS3DBBoxCoder', 'PGDBBoxCoder', 'SMOKECoder',
-    'MonoFlexCoder'
+    'DeltaXYZWLHRBBoxCoder',
+    'PartialBinBasedBBoxCoder',
+    'CenterPointBBoxCoder',
+    'AnchorFreeBBoxCoder',
+    'GroupFree3DBBoxCoder',
+    'PointXYZWHLRBBoxCoder',
+    'FCOS3DBBoxCoder',
+    'PGDBBoxCoder',
+    'SMOKECoder',
+    'MonoFlexCoder',
 ]

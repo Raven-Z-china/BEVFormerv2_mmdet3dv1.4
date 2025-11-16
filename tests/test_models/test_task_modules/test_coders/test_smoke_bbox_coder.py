@@ -10,7 +10,8 @@ def test_smoke_bbox_coder():
         type='SMOKECoder',
         base_depth=(28.01, 16.32),
         base_dims=((3.88, 1.63, 1.53), (1.78, 1.70, 0.58), (0.88, 1.73, 0.67)),
-        code_size=7)
+        code_size=7,
+    )
 
     bbox_coder = TASK_UTILS.build(bbox_coder_cfg)
     regression = torch.rand([200, 8])
@@ -21,7 +22,8 @@ def test_smoke_bbox_coder():
 
     img_metas = [dict(box_type_3d=CameraInstance3DBoxes) for i in range(2)]
     locations, dimensions, orientations = bbox_coder.decode(
-        regression, points, labels, cam2imgs, trans_mats)
+        regression, points, labels, cam2imgs, trans_mats
+    )
     assert locations.shape == torch.Size([200, 3])
     assert dimensions.shape == torch.Size([200, 3])
     assert orientations.shape == torch.Size([200, 1])
@@ -31,6 +33,6 @@ def test_smoke_bbox_coder():
     # specically designed to test orientation decode function's
     # special cases.
     ori_vector = torch.tensor([[-0.9, -0.01], [-0.9, 0.01]])
-    locations = torch.tensor([[15., 2., 1.], [15., 2., -1.]])
+    locations = torch.tensor([[15.0, 2.0, 1.0], [15.0, 2.0, -1.0]])
     orientations = bbox_coder._decode_orientation(ori_vector, locations)
     assert orientations.shape == torch.Size([2, 1])

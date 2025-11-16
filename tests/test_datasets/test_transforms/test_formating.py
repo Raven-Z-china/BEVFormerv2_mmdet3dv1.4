@@ -10,11 +10,9 @@ from mmdet3d.testing import create_data_info_after_loading
 
 
 class TestPack3DDetInputs(unittest.TestCase):
-
     def test_packinputs(self):
         ori_data_info = create_data_info_after_loading()
-        pack_input = Pack3DDetInputs(
-            keys=['points', 'gt_labels_3d', 'gt_bboxes_3d'])
+        pack_input = Pack3DDetInputs(keys=['points', 'gt_labels_3d', 'gt_bboxes_3d'])
         packed_results = pack_input(ori_data_info)
         inputs = packed_results['inputs']
 
@@ -32,5 +30,4 @@ class TestPack3DDetInputs(unittest.TestCase):
 
         self.assertIn('bboxes_3d', gt_instances)
         self.assertIsInstance(gt_instances.bboxes_3d, LiDARInstance3DBoxes)
-        assert_allclose(gt_instances.bboxes_3d.tensor.sum(),
-                        torch.tensor(7.2650))
+        assert_allclose(gt_instances.bboxes_3d.tensor.sum(), torch.tensor(7.2650))

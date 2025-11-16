@@ -6,9 +6,14 @@ import numpy as np
 import torch
 import trimesh
 
-from mmdet3d.structures import (BaseInstance3DBoxes, Box3DMode,
-                                CameraInstance3DBoxes, Coord3DMode,
-                                DepthInstance3DBoxes, LiDARInstance3DBoxes)
+from mmdet3d.structures import (
+    BaseInstance3DBoxes,
+    Box3DMode,
+    CameraInstance3DBoxes,
+    Coord3DMode,
+    DepthInstance3DBoxes,
+    LiDARInstance3DBoxes,
+)
 
 
 def write_obj(points: np.ndarray, out_filename: str) -> None:
@@ -24,12 +29,12 @@ def write_obj(points: np.ndarray, out_filename: str) -> None:
         if points.shape[1] == 6:
             c = points[i, 3:].astype(int)
             fout.write(
-                'v %f %f %f %d %d %d\n' %
-                (points[i, 0], points[i, 1], points[i, 2], c[0], c[1], c[2]))
+                'v %f %f %f %d %d %d\n'
+                % (points[i, 0], points[i, 1], points[i, 2], c[0], c[1], c[2])
+            )
 
         else:
-            fout.write('v %f %f %f\n' %
-                       (points[i, 0], points[i, 1], points[i, 2]))
+            fout.write('v %f %f %f\n' % (points[i, 0], points[i, 1], points[i, 2]))
     fout.close()
 
 
@@ -52,8 +57,7 @@ def write_oriented_bbox(scene_bbox: np.ndarray, out_filename: str) -> None:
         rotmat[0:2, 0:2] = np.array([[cosval, -sinval], [sinval, cosval]])
         return rotmat
 
-    def convert_oriented_box_to_trimesh_fmt(
-            box: np.ndarray) -> trimesh.base.Trimesh:
+    def convert_oriented_box_to_trimesh_fmt(box: np.ndarray) -> trimesh.base.Trimesh:
         ctr = box[:3]
         lengths = box[3:6]
         trns = np.eye(4)
@@ -75,21 +79,22 @@ def write_oriented_bbox(scene_bbox: np.ndarray, out_filename: str) -> None:
 
 
 def to_depth_mode(
-        points: np.ndarray,
-        bboxes: BaseInstance3DBoxes) -> Tuple[np.ndarray, BaseInstance3DBoxes]:
+    points: np.ndarray, bboxes: BaseInstance3DBoxes
+) -> Tuple[np.ndarray, BaseInstance3DBoxes]:
     """Convert points and bboxes to Depth Coord and Depth Box mode."""
     if points is not None:
-        points = Coord3DMode.convert_point(points.copy(), Coord3DMode.LIDAR,
-                                           Coord3DMode.DEPTH)
+        points = Coord3DMode.convert_point(
+            points.copy(), Coord3DMode.LIDAR, Coord3DMode.DEPTH
+        )
     if bboxes is not None:
-        bboxes = Box3DMode.convert(bboxes.clone(), Box3DMode.LIDAR,
-                                   Box3DMode.DEPTH)
+        bboxes = Box3DMode.convert(bboxes.clone(), Box3DMode.LIDAR, Box3DMode.DEPTH)
     return points, bboxes
 
 
 # TODO: refactor lidar2img to img_meta
-def proj_lidar_bbox3d_to_img(bboxes_3d: LiDARInstance3DBoxes,
-                             input_meta: dict) -> np.ndarray:
+def proj_lidar_bbox3d_to_img(
+    bboxes_3d: LiDARInstance3DBoxes, input_meta: dict
+) -> np.ndarray:
     """Project the 3D bbox on 2D plane.
 
     Args:
@@ -100,8 +105,8 @@ def proj_lidar_bbox3d_to_img(bboxes_3d: LiDARInstance3DBoxes,
     corners_3d = bboxes_3d.corners.cpu().numpy()
     num_bbox = corners_3d.shape[0]
     pts_4d = np.concatenate(
-        [corners_3d.reshape(-1, 3),
-         np.ones((num_bbox * 8, 1))], axis=-1)
+        [corners_3d.reshape(-1, 3), np.ones((num_bbox * 8, 1))], axis=-1
+    )
     lidar2img = copy.deepcopy(input_meta['lidar2img']).reshape(4, 4)
     if isinstance(lidar2img, torch.Tensor):
         lidar2img = lidar2img.cpu().numpy()
@@ -116,8 +121,9 @@ def proj_lidar_bbox3d_to_img(bboxes_3d: LiDARInstance3DBoxes,
 
 
 # TODO: remove third parameter in all functions here in favour of img_metas
-def proj_depth_bbox3d_to_img(bboxes_3d: DepthInstance3DBoxes,
-                             input_meta: dict) -> np.ndarray:
+def proj_depth_bbox3d_to_img(
+    bboxes_3d: DepthInstance3DBoxes, input_meta: dict
+) -> np.ndarray:
     """Project the 3D bbox on 2D plane and draw on input image.
 
     Args:
@@ -134,12 +140,10 @@ def proj_depth_bbox3d_to_img(bboxes_3d: DepthInstance3DBoxes,
     points_3d = corners_3d.reshape(-1, 3)
 
     # first reverse the data transformations
-    xyz_depth = apply_3d_transformation(
-        points_3d, 'DEPTH', input_meta, reverse=True)
+    xyz_depth = apply_3d_transformation(points_3d, 'DEPTH', input_meta, reverse=True)
 
     # project to 2d to get image coords (uv)
-    uv_origin = points_cam2img(xyz_depth,
-                               xyz_depth.new_tensor(input_meta['depth2img']))
+    uv_origin = points_cam2img(xyz_depth, xyz_depth.new_tensor(input_meta['depth2img']))
     uv_origin = (uv_origin - 1).round()
     imgfov_pts_2d = uv_origin[..., :2].reshape(num_bbox, 8, 2).numpy()
 
@@ -147,8 +151,9 @@ def proj_depth_bbox3d_to_img(bboxes_3d: DepthInstance3DBoxes,
 
 
 # project the camera bboxes 3d to image
-def proj_camera_bbox3d_to_img(bboxes_3d: CameraInstance3DBoxes,
-                              input_meta: dict) -> np.ndarray:
+def proj_camera_bbox3d_to_img(
+    bboxes_3d: CameraInstance3DBoxes, input_meta: dict
+) -> np.ndarray:
     """Project the 3D bbox on 2D plane and draw on input image.
 
     Args:
@@ -165,8 +170,7 @@ def proj_camera_bbox3d_to_img(bboxes_3d: CameraInstance3DBoxes,
     if not isinstance(cam2img, torch.Tensor):
         cam2img = torch.from_numpy(np.array(cam2img))
 
-    assert (cam2img.shape == torch.Size([3, 3])
-            or cam2img.shape == torch.Size([4, 4]))
+    assert cam2img.shape == torch.Size([3, 3]) or cam2img.shape == torch.Size([4, 4])
     cam2img = cam2img.float().cpu()
 
     # project to 2d to get image coords (uv)

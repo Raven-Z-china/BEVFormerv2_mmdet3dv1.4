@@ -32,23 +32,31 @@ class TorchSparseConvModule(BaseModule):
             Defaults to None.
     """
 
-    def __init__(self,
-                 in_channels: int,
-                 out_channels: int,
-                 kernel_size: Union[int, Sequence[int]],
-                 stride: Union[int, Sequence[int]] = 1,
-                 dilation: int = 1,
-                 bias: bool = False,
-                 transposed: bool = False,
-                 norm_cfg: ConfigType = dict(type='TorchSparseBN'),
-                 act_cfg: ConfigType = dict(
-                     type='TorchSparseReLU', inplace=True),
-                 init_cfg: OptConfigType = None,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: Union[int, Sequence[int]],
+        stride: Union[int, Sequence[int]] = 1,
+        dilation: int = 1,
+        bias: bool = False,
+        transposed: bool = False,
+        norm_cfg: ConfigType = dict(type='TorchSparseBN'),
+        act_cfg: ConfigType = dict(type='TorchSparseReLU', inplace=True),
+        init_cfg: OptConfigType = None,
+        **kwargs
+    ) -> None:
         super().__init__(init_cfg)
         layers = [
-            spnn.Conv3d(in_channels, out_channels, kernel_size, stride,
-                        dilation, bias, transposed)
+            spnn.Conv3d(
+                in_channels,
+                out_channels,
+                kernel_size,
+                stride,
+                dilation,
+                bias,
+                transposed,
+            )
         ]
         if norm_cfg is not None:
             _, norm = build_norm_layer(norm_cfg, out_channels)
@@ -78,30 +86,36 @@ class TorchSparseBasicBlock(BaseModule):
             Defaults to None.
     """
 
-    def __init__(self,
-                 in_channels: int,
-                 out_channels: int,
-                 kernel_size: Union[int, Sequence[int]] = 3,
-                 stride: Union[int, Sequence[int]] = 1,
-                 dilation: int = 1,
-                 bias: bool = False,
-                 norm_cfg: ConfigType = dict(type='TorchSparseBN'),
-                 init_cfg: OptConfigType = None,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: Union[int, Sequence[int]] = 3,
+        stride: Union[int, Sequence[int]] = 1,
+        dilation: int = 1,
+        bias: bool = False,
+        norm_cfg: ConfigType = dict(type='TorchSparseBN'),
+        init_cfg: OptConfigType = None,
+        **kwargs
+    ) -> None:
         super().__init__(init_cfg)
         _, norm1 = build_norm_layer(norm_cfg, out_channels)
         _, norm2 = build_norm_layer(norm_cfg, out_channels)
 
         self.net = nn.Sequential(
-            spnn.Conv3d(in_channels, out_channels, kernel_size, stride,
-                        dilation, bias), norm1, spnn.ReLU(inplace=True),
+            spnn.Conv3d(in_channels, out_channels, kernel_size, stride, dilation, bias),
+            norm1,
+            spnn.ReLU(inplace=True),
             spnn.Conv3d(
                 out_channels,
                 out_channels,
                 kernel_size,
                 stride=1,
                 dilation=dilation,
-                bias=bias), norm2)
+                bias=bias,
+            ),
+            norm2,
+        )
 
         if in_channels == out_channels and stride == 1:
             self.downsample = nn.Identity()
@@ -114,7 +128,10 @@ class TorchSparseBasicBlock(BaseModule):
                     kernel_size=1,
                     stride=stride,
                     dilation=dilation,
-                    bias=bias), norm3)
+                    bias=bias,
+                ),
+                norm3,
+            )
 
         self.relu = spnn.ReLU(inplace=True)
 
@@ -138,16 +155,18 @@ class TorchSparseBottleneck(BaseModule):
             Defaults to None.
     """
 
-    def __init__(self,
-                 in_channels: int,
-                 out_channels: int,
-                 kernel_size: Union[int, Sequence[int]] = 3,
-                 stride: Union[int, Sequence[int]] = 1,
-                 dilation: int = 1,
-                 bias: bool = False,
-                 norm_cfg: ConfigType = dict(type='TorchSparseBN'),
-                 init_cfg: OptConfigType = None,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: Union[int, Sequence[int]] = 3,
+        stride: Union[int, Sequence[int]] = 1,
+        dilation: int = 1,
+        bias: bool = False,
+        norm_cfg: ConfigType = dict(type='TorchSparseBN'),
+        init_cfg: OptConfigType = None,
+        **kwargs
+    ) -> None:
         super().__init__(init_cfg)
         _, norm1 = build_norm_layer(norm_cfg, out_channels)
         _, norm2 = build_norm_layer(norm_cfg, out_channels)
@@ -160,21 +179,30 @@ class TorchSparseBottleneck(BaseModule):
                 kernel_size=1,
                 stride=1,
                 dilation=dilation,
-                bias=bias), norm1, spnn.ReLU(inplace=True),
+                bias=bias,
+            ),
+            norm1,
+            spnn.ReLU(inplace=True),
             spnn.Conv3d(
                 out_channels,
                 out_channels,
                 kernel_size,
                 stride,
                 dilation=dilation,
-                bias=bias), norm2, spnn.ReLU(inplace=True),
+                bias=bias,
+            ),
+            norm2,
+            spnn.ReLU(inplace=True),
             spnn.Conv3d(
                 out_channels,
                 out_channels,
                 kernel_size=1,
                 stride=1,
                 dilation=dilation,
-                bias=bias), norm3)
+                bias=bias,
+            ),
+            norm3,
+        )
 
         if in_channels == out_channels and stride == 1:
             self.downsample = nn.Identity()
@@ -187,7 +215,10 @@ class TorchSparseBottleneck(BaseModule):
                     kernel_size=1,
                     stride=stride,
                     dilation=dilation,
-                    bias=bias), norm4)
+                    bias=bias,
+                ),
+                norm4,
+            )
 
         self.relu = spnn.ReLU(inplace=True)
 

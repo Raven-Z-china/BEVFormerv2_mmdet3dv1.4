@@ -44,23 +44,25 @@ class Cylinder3DHead(Base3DDecodeHead):
             optional): Initialization config dict. Defaults to None.
     """
 
-    def __init__(self,
-                 channels: int,
-                 num_classes: int,
-                 dropout_ratio: float = 0,
-                 conv_cfg: ConfigType = dict(type='Conv1d'),
-                 norm_cfg: ConfigType = dict(type='BN1d'),
-                 act_cfg: ConfigType = dict(type='ReLU'),
-                 loss_ce: ConfigType = dict(
-                     type='mmdet.CrossEntropyLoss',
-                     use_sigmoid=False,
-                     class_weight=None,
-                     loss_weight=1.0),
-                 loss_lovasz: ConfigType = dict(
-                     type='LovaszLoss', loss_weight=1.0),
-                 conv_seg_kernel_size: int = 3,
-                 ignore_index: int = 19,
-                 init_cfg: OptMultiConfig = None) -> None:
+    def __init__(
+        self,
+        channels: int,
+        num_classes: int,
+        dropout_ratio: float = 0,
+        conv_cfg: ConfigType = dict(type='Conv1d'),
+        norm_cfg: ConfigType = dict(type='BN1d'),
+        act_cfg: ConfigType = dict(type='ReLU'),
+        loss_ce: ConfigType = dict(
+            type='mmdet.CrossEntropyLoss',
+            use_sigmoid=False,
+            class_weight=None,
+            loss_weight=1.0,
+        ),
+        loss_lovasz: ConfigType = dict(type='LovaszLoss', loss_weight=1.0),
+        conv_seg_kernel_size: int = 3,
+        ignore_index: int = 19,
+        init_cfg: OptMultiConfig = None,
+    ) -> None:
         super(Cylinder3DHead, self).__init__(
             channels=channels,
             num_classes=num_classes,
@@ -69,14 +71,16 @@ class Cylinder3DHead(Base3DDecodeHead):
             norm_cfg=norm_cfg,
             act_cfg=act_cfg,
             conv_seg_kernel_size=conv_seg_kernel_size,
-            init_cfg=init_cfg)
+            init_cfg=init_cfg,
+        )
 
         self.loss_lovasz = MODELS.build(loss_lovasz)
         self.loss_ce = MODELS.build(loss_ce)
         self.ignore_index = ignore_index
 
-    def build_conv_seg(self, channels: int, num_classes: int,
-                       kernel_size: int) -> SparseModule:
+    def build_conv_seg(
+        self, channels: int, num_classes: int, kernel_size: int
+    ) -> SparseModule:
         return SubMConv3d(
             channels,
             num_classes,
@@ -84,15 +88,17 @@ class Cylinder3DHead(Base3DDecodeHead):
             kernel_size=kernel_size,
             stride=1,
             padding=1,
-            bias=True)
+            bias=True,
+        )
 
     def forward(self, sparse_voxels: SparseConvTensor) -> SparseConvTensor:
         """Forward function."""
         sparse_logits = self.cls_seg(sparse_voxels)
         return sparse_logits
 
-    def loss_by_feat(self, seg_logit: SparseConvTensor,
-                     batch_data_samples: SampleList) -> dict:
+    def loss_by_feat(
+        self, seg_logit: SparseConvTensor, batch_data_samples: SampleList
+    ) -> dict:
         """Compute semantic segmentation loss.
 
         Args:
@@ -115,9 +121,11 @@ class Cylinder3DHead(Base3DDecodeHead):
         seg_logit_feat = seg_logit.features
         loss = dict()
         loss['loss_ce'] = self.loss_ce(
-            seg_logit_feat, seg_label, ignore_index=self.ignore_index)
+            seg_logit_feat, seg_label, ignore_index=self.ignore_index
+        )
         loss['loss_lovasz'] = self.loss_lovasz(
-            seg_logit_feat, seg_label, ignore_index=self.ignore_index)
+            seg_logit_feat, seg_label, ignore_index=self.ignore_index
+        )
 
         return loss
 
@@ -150,8 +158,7 @@ class Cylinder3DHead(Base3DDecodeHead):
         coors = batch_inputs_dict['voxels']['voxel_coors']
         for batch_idx in range(len(batch_data_samples)):
             seg_logits_sample = seg_logits[coors[:, 0] == batch_idx]
-            point2voxel_map = batch_data_samples[
-                batch_idx].point2voxel_map.long()
+            point2voxel_map = batch_data_samples[batch_idx].point2voxel_map.long()
             point_seg_predicts = seg_logits_sample[point2voxel_map]
             seg_pred_list.append(point_seg_predicts)
 

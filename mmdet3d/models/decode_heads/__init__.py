@@ -7,6 +7,10 @@ from .paconv_head import PAConvHead
 from .pointnet2_head import PointNet2Head
 
 __all__ = [
-    'PointNet2Head', 'DGCNNHead', 'PAConvHead', 'Cylinder3DHead',
-    'Base3DDecodeHead', 'MinkUNetHead'
+    'PointNet2Head',
+    'DGCNNHead',
+    'PAConvHead',
+    'Cylinder3DHead',
+    'Base3DDecodeHead',
+    'MinkUNetHead',
 ]

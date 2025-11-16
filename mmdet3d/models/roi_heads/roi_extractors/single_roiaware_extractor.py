@@ -20,9 +20,9 @@ class Single3DRoIAwareExtractor(BaseModule):
         roi_layer (dict, optional): The config of roi layer.
     """
 
-    def __init__(self,
-                 roi_layer: Optional[dict] = None,
-                 init_cfg: Optional[dict] = None) -> None:
+    def __init__(
+        self, roi_layer: Optional[dict] = None, init_cfg: Optional[dict] = None
+    ) -> None:
         super(Single3DRoIAwareExtractor, self).__init__(init_cfg=init_cfg)
         self.roi_layer = self.build_roi_layers(roi_layer)
 
@@ -35,8 +35,9 @@ class Single3DRoIAwareExtractor(BaseModule):
         roi_layers = layer_cls(**cfg)
         return roi_layers
 
-    def forward(self, feats: Tensor, coordinate: Tensor, batch_inds: Tensor,
-                rois: Tensor) -> Tensor:
+    def forward(
+        self, feats: Tensor, coordinate: Tensor, batch_inds: Tensor, rois: Tensor
+    ) -> Tensor:
         """Extract point-wise roi features.
 
         Args:
@@ -51,11 +52,11 @@ class Single3DRoIAwareExtractor(BaseModule):
         """
         pooled_roi_feats = []
         for batch_idx in range(int(batch_inds.max()) + 1):
-            roi_inds = (rois[..., 0].int() == batch_idx)
-            coors_inds = (batch_inds.int() == batch_idx)
-            pooled_roi_feat = self.roi_layer(rois[..., 1:][roi_inds],
-                                             coordinate[coors_inds],
-                                             feats[coors_inds])
+            roi_inds = rois[..., 0].int() == batch_idx
+            coors_inds = batch_inds.int() == batch_idx
+            pooled_roi_feat = self.roi_layer(
+                rois[..., 1:][roi_inds], coordinate[coors_inds], feats[coors_inds]
+            )
             pooled_roi_feats.append(pooled_roi_feat)
         pooled_roi_feats = torch.cat(pooled_roi_feats, 0)
         return pooled_roi_feats

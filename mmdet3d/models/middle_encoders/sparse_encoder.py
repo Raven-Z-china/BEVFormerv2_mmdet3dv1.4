@@ -49,23 +49,28 @@ class SparseEncoder(nn.Module):
     """
 
     def __init__(
-            self,
-            in_channels: int,
-            sparse_shape: List[int],
-            order: Optional[Tuple[str]] = ('conv', 'norm', 'act'),
-            norm_cfg: Optional[dict] = dict(
-                type='BN1d', eps=1e-3, momentum=0.01),
-            base_channels: Optional[int] = 16,
-            output_channels: Optional[int] = 128,
-            encoder_channels: Optional[TwoTupleIntType] = ((16, ), (32, 32,
-                                                                    32),
-                                                           (64, 64,
-                                                            64), (64, 64, 64)),
-            encoder_paddings: Optional[TwoTupleIntType] = ((1, ), (1, 1, 1),
-                                                           (1, 1, 1),
-                                                           ((0, 1, 1), 1, 1)),
-            block_type: Optional[str] = 'conv_module',
-            return_middle_feats: Optional[bool] = False):
+        self,
+        in_channels: int,
+        sparse_shape: List[int],
+        order: Optional[Tuple[str]] = ('conv', 'norm', 'act'),
+        norm_cfg: Optional[dict] = dict(type='BN1d', eps=1e-3, momentum=0.01),
+        base_channels: Optional[int] = 16,
+        output_channels: Optional[int] = 128,
+        encoder_channels: Optional[TwoTupleIntType] = (
+            (16,),
+            (32, 32, 32),
+            (64, 64, 64),
+            (64, 64, 64),
+        ),
+        encoder_paddings: Optional[TwoTupleIntType] = (
+            (1,),
+            (1, 1, 1),
+            (1, 1, 1),
+            ((0, 1, 1), 1, 1),
+        ),
+        block_type: Optional[str] = 'conv_module',
+        return_middle_feats: Optional[bool] = False,
+    ):
         super().__init__()
         assert block_type in ['conv_module', 'basicblock']
         self.sparse_shape = sparse_shape
@@ -91,7 +96,8 @@ class SparseEncoder(nn.Module):
                 padding=1,
                 indice_key='subm1',
                 conv_type='SubMConv3d',
-                order=('conv', ))
+                order=('conv',),
+            )
         else:  # post activate
             self.conv_input = make_sparse_convmodule(
                 in_channels,
@@ -100,13 +106,12 @@ class SparseEncoder(nn.Module):
                 norm_cfg=norm_cfg,
                 padding=1,
                 indice_key='subm1',
-                conv_type='SubMConv3d')
+                conv_type='SubMConv3d',
+            )
 
         encoder_out_channels = self.make_encoder_layers(
-            make_sparse_convmodule,
-            norm_cfg,
-            self.base_channels,
-            block_type=block_type)
+            make_sparse_convmodule, norm_cfg, self.base_channels, block_type=block_type
+        )
 
         self.conv_out = make_sparse_convmodule(
             encoder_out_channels,
@@ -116,11 +121,13 @@ class SparseEncoder(nn.Module):
             norm_cfg=norm_cfg,
             padding=0,
             indice_key='spconv_down2',
-            conv_type='SparseConv3d')
+            conv_type='SparseConv3d',
+        )
 
     @amp.autocast(enabled=False)
-    def forward(self, voxel_features: Tensor, coors: Tensor,
-                batch_size: int) -> Union[Tensor, Tuple[Tensor, list]]:
+    def forward(
+        self, voxel_features: Tensor, coors: Tensor, batch_size: int
+    ) -> Union[Tensor, Tuple[Tensor, list]]:
         """Forward of SparseEncoder.
 
         Args:
@@ -140,8 +147,9 @@ class SparseEncoder(nn.Module):
                 module returns middle features.
         """
         coors = coors.int()
-        input_sp_tensor = SparseConvTensor(voxel_features, coors,
-                                           self.sparse_shape, batch_size)
+        input_sp_tensor = SparseConvTensor(
+            voxel_features, coors, self.sparse_shape, batch_size
+        )
         x = self.conv_input(input_sp_tensor)
 
         encode_features = []
@@ -168,9 +176,9 @@ class SparseEncoder(nn.Module):
         norm_cfg: Dict,
         in_channels: int,
         block_type: Optional[str] = 'conv_module',
-        conv_cfg: Optional[dict] = dict(type='SubMConv3d')
+        conv_cfg: Optional[dict] = dict(type='SubMConv3d'),
     ) -> int:
-        """make encoder layers using sparse convs.
+        """Make encoder layers using sparse convs.
 
         Args:
             make_block (method): A bounded function to build blocks.
@@ -203,10 +211,11 @@ class SparseEncoder(nn.Module):
                             stride=2,
                             padding=padding,
                             indice_key=f'spconv{i + 1}',
-                            conv_type='SparseConv3d'))
+                            conv_type='SparseConv3d',
+                        )
+                    )
                 elif block_type == 'basicblock':
-                    if j == len(blocks) - 1 and i != len(
-                            self.encoder_channels) - 1:
+                    if j == len(blocks) - 1 and i != len(self.encoder_channels) - 1:
                         blocks_list.append(
                             make_block(
                                 in_channels,
@@ -216,14 +225,18 @@ class SparseEncoder(nn.Module):
                                 stride=2,
                                 padding=padding,
                                 indice_key=f'spconv{i + 1}',
-                                conv_type='SparseConv3d'))
+                                conv_type='SparseConv3d',
+                            )
+                        )
                     else:
                         blocks_list.append(
                             SparseBasicBlock(
                                 out_channels,
                                 out_channels,
                                 norm_cfg=norm_cfg,
-                                conv_cfg=conv_cfg))
+                                conv_cfg=conv_cfg,
+                            )
+                        )
                 else:
                     blocks_list.append(
                         make_block(
@@ -233,7 +246,9 @@ class SparseEncoder(nn.Module):
                             norm_cfg=norm_cfg,
                             padding=padding,
                             indice_key=f'subm{i + 1}',
-                            conv_type='SubMConv3d'))
+                            conv_type='SubMConv3d',
+                        )
+                    )
                 in_channels = out_channels
             stage_name = f'encoder_layer{i + 1}'
             stage_layers = SparseSequential(*blocks_list)
@@ -267,21 +282,27 @@ class SparseEncoderSASSD(SparseEncoder):
     """
 
     def __init__(
-            self,
-            in_channels: int,
-            sparse_shape: List[int],
-            order: Tuple[str] = ('conv', 'norm', 'act'),
-            norm_cfg: dict = dict(type='BN1d', eps=1e-3, momentum=0.01),
-            base_channels: int = 16,
-            output_channels: int = 128,
-            encoder_channels: Optional[TwoTupleIntType] = ((16, ), (32, 32,
-                                                                    32),
-                                                           (64, 64,
-                                                            64), (64, 64, 64)),
-            encoder_paddings: Optional[TwoTupleIntType] = ((1, ), (1, 1, 1),
-                                                           (1, 1, 1),
-                                                           ((0, 1, 1), 1, 1)),
-            block_type: str = 'conv_module'):
+        self,
+        in_channels: int,
+        sparse_shape: List[int],
+        order: Tuple[str] = ('conv', 'norm', 'act'),
+        norm_cfg: dict = dict(type='BN1d', eps=1e-3, momentum=0.01),
+        base_channels: int = 16,
+        output_channels: int = 128,
+        encoder_channels: Optional[TwoTupleIntType] = (
+            (16,),
+            (32, 32, 32),
+            (64, 64, 64),
+            (64, 64, 64),
+        ),
+        encoder_paddings: Optional[TwoTupleIntType] = (
+            (1,),
+            (1, 1, 1),
+            (1, 1, 1),
+            ((0, 1, 1), 1, 1),
+        ),
+        block_type: str = 'conv_module',
+    ):
         super(SparseEncoderSASSD, self).__init__(
             in_channels=in_channels,
             sparse_shape=sparse_shape,
@@ -291,17 +312,20 @@ class SparseEncoderSASSD(SparseEncoder):
             output_channels=output_channels,
             encoder_channels=encoder_channels,
             encoder_paddings=encoder_paddings,
-            block_type=block_type)
+            block_type=block_type,
+        )
 
         self.point_fc = nn.Linear(112, 64, bias=False)
         self.point_cls = nn.Linear(64, 1, bias=False)
         self.point_reg = nn.Linear(64, 3, bias=False)
 
-    def forward(self,
-                voxel_features: Tensor,
-                coors: Tensor,
-                batch_size: Tensor,
-                test_mode: bool = False) -> Tuple[Tensor, tuple]:
+    def forward(
+        self,
+        voxel_features: Tensor,
+        coors: Tensor,
+        batch_size: Tensor,
+        test_mode: bool = False,
+    ) -> Tuple[Tensor, tuple]:
         """Forward of SparseEncoder.
 
         Args:
@@ -319,8 +343,9 @@ class SparseEncoderSASSD(SparseEncoder):
                 Regression offsets of the points.
         """
         coors = coors.int()
-        input_sp_tensor = SparseConvTensor(voxel_features, coors,
-                                           self.sparse_shape, batch_size)
+        input_sp_tensor = SparseConvTensor(
+            voxel_features, coors, self.sparse_shape, batch_size
+        )
         x = self.conv_input(input_sp_tensor)
 
         encode_features = []
@@ -347,20 +372,23 @@ class SparseEncoderSASSD(SparseEncoder):
         p0 = self.make_auxiliary_points(
             encode_features[0],
             points_mean,
-            offset=(0, -40., -3.),
-            voxel_size=(.1, .1, .2))
+            offset=(0, -40.0, -3.0),
+            voxel_size=(0.1, 0.1, 0.2),
+        )
 
         p1 = self.make_auxiliary_points(
             encode_features[1],
             points_mean,
-            offset=(0, -40., -3.),
-            voxel_size=(.2, .2, .4))
+            offset=(0, -40.0, -3.0),
+            voxel_size=(0.2, 0.2, 0.4),
+        )
 
         p2 = self.make_auxiliary_points(
             encode_features[2],
             points_mean,
-            offset=(0, -40., -3.),
-            voxel_size=(.4, .4, .8))
+            offset=(0, -40.0, -3.0),
+            voxel_size=(0.4, 0.4, 0.8),
+        )
 
         pointwise = torch.cat([p0, p1, p2], dim=-1)
         pointwise = self.point_fc(pointwise)
@@ -370,10 +398,12 @@ class SparseEncoderSASSD(SparseEncoder):
 
         return spatial_features, point_misc
 
-    def get_auxiliary_targets(self,
-                              points_feats: Tensor,
-                              gt_bboxes_3d: List[BaseInstance3DBoxes],
-                              enlarge: float = 1.0) -> Tuple[Tensor, Tensor]:
+    def get_auxiliary_targets(
+        self,
+        points_feats: Tensor,
+        gt_bboxes_3d: List[BaseInstance3DBoxes],
+        enlarge: float = 1.0,
+    ) -> Tuple[Tensor, Tensor]:
         """Get auxiliary target.
 
         Args:
@@ -395,8 +425,7 @@ class SparseEncoderSASSD(SparseEncoder):
 
             boxes3d[:, 3:6] *= enlarge
 
-            pts_in_flag, center_offset = self.calculate_pts_offsets(
-                point_xyz, boxes3d)
+            pts_in_flag, center_offset = self.calculate_pts_offsets(point_xyz, boxes3d)
             pts_label = pts_in_flag.max(0)[0].byte()
             pts_labels.append(pts_label)
             center_offsets.append(center_offset)
@@ -406,8 +435,9 @@ class SparseEncoderSASSD(SparseEncoder):
 
         return pts_labels, center_offsets
 
-    def calculate_pts_offsets(self, points: Tensor,
-                              bboxes_3d: Tensor) -> Tuple[Tensor, Tensor]:
+    def calculate_pts_offsets(
+        self, points: Tensor, bboxes_3d: Tensor
+    ) -> Tuple[Tensor, Tensor]:
         """Find all boxes in which each point is, as well as the offsets from
         the box centers.
 
@@ -427,8 +457,7 @@ class SparseEncoderSASSD(SparseEncoder):
         boxes_num = len(bboxes_3d)
         pts_num = len(points)
 
-        box_indices = points_in_boxes_all(points[None, ...], bboxes_3d[None,
-                                                                       ...])
+        box_indices = points_in_boxes_all(points[None, ...], bboxes_3d[None, ...])
         pts_indices = box_indices.squeeze(0).transpose(0, 1)
         center_offsets = torch.zeros_like(points).to(points.device)
 
@@ -437,13 +466,14 @@ class SparseEncoderSASSD(SparseEncoder):
                 if pts_indices[i][j] == 1:
                     center_offsets[j][0] = points[j][0] - bboxes_3d[i][0]
                     center_offsets[j][1] = points[j][1] - bboxes_3d[i][1]
-                    center_offsets[j][2] = (
-                        points[j][2] -
-                        (bboxes_3d[i][2] + bboxes_3d[i][2] / 2.0))
+                    center_offsets[j][2] = points[j][2] - (
+                        bboxes_3d[i][2] + bboxes_3d[i][2] / 2.0
+                    )
         return pts_indices, center_offsets
 
-    def aux_loss(self, points: Tensor, point_cls: Tensor, point_reg: Tensor,
-                 gt_bboxes_3d: Tensor) -> dict:
+    def aux_loss(
+        self, points: Tensor, point_cls: Tensor, point_reg: Tensor, gt_bboxes_3d: Tensor
+    ) -> dict:
         """Calculate auxiliary loss.
 
         Args:
@@ -457,8 +487,7 @@ class SparseEncoderSASSD(SparseEncoder):
             dict: Auxiliary loss.
         """
         num_boxes = len(gt_bboxes_3d)
-        pts_labels, center_targets = self.get_auxiliary_targets(
-            points, gt_bboxes_3d)
+        pts_labels, center_targets = self.get_auxiliary_targets(points, gt_bboxes_3d)
 
         rpn_cls_target = pts_labels.long()
         pos = (pts_labels > 0).float()
@@ -471,15 +500,13 @@ class SparseEncoderSASSD(SparseEncoder):
         reg_weights = reg_weights / pos_normalizer
 
         aux_loss_cls = sigmoid_focal_loss(
-            point_cls,
-            rpn_cls_target,
-            weight=cls_weights,
-            avg_factor=pos_normalizer)
+            point_cls, rpn_cls_target, weight=cls_weights, avg_factor=pos_normalizer
+        )
 
         aux_loss_cls /= num_boxes
 
         weight = reg_weights[..., None]
-        aux_loss_reg = smooth_l1_loss(point_reg, center_targets, beta=1 / 9.)
+        aux_loss_reg = smooth_l1_loss(point_reg, center_targets, beta=1 / 9.0)
         aux_loss_reg = torch.sum(aux_loss_reg * weight)[None]
         aux_loss_reg /= num_boxes
 
@@ -491,8 +518,8 @@ class SparseEncoderSASSD(SparseEncoder):
         self,
         source_tensor: Tensor,
         target: Tensor,
-        offset: Tuple = (0., -40., -3.),
-        voxel_size: Tuple = (.05, .05, .1)
+        offset: Tuple = (0.0, -40.0, -3.0),
+        voxel_size: Tuple = (0.05, 0.05, 0.1),
     ) -> Tensor:
         """Make auxiliary points for loss computation.
 
@@ -512,8 +539,7 @@ class SparseEncoderSASSD(SparseEncoder):
         source = source_tensor.indices.float()
         offset = torch.Tensor(offset).to(source.device)
         voxel_size = torch.Tensor(voxel_size).to(source.device)
-        source[:, 1:] = (
-            source[:, [3, 2, 1]] * voxel_size + offset + .5 * voxel_size)
+        source[:, 1:] = source[:, [3, 2, 1]] * voxel_size + offset + 0.5 * voxel_size
 
         source_feats = source_tensor.features[None, ...].transpose(1, 2)
 
@@ -522,7 +548,6 @@ class SparseEncoderSASSD(SparseEncoder):
         dist_recip = 1.0 / (dist + 1e-8)
         norm = torch.sum(dist_recip, dim=2, keepdim=True)
         weight = dist_recip / norm
-        new_features = three_interpolate(source_feats.contiguous(), idx,
-                                         weight)
+        new_features = three_interpolate(source_feats.contiguous(), idx, weight)
 
         return new_features.squeeze(0).transpose(0, 1)

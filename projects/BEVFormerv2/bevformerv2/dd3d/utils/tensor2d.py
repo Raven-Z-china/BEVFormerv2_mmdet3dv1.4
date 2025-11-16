@@ -3,7 +3,9 @@ import torch
 import torch.nn.functional as F
 
 
-def compute_features_locations(h, w, stride, dtype=torch.float32, device='cpu', offset="none"):
+def compute_features_locations(
+    h, w, stride, dtype=torch.float32, device='cpu', offset='none'
+):
     """Adapted from AdelaiDet:
         https://github.com/aim-uofa/AdelaiDet/blob/master/adet/utils/comm.py
 
@@ -17,17 +19,17 @@ def compute_features_locations(h, w, stride, dtype=torch.float32, device='cpu', 
     # (dennis.park)
     # locations = torch.stack((shift_x, shift_y), dim=1) + stride // 2
     locations = torch.stack((shift_x, shift_y), dim=1)
-    if offset == "half":
+    if offset == 'half':
         locations += stride // 2
     else:
-        assert offset == "none"
+        assert offset == 'none'
 
     return locations
 
 
-def aligned_bilinear(tensor, factor, offset="none"):
+def aligned_bilinear(tensor, factor, offset='none'):
     """Adapted from AdelaiDet:
-        https://github.com/aim-uofa/AdelaiDet/blob/master/adet/utils/comm.py
+    https://github.com/aim-uofa/AdelaiDet/blob/master/adet/utils/comm.py
     """
     assert tensor.dim() == 4
     assert factor >= 1
@@ -37,11 +39,11 @@ def aligned_bilinear(tensor, factor, offset="none"):
         return tensor
 
     h, w = tensor.size()[2:]
-    tensor = F.pad(tensor, pad=(0, 1, 0, 1), mode="replicate")
+    tensor = F.pad(tensor, pad=(0, 1, 0, 1), mode='replicate')
     oh = factor * h + 1
     ow = factor * w + 1
     tensor = F.interpolate(tensor, size=(oh, ow), mode='bilinear', align_corners=True)
-    if offset == "half":
-        tensor = F.pad(tensor, pad=(factor // 2, 0, factor // 2, 0), mode="replicate")
+    if offset == 'half':
+        tensor = F.pad(tensor, pad=(factor // 2, 0, factor // 2, 0), mode='replicate')
 
-    return tensor[:, :, :oh - 1, :ow - 1]
+    return tensor[:, :, : oh - 1, : ow - 1]

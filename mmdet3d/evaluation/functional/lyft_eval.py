@@ -3,11 +3,14 @@ from os import path as osp
 
 import mmengine
 import numpy as np
-from lyft_dataset_sdk.eval.detection.mAP_evaluation import (Box3D, get_ap,
-                                                            get_class_names,
-                                                            get_ious,
-                                                            group_by_key,
-                                                            wrap_in_box)
+from lyft_dataset_sdk.eval.detection.mAP_evaluation import (
+    Box3D,
+    get_ap,
+    get_class_names,
+    get_ious,
+    group_by_key,
+    wrap_in_box,
+)
 from mmengine.logging import print_log
 from terminaltables import AsciiTable
 
@@ -25,8 +28,7 @@ def load_lyft_gts(lyft, data_root, eval_split, logger=None):
     Returns:
         list[dict]: List of annotation dictionaries.
     """
-    split_scenes = mmengine.list_from_file(
-        osp.join(data_root, f'{eval_split}.txt'))
+    split_scenes = mmengine.list_from_file(osp.join(data_root, f'{eval_split}.txt'))
 
     # Read out all sample_tokens in DB.
     sample_tokens_all = [s['token'] for s in lyft.sample]
@@ -34,8 +36,9 @@ def load_lyft_gts(lyft, data_root, eval_split, logger=None):
 
     if eval_split == 'test':
         # Check that you aren't trying to cheat :)
-        assert len(lyft.sample_annotation) > 0, \
-            'Error: You are trying to evaluate on the test set \
+        assert (
+            len(lyft.sample_annotation) > 0
+        ), 'Error: You are trying to evaluate on the test set \
              but you do not have the annotations!'
 
     sample_tokens = []
@@ -54,8 +57,7 @@ def load_lyft_gts(lyft, data_root, eval_split, logger=None):
         sample_annotation_tokens = sample['anns']
         for sample_annotation_token in sample_annotation_tokens:
             # Get label name in detection task and filter unused labels.
-            sample_annotation = \
-                lyft.get('sample_annotation', sample_annotation_token)
+            sample_annotation = lyft.get('sample_annotation', sample_annotation_token)
             detection_name = sample_annotation['category_name']
             if detection_name is None:
                 continue
@@ -112,8 +114,9 @@ def lyft_eval(lyft, data_root, res_path, eval_set, output_dir, logger=None):
 
     iou_thresholds = [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
     metrics = {}
-    average_precisions = \
-        get_classwise_aps(gts, predictions, class_names, iou_thresholds)
+    average_precisions = get_classwise_aps(
+        gts, predictions, class_names, iou_thresholds
+    )
     APs_data = [['IOU', 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]]
 
     mAPs = np.mean(average_precisions, axis=0)
@@ -190,8 +193,10 @@ def get_classwise_aps(gt, predictions, class_names, iou_thresholds):
     for class_id, class_name in enumerate(class_names):
         if class_name in pred_by_class_name:
             recalls, precisions, average_precision = get_single_class_aps(
-                gt_by_class_name[class_name], pred_by_class_name[class_name],
-                iou_thresholds)
+                gt_by_class_name[class_name],
+                pred_by_class_name[class_name],
+                iou_thresholds,
+            )
             average_precisions[class_id, :] = average_precision
 
     return average_precisions

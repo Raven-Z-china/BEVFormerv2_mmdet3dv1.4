@@ -49,26 +49,29 @@ class BaseShapeHead(BaseModule):
         init_cfg (dict or list[dict], optional): Initialization config dict.
     """
 
-    def __init__(self,
-                 num_cls: int,
-                 num_base_anchors: int,
-                 box_code_size: int,
-                 in_channels: int,
-                 shared_conv_channels: Tuple = (64, 64),
-                 shared_conv_strides: Tuple = (1, 1),
-                 use_direction_classifier: bool = True,
-                 conv_cfg: Dict = dict(type='Conv2d'),
-                 norm_cfg: Dict = dict(type='BN2d'),
-                 bias: bool = False,
-                 init_cfg: Optional[dict] = None) -> None:
+    def __init__(
+        self,
+        num_cls: int,
+        num_base_anchors: int,
+        box_code_size: int,
+        in_channels: int,
+        shared_conv_channels: Tuple = (64, 64),
+        shared_conv_strides: Tuple = (1, 1),
+        use_direction_classifier: bool = True,
+        conv_cfg: Dict = dict(type='Conv2d'),
+        norm_cfg: Dict = dict(type='BN2d'),
+        bias: bool = False,
+        init_cfg: Optional[dict] = None,
+    ) -> None:
         super().__init__(init_cfg=init_cfg)
         self.num_cls = num_cls
         self.num_base_anchors = num_base_anchors
         self.use_direction_classifier = use_direction_classifier
         self.box_code_size = box_code_size
 
-        assert len(shared_conv_channels) == len(shared_conv_strides), \
-            'Lengths of channels and strides list should be equal.'
+        assert len(shared_conv_channels) == len(
+            shared_conv_strides
+        ), 'Lengths of channels and strides list should be equal.'
 
         self.shared_conv_channels = [in_channels] + list(shared_conv_channels)
         self.shared_conv_strides = list(shared_conv_strides)
@@ -84,18 +87,18 @@ class BaseShapeHead(BaseModule):
                     padding=1,
                     conv_cfg=conv_cfg,
                     bias=bias,
-                    norm_cfg=norm_cfg))
+                    norm_cfg=norm_cfg,
+                )
+            )
 
         self.shared_conv = nn.Sequential(*shared_conv)
 
         out_channels = self.shared_conv_channels[-1]
         self.conv_cls = nn.Conv2d(out_channels, num_base_anchors * num_cls, 1)
-        self.conv_reg = nn.Conv2d(out_channels,
-                                  num_base_anchors * box_code_size, 1)
+        self.conv_reg = nn.Conv2d(out_channels, num_base_anchors * box_code_size, 1)
 
         if use_direction_classifier:
-            self.conv_dir_cls = nn.Conv2d(out_channels, num_base_anchors * 2,
-                                          1)
+            self.conv_dir_cls = nn.Conv2d(out_channels, num_base_anchors * 2, 1)
         if init_cfg is None:
             if use_direction_classifier:
                 self.init_cfg = dict(
@@ -103,29 +106,21 @@ class BaseShapeHead(BaseModule):
                     layer='Conv2d',
                     override=[
                         dict(type='Normal', name='conv_reg', std=0.01),
+                        dict(type='Normal', name='conv_cls', std=0.01, bias_prob=0.01),
                         dict(
-                            type='Normal',
-                            name='conv_cls',
-                            std=0.01,
-                            bias_prob=0.01),
-                        dict(
-                            type='Normal',
-                            name='conv_dir_cls',
-                            std=0.01,
-                            bias_prob=0.01)
-                    ])
+                            type='Normal', name='conv_dir_cls', std=0.01, bias_prob=0.01
+                        ),
+                    ],
+                )
             else:
                 self.init_cfg = dict(
                     type='Kaiming',
                     layer='Conv2d',
                     override=[
                         dict(type='Normal', name='conv_reg', std=0.01),
-                        dict(
-                            type='Normal',
-                            name='conv_cls',
-                            std=0.01,
-                            bias_prob=0.01)
-                    ])
+                        dict(type='Normal', name='conv_cls', std=0.01, bias_prob=0.01),
+                    ],
+                )
 
     def forward(self, x: Tensor) -> Dict:
         """Forward function for SmallHead.
@@ -148,25 +143,31 @@ class BaseShapeHead(BaseModule):
         featmap_size = bbox_pred.shape[-2:]
         H, W = featmap_size
         B = bbox_pred.shape[0]
-        cls_score = cls_score.view(-1, self.num_base_anchors, self.num_cls, H,
-                                   W).permute(0, 1, 3, 4,
-                                              2).reshape(B, -1, self.num_cls)
-        bbox_pred = bbox_pred.view(-1, self.num_base_anchors,
-                                   self.box_code_size, H, W).permute(
-                                       0, 1, 3, 4,
-                                       2).reshape(B, -1, self.box_code_size)
+        cls_score = (
+            cls_score.view(-1, self.num_base_anchors, self.num_cls, H, W)
+            .permute(0, 1, 3, 4, 2)
+            .reshape(B, -1, self.num_cls)
+        )
+        bbox_pred = (
+            bbox_pred.view(-1, self.num_base_anchors, self.box_code_size, H, W)
+            .permute(0, 1, 3, 4, 2)
+            .reshape(B, -1, self.box_code_size)
+        )
 
         dir_cls_preds = None
         if self.use_direction_classifier:
             dir_cls_preds = self.conv_dir_cls(x)
-            dir_cls_preds = dir_cls_preds.view(-1, self.num_base_anchors, 2, H,
-                                               W).permute(0, 1, 3, 4,
-                                                          2).reshape(B, -1, 2)
+            dir_cls_preds = (
+                dir_cls_preds.view(-1, self.num_base_anchors, 2, H, W)
+                .permute(0, 1, 3, 4, 2)
+                .reshape(B, -1, 2)
+            )
         ret = dict(
             cls_score=cls_score,
             bbox_pred=bbox_pred,
             dir_cls_preds=dir_cls_preds,
-            featmap_size=featmap_size)
+            featmap_size=featmap_size,
+        )
         return ret
 
 
@@ -181,15 +182,16 @@ class ShapeAwareHead(Anchor3DHead):
         init_cfg (dict or list[dict], optional): Initialization config dict.
     """
 
-    def __init__(self,
-                 tasks: Dict,
-                 assign_per_class: bool = True,
-                 init_cfg: Optional[dict] = None,
-                 **kwargs) -> Dict:
+    def __init__(
+        self,
+        tasks: Dict,
+        assign_per_class: bool = True,
+        init_cfg: Optional[dict] = None,
+        **kwargs,
+    ) -> Dict:
         self.tasks = tasks
         self.featmap_sizes = []
-        super().__init__(
-            assign_per_class=assign_per_class, init_cfg=init_cfg, **kwargs)
+        super().__init__(assign_per_class=assign_per_class, init_cfg=init_cfg, **kwargs)
 
     def init_weights(self):
         if not self._is_init:
@@ -198,16 +200,17 @@ class ShapeAwareHead(Anchor3DHead):
                     m.init_weights()
             self._is_init = True
         else:
-            warnings.warn(f'init_weights of {self.__class__.__name__} has '
-                          f'been called more than once.')
+            warnings.warn(
+                f'init_weights of {self.__class__.__name__} has '
+                f'been called more than once.'
+            )
 
     def _init_layers(self):
         """Initialize neural network layers of the head."""
         self.heads = nn.ModuleList()
         cls_ptr = 0
         for task in self.tasks:
-            sizes = self.prior_generator.sizes[cls_ptr:cls_ptr +
-                                               task['num_class']]
+            sizes = self.prior_generator.sizes[cls_ptr : cls_ptr + task['num_class']]
             num_size = torch.tensor(sizes).reshape(-1, 3).size(0)
             num_rot = len(self.prior_generator.rotations)
             num_base_anchors = num_rot * num_size
@@ -218,7 +221,8 @@ class ShapeAwareHead(Anchor3DHead):
                 box_code_size=self.box_code_size,
                 in_channels=self.in_channels,
                 shared_conv_channels=task['shared_conv_channels'],
-                shared_conv_strides=task['shared_conv_strides'])
+                shared_conv_strides=task['shared_conv_strides'],
+            )
             self.heads.append(MODELS.build(branch))
             cls_ptr += task['num_class']
 
@@ -236,31 +240,38 @@ class ShapeAwareHead(Anchor3DHead):
         for head in self.heads:
             results.append(head(x))
 
-        cls_score = torch.cat([result['cls_score'] for result in results],
-                              dim=1)
-        bbox_pred = torch.cat([result['bbox_pred'] for result in results],
-                              dim=1)
+        cls_score = torch.cat([result['cls_score'] for result in results], dim=1)
+        bbox_pred = torch.cat([result['bbox_pred'] for result in results], dim=1)
         dir_cls_preds = None
         if self.use_direction_classifier:
             dir_cls_preds = torch.cat(
-                [result['dir_cls_preds'] for result in results], dim=1)
+                [result['dir_cls_preds'] for result in results], dim=1
+            )
 
         self.featmap_sizes = []
         for i, task in enumerate(self.tasks):
             for _ in range(task['num_class']):
                 self.featmap_sizes.append(results[i]['featmap_size'])
-        assert len(self.featmap_sizes) == len(self.prior_generator.ranges), \
-            'Length of feature map sizes must be equal to length of ' + \
-            'different ranges of anchor generator.'
+        assert len(self.featmap_sizes) == len(self.prior_generator.ranges), (
+            'Length of feature map sizes must be equal to length of '
+            + 'different ranges of anchor generator.'
+        )
 
         return cls_score, bbox_pred, dir_cls_preds
 
-    def loss_single(self, cls_score: Tensor, bbox_pred: Tensor,
-                    dir_cls_preds: Tensor, labels: Tensor,
-                    label_weights: Tensor, bbox_targets: Tensor,
-                    bbox_weights: Tensor, dir_targets: Tensor,
-                    dir_weights: Tensor,
-                    num_total_samples: int) -> Tuple[Tensor]:
+    def loss_single(
+        self,
+        cls_score: Tensor,
+        bbox_pred: Tensor,
+        dir_cls_preds: Tensor,
+        labels: Tensor,
+        label_weights: Tensor,
+        bbox_targets: Tensor,
+        bbox_weights: Tensor,
+        dir_targets: Tensor,
+        dir_weights: Tensor,
+        num_total_samples: int,
+    ) -> Tuple[Tensor]:
         """Calculate loss of Single-level results.
 
         Args:
@@ -287,7 +298,8 @@ class ShapeAwareHead(Anchor3DHead):
         label_weights = label_weights.reshape(-1)
         cls_score = cls_score.reshape(-1, self.num_classes)
         loss_cls = self.loss_cls(
-            cls_score, labels, label_weights, avg_factor=num_total_samples)
+            cls_score, labels, label_weights, avg_factor=num_total_samples
+        )
 
         # regression loss
         bbox_targets = bbox_targets.reshape(-1, self.box_code_size)
@@ -298,13 +310,10 @@ class ShapeAwareHead(Anchor3DHead):
             bbox_weights = bbox_weights * bbox_weights.new_tensor(code_weight)
         bbox_pred = bbox_pred.reshape(-1, self.box_code_size)
         if self.diff_rad_by_sin:
-            bbox_pred, bbox_targets = self.add_sin_difference(
-                bbox_pred, bbox_targets)
+            bbox_pred, bbox_targets = self.add_sin_difference(bbox_pred, bbox_targets)
         loss_bbox = self.loss_bbox(
-            bbox_pred,
-            bbox_targets,
-            bbox_weights,
-            avg_factor=num_total_samples)
+            bbox_pred, bbox_targets, bbox_weights, avg_factor=num_total_samples
+        )
 
         # direction classification loss
         loss_dir = None
@@ -313,21 +322,20 @@ class ShapeAwareHead(Anchor3DHead):
             dir_targets = dir_targets.reshape(-1)
             dir_weights = dir_weights.reshape(-1)
             loss_dir = self.loss_dir(
-                dir_cls_preds,
-                dir_targets,
-                dir_weights,
-                avg_factor=num_total_samples)
+                dir_cls_preds, dir_targets, dir_weights, avg_factor=num_total_samples
+            )
 
         return loss_cls, loss_bbox, loss_dir
 
     def loss_by_feat(
-            self,
-            cls_scores: List[Tensor],
-            bbox_preds: List[Tensor],
-            dir_cls_preds: List[Tensor],
-            batch_gt_instances_3d: InstanceList,
-            batch_input_metas: List[dict],
-            batch_gt_instances_ignore: OptInstanceList = None) -> Dict:
+        self,
+        cls_scores: List[Tensor],
+        bbox_preds: List[Tensor],
+        dir_cls_preds: List[Tensor],
+        batch_gt_instances_3d: InstanceList,
+        batch_input_metas: List[dict],
+        batch_gt_instances_ignore: OptInstanceList = None,
+    ) -> Dict:
         """Calculate the loss based on the features extracted by the detection
         head.
 
@@ -356,22 +364,32 @@ class ShapeAwareHead(Anchor3DHead):
         """
         device = cls_scores[0].device
         anchor_list = self.get_anchors(
-            self.featmap_sizes, batch_input_metas, device=device)
+            self.featmap_sizes, batch_input_metas, device=device
+        )
         cls_reg_targets = self.anchor_target_3d(
             anchor_list,
             batch_gt_instances_3d,
             batch_input_metas,
             batch_gt_instances_ignore=batch_gt_instances_ignore,
             num_classes=self.num_classes,
-            sampling=self.sampling)
+            sampling=self.sampling,
+        )
 
         if cls_reg_targets is None:
             return None
-        (labels_list, label_weights_list, bbox_targets_list, bbox_weights_list,
-         dir_targets_list, dir_weights_list, num_total_pos,
-         num_total_neg) = cls_reg_targets
+        (
+            labels_list,
+            label_weights_list,
+            bbox_targets_list,
+            bbox_weights_list,
+            dir_targets_list,
+            dir_weights_list,
+            num_total_pos,
+            num_total_neg,
+        ) = cls_reg_targets
         num_total_samples = (
-            num_total_pos + num_total_neg if self.sampling else num_total_pos)
+            num_total_pos + num_total_neg if self.sampling else num_total_pos
+        )
 
         # num_total_samples = None
         losses_cls, losses_bbox, losses_dir = multi_apply(
@@ -385,17 +403,19 @@ class ShapeAwareHead(Anchor3DHead):
             bbox_weights_list,
             dir_targets_list,
             dir_weights_list,
-            num_total_samples=num_total_samples)
-        return dict(
-            loss_cls=losses_cls, loss_bbox=losses_bbox, loss_dir=losses_dir)
+            num_total_samples=num_total_samples,
+        )
+        return dict(loss_cls=losses_cls, loss_bbox=losses_bbox, loss_dir=losses_dir)
 
-    def predict_by_feat(self,
-                        cls_scores: List[Tensor],
-                        bbox_preds: List[Tensor],
-                        dir_cls_preds: List[Tensor],
-                        batch_input_metas: List[dict],
-                        cfg: Optional[dict] = None,
-                        rescale: List[Tensor] = False) -> List[tuple]:
+    def predict_by_feat(
+        self,
+        cls_scores: List[Tensor],
+        bbox_preds: List[Tensor],
+        dir_cls_preds: List[Tensor],
+        batch_input_metas: List[dict],
+        cfg: Optional[dict] = None,
+        rescale: List[Tensor] = False,
+    ) -> List[tuple]:
         """Transform a batch of output features extracted from the head into
         bbox results.
 
@@ -419,39 +439,42 @@ class ShapeAwareHead(Anchor3DHead):
         assert num_levels == 1, 'Only support single level inference.'
         device = cls_scores[0].device
         mlvl_anchors = self.prior_generator.grid_anchors(
-            self.featmap_sizes, device=device)
+            self.featmap_sizes, device=device
+        )
         # `anchor` is a list of anchors for different classes
         mlvl_anchors = [torch.cat(anchor, dim=0) for anchor in mlvl_anchors]
 
         result_list = []
         for img_id in range(len(batch_input_metas)):
-            cls_score_list = [
-                cls_scores[i][img_id].detach() for i in range(num_levels)
-            ]
-            bbox_pred_list = [
-                bbox_preds[i][img_id].detach() for i in range(num_levels)
-            ]
+            cls_score_list = [cls_scores[i][img_id].detach() for i in range(num_levels)]
+            bbox_pred_list = [bbox_preds[i][img_id].detach() for i in range(num_levels)]
             dir_cls_pred_list = [
                 dir_cls_preds[i][img_id].detach() for i in range(num_levels)
             ]
 
             input_meta = batch_input_metas[img_id]
-            proposals = self._predict_by_feat_single(cls_score_list,
-                                                     bbox_pred_list,
-                                                     dir_cls_pred_list,
-                                                     mlvl_anchors, input_meta,
-                                                     cfg, rescale)
+            proposals = self._predict_by_feat_single(
+                cls_score_list,
+                bbox_pred_list,
+                dir_cls_pred_list,
+                mlvl_anchors,
+                input_meta,
+                cfg,
+                rescale,
+            )
             result_list.append(proposals)
         return result_list
 
-    def _predict_by_feat_single(self,
-                                cls_scores: Tensor,
-                                bbox_preds: Tensor,
-                                dir_cls_preds: Tensor,
-                                mlvl_anchors: List[Tensor],
-                                input_meta: List[dict],
-                                cfg: Dict = None,
-                                rescale: List[Tensor] = False):
+    def _predict_by_feat_single(
+        self,
+        cls_scores: Tensor,
+        bbox_preds: Tensor,
+        dir_cls_preds: Tensor,
+        mlvl_anchors: List[Tensor],
+        input_meta: List[dict],
+        cfg: Dict = None,
+        rescale: List[Tensor] = False,
+    ):
         """Transform a single point's features extracted from the head into
         bbox results.
 
@@ -480,7 +503,8 @@ class ShapeAwareHead(Anchor3DHead):
         mlvl_scores = []
         mlvl_dir_scores = []
         for cls_score, bbox_pred, dir_cls_pred, anchors in zip(
-                cls_scores, bbox_preds, dir_cls_preds, mlvl_anchors):
+            cls_scores, bbox_preds, dir_cls_preds, mlvl_anchors
+        ):
             assert cls_score.size()[-2] == bbox_pred.size()[-2]
             assert cls_score.size()[-2] == dir_cls_pred.size()[-2]
             dir_cls_score = torch.max(dir_cls_pred, dim=-1)[1]
@@ -508,8 +532,9 @@ class ShapeAwareHead(Anchor3DHead):
             mlvl_dir_scores.append(dir_cls_score)
 
         mlvl_bboxes = torch.cat(mlvl_bboxes)
-        mlvl_bboxes_for_nms = xywhr2xyxyr(input_meta['box_type_3d'](
-            mlvl_bboxes, box_dim=self.box_code_size).bev)
+        mlvl_bboxes_for_nms = xywhr2xyxyr(
+            input_meta['box_type_3d'](mlvl_bboxes, box_dim=self.box_code_size).bev
+        )
         mlvl_scores = torch.cat(mlvl_scores)
         mlvl_dir_scores = torch.cat(mlvl_dir_scores)
 
@@ -519,16 +544,23 @@ class ShapeAwareHead(Anchor3DHead):
             mlvl_scores = torch.cat([mlvl_scores, padding], dim=1)
 
         score_thr = cfg.get('score_thr', 0)
-        results = box3d_multiclass_nms(mlvl_bboxes, mlvl_bboxes_for_nms,
-                                       mlvl_scores, score_thr, cfg.max_num,
-                                       cfg, mlvl_dir_scores)
+        results = box3d_multiclass_nms(
+            mlvl_bboxes,
+            mlvl_bboxes_for_nms,
+            mlvl_scores,
+            score_thr,
+            cfg.max_num,
+            cfg,
+            mlvl_dir_scores,
+        )
         bboxes, scores, labels, dir_scores = results
         if bboxes.shape[0] > 0:
-            dir_rot = limit_period(bboxes[..., 6] - self.dir_offset,
-                                   self.dir_limit_offset, np.pi)
+            dir_rot = limit_period(
+                bboxes[..., 6] - self.dir_offset, self.dir_limit_offset, np.pi
+            )
             bboxes[..., 6] = (
-                dir_rot + self.dir_offset +
-                np.pi * dir_scores.to(bboxes.dtype))
+                dir_rot + self.dir_offset + np.pi * dir_scores.to(bboxes.dtype)
+            )
         bboxes = input_meta['box_type_3d'](bboxes, box_dim=self.box_code_size)
         results = InstanceData()
         results.bboxes_3d = bboxes

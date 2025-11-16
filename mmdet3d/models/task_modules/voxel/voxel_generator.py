@@ -19,17 +19,17 @@ class VoxelGenerator(object):
             Defaults to 20000.
     """
 
-    def __init__(self,
-                 voxel_size: List[float],
-                 point_cloud_range: List[float],
-                 max_num_points: int,
-                 max_voxels: int = 20000):
-
+    def __init__(
+        self,
+        voxel_size: List[float],
+        point_cloud_range: List[float],
+        max_num_points: int,
+        max_voxels: int = 20000,
+    ):
         point_cloud_range = np.array(point_cloud_range, dtype=np.float32)
         # [0, -40, -3, 70.4, 40, 1]
         voxel_size = np.array(voxel_size, dtype=np.float32)
-        grid_size = (point_cloud_range[3:] -
-                     point_cloud_range[:3]) / voxel_size
+        grid_size = (point_cloud_range[3:] - point_cloud_range[:3]) / voxel_size
         grid_size = np.round(grid_size).astype(np.int64)
 
         self._voxel_size = voxel_size
@@ -40,13 +40,18 @@ class VoxelGenerator(object):
 
     def generate(self, points: np.ndarray) -> Tuple[np.ndarray]:
         """Generate voxels given points."""
-        return points_to_voxel(points, self._voxel_size,
-                               self._point_cloud_range, self._max_num_points,
-                               True, self._max_voxels)
+        return points_to_voxel(
+            points,
+            self._voxel_size,
+            self._point_cloud_range,
+            self._max_num_points,
+            True,
+            self._max_voxels,
+        )
 
     @property
     def voxel_size(self) -> List[float]:
-        """list[float]: Size of a single voxel."""
+        """List[float]: Size of a single voxel."""
         return self._voxel_size
 
     @property
@@ -56,7 +61,7 @@ class VoxelGenerator(object):
 
     @property
     def point_cloud_range(self) -> List[float]:
-        """list[float]: Range of point cloud."""
+        """List[float]: Range of point cloud."""
         return self._point_cloud_range
 
     @property
@@ -78,14 +83,15 @@ class VoxelGenerator(object):
         return repr_str
 
 
-def points_to_voxel(points: np.ndarray,
-                    voxel_size: Union[list, tuple, np.ndarray],
-                    coors_range: Union[List[float], List[Tuple[float]],
-                                       List[np.ndarray]],
-                    max_points: int = 35,
-                    reverse_index: bool = True,
-                    max_voxels: int = 20000) -> Tuple[np.ndarray]:
-    """convert kitti points(N, >=3) to voxels.
+def points_to_voxel(
+    points: np.ndarray,
+    voxel_size: Union[list, tuple, np.ndarray],
+    coors_range: Union[List[float], List[Tuple[float]], List[np.ndarray]],
+    max_points: int = 35,
+    reverse_index: bool = True,
+    max_voxels: int = 20000,
+) -> Tuple[np.ndarray]:
+    """Convert kitti points(N, >=3) to voxels.
 
     Args:
         points (np.ndarray): [N, ndim]. points[:, :3] contain xyz points and
@@ -117,21 +123,37 @@ def points_to_voxel(points: np.ndarray,
     if reverse_index:
         voxelmap_shape = voxelmap_shape[::-1]
     # don't create large array in jit(nopython=True) code.
-    num_points_per_voxel = np.zeros(shape=(max_voxels, ), dtype=np.int32)
+    num_points_per_voxel = np.zeros(shape=(max_voxels,), dtype=np.int32)
     coor_to_voxelidx = -np.ones(shape=voxelmap_shape, dtype=np.int32)
     voxels = np.zeros(
-        shape=(max_voxels, max_points, points.shape[-1]), dtype=points.dtype)
+        shape=(max_voxels, max_points, points.shape[-1]), dtype=points.dtype
+    )
     coors = np.zeros(shape=(max_voxels, 3), dtype=np.int32)
     if reverse_index:
         voxel_num = _points_to_voxel_reverse_kernel(
-            points, voxel_size, coors_range, num_points_per_voxel,
-            coor_to_voxelidx, voxels, coors, max_points, max_voxels)
+            points,
+            voxel_size,
+            coors_range,
+            num_points_per_voxel,
+            coor_to_voxelidx,
+            voxels,
+            coors,
+            max_points,
+            max_voxels,
+        )
 
     else:
-        voxel_num = _points_to_voxel_kernel(points, voxel_size, coors_range,
-                                            num_points_per_voxel,
-                                            coor_to_voxelidx, voxels, coors,
-                                            max_points, max_voxels)
+        voxel_num = _points_to_voxel_kernel(
+            points,
+            voxel_size,
+            coors_range,
+            num_points_per_voxel,
+            coor_to_voxelidx,
+            voxels,
+            coors,
+            max_points,
+            max_voxels,
+        )
 
     coors = coors[:voxel_num]
     voxels = voxels[:voxel_num]
@@ -141,18 +163,18 @@ def points_to_voxel(points: np.ndarray,
 
 
 @numba.jit(nopython=True)
-def _points_to_voxel_reverse_kernel(points: np.ndarray,
-                                    voxel_size: Union[list, tuple, np.ndarray],
-                                    coors_range: Union[List[float],
-                                                       List[Tuple[float]],
-                                                       List[np.ndarray]],
-                                    num_points_per_voxel: int,
-                                    coor_to_voxelidx: np.ndarray,
-                                    voxels: np.ndarray,
-                                    coors: np.ndarray,
-                                    max_points: int = 35,
-                                    max_voxels: int = 20000):
-    """convert kitti points(N, >=3) to voxels.
+def _points_to_voxel_reverse_kernel(
+    points: np.ndarray,
+    voxel_size: Union[list, tuple, np.ndarray],
+    coors_range: Union[List[float], List[Tuple[float]], List[np.ndarray]],
+    num_points_per_voxel: int,
+    coor_to_voxelidx: np.ndarray,
+    voxels: np.ndarray,
+    coors: np.ndarray,
+    max_points: int = 35,
+    max_voxels: int = 20000,
+):
+    """Convert kitti points(N, >=3) to voxels.
 
     Args:
         points (np.ndarray): [N, ndim]. points[:, :3] contain xyz points and
@@ -188,7 +210,7 @@ def _points_to_voxel_reverse_kernel(points: np.ndarray,
     # np.round(grid_size)
     # grid_size = np.round(grid_size).astype(np.int64)(np.int32)
     grid_size = np.round(grid_size, 0, grid_size).astype(np.int32)
-    coor = np.zeros(shape=(3, ), dtype=np.int32)
+    coor = np.zeros(shape=(3,), dtype=np.int32)
     voxel_num = 0
     failed = False
     for i in range(N):
@@ -217,17 +239,18 @@ def _points_to_voxel_reverse_kernel(points: np.ndarray,
 
 
 @numba.jit(nopython=True)
-def _points_to_voxel_kernel(points: np.ndarray,
-                            voxel_size: Union[list, tuple, np.ndarray],
-                            coors_range: Union[List[float], List[Tuple[float]],
-                                               List[np.ndarray]],
-                            num_points_per_voxel: int,
-                            coor_to_voxelidx: np.ndarray,
-                            voxels: np.ndarray,
-                            coors: np.ndarray,
-                            max_points: int = 35,
-                            max_voxels: int = 200000):
-    """convert kitti points(N, >=3) to voxels.
+def _points_to_voxel_kernel(
+    points: np.ndarray,
+    voxel_size: Union[list, tuple, np.ndarray],
+    coors_range: Union[List[float], List[Tuple[float]], List[np.ndarray]],
+    num_points_per_voxel: int,
+    coor_to_voxelidx: np.ndarray,
+    voxels: np.ndarray,
+    coors: np.ndarray,
+    max_points: int = 35,
+    max_voxels: int = 200000,
+):
+    """Convert kitti points(N, >=3) to voxels.
 
     Args:
         points (np.ndarray): [N, ndim]. points[:, :3] contain xyz points and
@@ -261,7 +284,7 @@ def _points_to_voxel_kernel(points: np.ndarray,
 
     # lower_bound = coors_range[:3]
     # upper_bound = coors_range[3:]
-    coor = np.zeros(shape=(3, ), dtype=np.int32)
+    coor = np.zeros(shape=(3,), dtype=np.int32)
     voxel_num = 0
     failed = False
     for i in range(N):

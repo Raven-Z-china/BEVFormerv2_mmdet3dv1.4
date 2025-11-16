@@ -1,11 +1,11 @@
 # Copyright 2021 Toyota Research Institute.  All rights reserved.
 import numpy as np
+import projects.BEVFormerv3.bevformerv2.dd3d.structures.transform3d as t3d
 import torch
+from projects.BEVFormerv3.bevformerv2.dd3d.utils.geometry import unproject_points2d
 from pyquaternion import Quaternion
 from torch.cuda import amp
 
-from projects.BEVFormerv3.bevformerv2.dd3d.utils.geometry import unproject_points2d
-import projects.BEVFormerv3.bevformerv2.dd3d.structures.transform3d as t3d
 # yapf: disable
 BOX3D_CORNER_MAPPING = [
     [1, 1, 1, 1, -1, -1, -1, -1],
@@ -14,9 +14,9 @@ BOX3D_CORNER_MAPPING = [
 ]
 # yapf: enable
 
+
 def quaternion_to_matrix(quaternions: torch.Tensor) -> torch.Tensor:
-    """
-    Convert rotations given as quaternions to rotation matrices.
+    """Convert rotations given as quaternions to rotation matrices.
 
     Args:
         quaternions: quaternions with real part first,
@@ -44,6 +44,7 @@ def quaternion_to_matrix(quaternions: torch.Tensor) -> torch.Tensor:
     )
     return o.reshape(quaternions.shape[:-1] + (3, 3))
 
+
 def _to_tensor(x, dim):
     if isinstance(x, torch.Tensor):
         x = x.to(torch.float32)
@@ -52,16 +53,16 @@ def _to_tensor(x, dim):
     elif isinstance(x, Quaternion):
         x = torch.tensor(x.elements, dtype=torch.float32)
     else:
-        raise ValueError(f"Unsupported type: {type(x).__name__}")
+        raise ValueError(f'Unsupported type: {type(x).__name__}')
 
     if x.ndim == 1:
         x = x.reshape(-1, dim)
     elif x.ndim > 2:
-        raise ValueError(f"Invalid shape of input: {x.shape.__str__()}")
+        raise ValueError(f'Invalid shape of input: {x.shape.__str__()}')
     return x
 
 
-class GenericBoxes3D():
+class GenericBoxes3D:
     def __init__(self, quat, tvec, size):
         self.quat = _to_tensor(quat, dim=4)
         self._tvec = _to_tensor(tvec, dim=3)
@@ -81,7 +82,9 @@ class GenericBoxes3D():
         translation = t3d.Translate(self.tvec, device=self.device)
 
         R = quaternion_to_matrix(self.quat)
-        rotation = t3d.Rotate(R=R.transpose(1, 2), device=self.device)  # Need to transpose to make it work.
+        rotation = t3d.Rotate(
+            R=R.transpose(1, 2), device=self.device
+        )  # Need to transpose to make it work.
 
         tfm = rotation.compose(translation)
 
@@ -96,7 +99,7 @@ class GenericBoxes3D():
         return corners3d
 
     @classmethod
-    def from_vectors(cls, vecs, device="cpu"):
+    def from_vectors(cls, vecs, device='cpu'):
         """
         Parameters
         ----------
@@ -124,7 +127,6 @@ class GenericBoxes3D():
 
     @classmethod
     def cat(cls, boxes_list, dim=0):
-
         assert isinstance(boxes_list, (list, tuple))
         if len(boxes_list) == 0:
             return cls(torch.empty(0), torch.empty(0), torch.empty(0))
@@ -147,18 +149,27 @@ class GenericBoxes3D():
         return [GenericBoxes3D(*x) for x in zip(quat_list, tvec_list, size_list)]
 
     def __getitem__(self, item):
-        """
-        """
+        """"""
         if isinstance(item, int):
-            return GenericBoxes3D(self.quat[item].view(1, -1), self.tvec[item].view(1, -1), self.size[item].view(1, -1))
+            return GenericBoxes3D(
+                self.quat[item].view(1, -1),
+                self.tvec[item].view(1, -1),
+                self.size[item].view(1, -1),
+            )
 
         quat = self.quat[item]
         tvec = self.tvec[item]
         size = self.size[item]
 
-        assert quat.dim() == 2, "Indexing on Boxes3D with {} failed to return a matrix!".format(item)
-        assert tvec.dim() == 2, "Indexing on Boxes3D with {} failed to return a matrix!".format(item)
-        assert size.dim() == 2, "Indexing on Boxes3D with {} failed to return a matrix!".format(item)
+        assert (
+            quat.dim() == 2
+        ), 'Indexing on Boxes3D with {} failed to return a matrix!'.format(item)
+        assert (
+            tvec.dim() == 2
+        ), 'Indexing on Boxes3D with {} failed to return a matrix!'.format(item)
+        assert (
+            size.dim() == 2
+        ), 'Indexing on Boxes3D with {} failed to return a matrix!'.format(item)
 
         return GenericBoxes3D(quat, tvec, size)
 
@@ -167,8 +178,7 @@ class GenericBoxes3D():
         return self.quat.shape[0]
 
     def clone(self):
-        """
-        """
+        """"""
         return GenericBoxes3D(self.quat.clone(), self.tvec.clone(), self.size.clone())
 
     def vectorize(self):
@@ -191,6 +201,7 @@ class Boxes3D(GenericBoxes3D):
 
     The tvec is computed from projected center, depth, and intrinsics.
     """
+
     def __init__(self, quat, proj_ctr, depth, size, inv_intrinsics):
         self.quat = quat
         self.proj_ctr = proj_ctr
@@ -205,7 +216,7 @@ class Boxes3D(GenericBoxes3D):
         return xyz
 
     @classmethod
-    def from_vectors(cls, vecs, intrinsics, device="cpu"):
+    def from_vectors(cls, vecs, intrinsics, device='cpu'):
         """
         Parameters
         ----------
@@ -217,10 +228,14 @@ class Boxes3D(GenericBoxes3D):
         """
         if len(vecs) == 0:
             quats = torch.as_tensor([], dtype=torch.float32, device=device).view(-1, 4)
-            proj_ctrs = torch.as_tensor([], dtype=torch.float32, device=device).view(-1, 2)
+            proj_ctrs = torch.as_tensor([], dtype=torch.float32, device=device).view(
+                -1, 2
+            )
             depths = torch.as_tensor([], dtype=torch.float32, device=device).view(-1, 1)
             sizes = torch.as_tensor([], dtype=torch.float32, device=device).view(-1, 3)
-            inv_intrinsics = torch.as_tensor([], dtype=torch.float32, device=device).view(-1, 3, 3)
+            inv_intrinsics = torch.as_tensor(
+                [], dtype=torch.float32, device=device
+            ).view(-1, 3, 3)
             return cls(quats, proj_ctrs, depths, sizes, inv_intrinsics)
 
         quats, proj_ctrs, depths, sizes = [], [], [], []
@@ -240,21 +255,30 @@ class Boxes3D(GenericBoxes3D):
             sizes.append(size)
 
         quats = torch.as_tensor(np.array(quats), dtype=torch.float32, device=device)
-        proj_ctrs = torch.as_tensor(np.array(proj_ctrs), dtype=torch.float32, device=device)
+        proj_ctrs = torch.as_tensor(
+            np.array(proj_ctrs), dtype=torch.float32, device=device
+        )
         depths = torch.as_tensor(np.array(depths), dtype=torch.float32, device=device)
         sizes = torch.as_tensor(np.array(sizes), dtype=torch.float32, device=device)
 
         inv_intrinsics = np.linalg.inv(intrinsics)
-        inv_intrinsics = torch.as_tensor(inv_intrinsics[None, ...], device=device).expand(len(vecs), 3, 3)
+        inv_intrinsics = torch.as_tensor(
+            inv_intrinsics[None, ...], device=device
+        ).expand(len(vecs), 3, 3)
 
         return cls(quats, proj_ctrs, depths, sizes, inv_intrinsics)
 
     @classmethod
     def cat(cls, boxes_list, dim=0):
-
         assert isinstance(boxes_list, (list, tuple))
         if len(boxes_list) == 0:
-            return cls(torch.empty(0), torch.empty(0), torch.empty(0), torch.empty(0), torch.empty(0))
+            return cls(
+                torch.empty(0),
+                torch.empty(0),
+                torch.empty(0),
+                torch.empty(0),
+                torch.empty(0),
+            )
         assert all([isinstance(box, Boxes3D) for box in boxes_list])
 
         # use torch.cat (v.s. layers.cat) so the returned boxes never share storage with input
@@ -275,15 +299,20 @@ class Boxes3D(GenericBoxes3D):
         size_list = torch.split(self.size, split_sizes, dim=dim)
         inv_K_list = torch.split(self.inv_intrinsics, split_sizes, dim=dim)
 
-        return [Boxes3D(*x) for x in zip(quat_list, proj_ctr_list, depth_list, size_list, inv_K_list)]
+        return [
+            Boxes3D(*x)
+            for x in zip(quat_list, proj_ctr_list, depth_list, size_list, inv_K_list)
+        ]
 
     def __getitem__(self, item):
-        """
-        """
+        """"""
         if isinstance(item, int):
             return Boxes3D(
-                self.quat[item].view(1, -1), self.proj_ctr[item].view(1, -1), self.depth[item].view(1, -1),
-                self.size[item].view(1, -1), self.inv_intrinsics[item].view(1, 3, 3)
+                self.quat[item].view(1, -1),
+                self.proj_ctr[item].view(1, -1),
+                self.depth[item].view(1, -1),
+                self.size[item].view(1, -1),
+                self.inv_intrinsics[item].view(1, 3, 3),
             )
 
         quat = self.quat[item]
@@ -292,24 +321,46 @@ class Boxes3D(GenericBoxes3D):
         size = self.size[item]
         inv_K = self.inv_intrinsics[item]
 
-        assert quat.dim() == 2, "Indexing on Boxes3D with {} failed to return a matrix!".format(item)
-        assert ctr.dim() == 2, "Indexing on Boxes3D with {} failed to return a matrix!".format(item)
-        assert depth.dim() == 2, "Indexing on Boxes3D with {} failed to return a matrix!".format(item)
-        assert size.dim() == 2, "Indexing on Boxes3D with {} failed to return a matrix!".format(item)
-        assert inv_K.dim() == 3, "Indexing on Boxes3D with {} failed to return a matrix!".format(item)
-        assert inv_K.shape[1:] == (3, 3), "Indexing on Boxes3D with {} failed to return a matrix!".format(item)
+        assert (
+            quat.dim() == 2
+        ), 'Indexing on Boxes3D with {} failed to return a matrix!'.format(item)
+        assert (
+            ctr.dim() == 2
+        ), 'Indexing on Boxes3D with {} failed to return a matrix!'.format(item)
+        assert (
+            depth.dim() == 2
+        ), 'Indexing on Boxes3D with {} failed to return a matrix!'.format(item)
+        assert (
+            size.dim() == 2
+        ), 'Indexing on Boxes3D with {} failed to return a matrix!'.format(item)
+        assert (
+            inv_K.dim() == 3
+        ), 'Indexing on Boxes3D with {} failed to return a matrix!'.format(item)
+        assert inv_K.shape[1:] == (
+            3,
+            3,
+        ), 'Indexing on Boxes3D with {} failed to return a matrix!'.format(item)
 
         return Boxes3D(quat, ctr, depth, size, inv_K)
 
     def __len__(self):
-        assert len(self.quat) == len(self.proj_ctr) == len(self.depth) == len(self.size) == len(self.inv_intrinsics)
+        assert (
+            len(self.quat)
+            == len(self.proj_ctr)
+            == len(self.depth)
+            == len(self.size)
+            == len(self.inv_intrinsics)
+        )
         return self.quat.shape[0]
 
     def clone(self):
-        """
-        """
+        """"""
         return Boxes3D(
-            self.quat.clone(), self.proj_ctr.clone(), self.depth.clone(), self.size.clone(), self.inv_intrinsics.clone()
+            self.quat.clone(),
+            self.proj_ctr.clone(),
+            self.depth.clone(),
+            self.size.clone(),
+            self.inv_intrinsics.clone(),
         )
 
     def to(self, *args, **kwargs):

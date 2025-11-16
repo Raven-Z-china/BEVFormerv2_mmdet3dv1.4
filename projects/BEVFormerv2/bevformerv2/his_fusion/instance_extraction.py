@@ -1,28 +1,39 @@
 import copy
+
 import numpy as np
 import torch
+import torch.nn.functional as F
 from mmcv.cnn import ConvModule, build_conv_layer, kaiming_init
 from mmcv.runner import force_fp32
+from mmdet.core import (
+    AssignResult,
+    build_assigner,
+    build_bbox_coder,
+    build_sampler,
+    multi_apply,
+)
+from mmdet.core.bbox import BaseBBoxCoder
+from mmdet.core.bbox.builder import BBOX_CODERS
 from torch import nn
-import torch.nn.functional as F
-from torch.nn.parameter import Parameter
 from torch.nn import Linear
-from torch.nn.init import xavier_uniform_, constant_
+from torch.nn.init import constant_, xavier_uniform_
+from torch.nn.parameter import Parameter
 
-from mmdet3d.core import (circle_nms, draw_heatmap_gaussian, gaussian_radius,
-                          xywhr2xyxyr, limit_period, PseudoSampler)
+from mmdet3d.core import (
+    PseudoSampler,
+    circle_nms,
+    draw_heatmap_gaussian,
+    gaussian_radius,
+    limit_period,
+    xywhr2xyxyr,
+)
 from mmdet3d.models.builder import build_loss
 from mmdet3d.models.utils import clip_sigmoid
 from mmdet3d.ops.iou3d.iou3d_utils import nms_gpu
-from mmdet.core import build_bbox_coder, multi_apply, build_assigner, build_sampler, AssignResult
 
-from mmdet.core.bbox import BaseBBoxCoder
-from mmdet.core.bbox.builder import BBOX_CODERS
 
 class PositionEmbeddingLearned(nn.Module):
-    """
-    Absolute pos embedding, learned.
-    """
+    """Absolute pos embedding, learned."""
 
     def __init__(self, input_channel, num_pos_feats=288):
         super().__init__()
@@ -30,7 +41,8 @@ class PositionEmbeddingLearned(nn.Module):
             nn.Conv1d(input_channel, num_pos_feats, kernel_size=1),
             nn.BatchNorm1d(num_pos_feats),
             nn.ReLU(inplace=True),
-            nn.Conv1d(num_pos_feats, num_pos_feats, kernel_size=1))
+            nn.Conv1d(num_pos_feats, num_pos_feats, kernel_size=1),
+        )
 
     def forward(self, xyz):
         xyz = xyz.transpose(1, 2).contiguous()
@@ -39,8 +51,17 @@ class PositionEmbeddingLearned(nn.Module):
 
 
 class TransformerDecoderLayer(nn.Module):
-    def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1, activation="relu",
-                 self_posembed=None, cross_posembed=None, cross_only=False):
+    def __init__(
+        self,
+        d_model,
+        nhead,
+        dim_feedforward=2048,
+        dropout=0.1,
+        activation='relu',
+        self_posembed=None,
+        cross_posembed=None,
+        cross_only=False,
+    ):
         super().__init__()
         self.cross_only = cross_only
         if not self.cross_only:
@@ -59,14 +80,14 @@ class TransformerDecoderLayer(nn.Module):
         self.dropout3 = nn.Dropout(dropout)
 
         def _get_activation_fn(activation):
-            """Return an activation function given a string"""
-            if activation == "relu":
+            """Return an activation function given a string."""
+            if activation == 'relu':
                 return F.relu
-            if activation == "gelu":
+            if activation == 'gelu':
                 return F.gelu
-            if activation == "glu":
+            if activation == 'glu':
                 return F.glu
-            raise RuntimeError(F"activation should be relu/gelu, not {activation}.")
+            raise RuntimeError(f'activation should be relu/gelu, not {activation}.')
 
         self.activation = _get_activation_fn(activation)
 
@@ -104,9 +125,12 @@ class TransformerDecoderLayer(nn.Module):
             query = query + self.dropout1(query2)
             query = self.norm1(query)
 
-        query2 = self.multihead_attn(query=self.with_pos_embed(query, query_pos_embed),
-                                     key=self.with_pos_embed(key, key_pos_embed),
-                                     value=self.with_pos_embed(key, key_pos_embed), attn_mask=attn_mask)[0]
+        query2 = self.multihead_attn(
+            query=self.with_pos_embed(query, query_pos_embed),
+            key=self.with_pos_embed(key, key_pos_embed),
+            value=self.with_pos_embed(key, key_pos_embed),
+            attn_mask=attn_mask,
+        )[0]
         query = query + self.dropout2(query2)
         query = self.norm2(query)
 
@@ -120,8 +144,9 @@ class TransformerDecoderLayer(nn.Module):
 
 
 class MultiheadAttention(nn.Module):
-    r"""Allows the model to jointly attend to information
-    from different representation subspaces.
+    r"""Allows the model to jointly attend to information from different
+    representation subspaces.
+
     See reference: Attention Is All You Need
     .. math::
         \text{MultiHead}(Q, K, V) = \text{Concat}(head_1,\dots,head_h)W^O
@@ -143,8 +168,17 @@ class MultiheadAttention(nn.Module):
         attn_output, attn_output_weights = multihead_attn(query, key, value)
     """
 
-    def __init__(self, embed_dim, num_heads, dropout=0., bias=True, add_bias_kv=False, add_zero_attn=False, kdim=None,
-                 vdim=None):
+    def __init__(
+        self,
+        embed_dim,
+        num_heads,
+        dropout=0.0,
+        bias=True,
+        add_bias_kv=False,
+        add_zero_attn=False,
+        kdim=None,
+        vdim=None,
+    ):
         super(MultiheadAttention, self).__init__()
         self.embed_dim = embed_dim
         self.kdim = kdim if kdim is not None else embed_dim
@@ -154,7 +188,9 @@ class MultiheadAttention(nn.Module):
         self.num_heads = num_heads
         self.dropout = dropout
         self.head_dim = embed_dim // num_heads
-        assert self.head_dim * num_heads == self.embed_dim, "embed_dim must be divisible by num_heads"
+        assert (
+            self.head_dim * num_heads == self.embed_dim
+        ), 'embed_dim must be divisible by num_heads'
 
         self.in_proj_weight = Parameter(torch.empty(3 * embed_dim, embed_dim))
 
@@ -188,91 +224,126 @@ class MultiheadAttention(nn.Module):
             xavier_uniform_(self.v_proj_weight)
 
         if self.in_proj_bias is not None:
-            constant_(self.in_proj_bias, 0.)
-            constant_(self.out_proj.bias, 0.)
+            constant_(self.in_proj_bias, 0.0)
+            constant_(self.out_proj.bias, 0.0)
         if self.bias_k is not None:
             xavier_normal_(self.bias_k)
         if self.bias_v is not None:
             xavier_normal_(self.bias_v)
 
-    def forward(self, query, key, value, key_padding_mask=None, need_weights=True, attn_mask=None):
+    def forward(
+        self,
+        query,
+        key,
+        value,
+        key_padding_mask=None,
+        need_weights=True,
+        attn_mask=None,
+    ):
         r"""
-    Args:
-        query, key, value: map a query and a set of key-value pairs to an output.
-            See "Attention Is All You Need" for more details.
-        key_padding_mask: if provided, specified padding elements in the key will
-            be ignored by the attention. This is an binary mask. When the value is True,
-            the corresponding value on the attention layer will be filled with -inf.
-        need_weights: output attn_output_weights.
-        attn_mask: mask that prevents attention to certain positions. This is an additive mask
-            (i.e. the values will be added to the attention layer).
-    Shape:
-        - Inputs:
-        - query: :math:`(L, N, E)` where L is the target sequence length, N is the batch size, E is
-          the embedding dimension.
-        - key: :math:`(S, N, E)`, where S is the source sequence length, N is the batch size, E is
-          the embedding dimension.
-        - value: :math:`(S, N, E)` where S is the source sequence length, N is the batch size, E is
-          the embedding dimension.
-        - key_padding_mask: :math:`(N, S)`, ByteTensor, where N is the batch size, S is the source sequence length.
-        - attn_mask: :math:`(L, S)` where L is the target sequence length, S is the source sequence length.
-        - Outputs:
-        - attn_output: :math:`(L, N, E)` where L is the target sequence length, N is the batch size,
-          E is the embedding dimension.
-        - attn_output_weights: :math:`(N, L, S)` where N is the batch size,
-          L is the target sequence length, S is the source sequence length.
+        Args:
+            query, key, value: map a query and a set of key-value pairs to an output.
+                See "Attention Is All You Need" for more details.
+            key_padding_mask: if provided, specified padding elements in the key will
+                be ignored by the attention. This is an binary mask. When the value is True,
+                the corresponding value on the attention layer will be filled with -inf.
+            need_weights: output attn_output_weights.
+            attn_mask: mask that prevents attention to certain positions. This is an additive mask
+                (i.e. the values will be added to the attention layer).
+        Shape:
+            - Inputs:
+            - query: :math:`(L, N, E)` where L is the target sequence length, N is the batch size, E is
+              the embedding dimension.
+            - key: :math:`(S, N, E)`, where S is the source sequence length, N is the batch size, E is
+              the embedding dimension.
+            - value: :math:`(S, N, E)` where S is the source sequence length, N is the batch size, E is
+              the embedding dimension.
+            - key_padding_mask: :math:`(N, S)`, ByteTensor, where N is the batch size, S is the source sequence length.
+            - attn_mask: :math:`(L, S)` where L is the target sequence length, S is the source sequence length.
+            - Outputs:
+            - attn_output: :math:`(L, N, E)` where L is the target sequence length, N is the batch size,
+              E is the embedding dimension.
+            - attn_output_weights: :math:`(N, L, S)` where N is the batch size,
+              L is the target sequence length, S is the source sequence length.
         """
         if hasattr(self, '_qkv_same_embed_dim') and self._qkv_same_embed_dim is False:
             return multi_head_attention_forward(
-                query, key, value, self.embed_dim, self.num_heads,
-                self.in_proj_weight, self.in_proj_bias,
-                self.bias_k, self.bias_v, self.add_zero_attn,
-                self.dropout, self.out_proj.weight, self.out_proj.bias,
+                query,
+                key,
+                value,
+                self.embed_dim,
+                self.num_heads,
+                self.in_proj_weight,
+                self.in_proj_bias,
+                self.bias_k,
+                self.bias_v,
+                self.add_zero_attn,
+                self.dropout,
+                self.out_proj.weight,
+                self.out_proj.bias,
                 training=self.training,
-                key_padding_mask=key_padding_mask, need_weights=need_weights,
-                attn_mask=attn_mask, use_separate_proj_weight=True,
-                q_proj_weight=self.q_proj_weight, k_proj_weight=self.k_proj_weight,
-                v_proj_weight=self.v_proj_weight)
+                key_padding_mask=key_padding_mask,
+                need_weights=need_weights,
+                attn_mask=attn_mask,
+                use_separate_proj_weight=True,
+                q_proj_weight=self.q_proj_weight,
+                k_proj_weight=self.k_proj_weight,
+                v_proj_weight=self.v_proj_weight,
+            )
         else:
             if not hasattr(self, '_qkv_same_embed_dim'):
-                warnings.warn('A new version of MultiheadAttention module has been implemented. \
+                warnings.warn(
+                    'A new version of MultiheadAttention module has been implemented. \
                     Please re-train your model with the new module',
-                              UserWarning)
+                    UserWarning,
+                )
 
             return multi_head_attention_forward(
-                query, key, value, self.embed_dim, self.num_heads,
-                self.in_proj_weight, self.in_proj_bias,
-                self.bias_k, self.bias_v, self.add_zero_attn,
-                self.dropout, self.out_proj.weight, self.out_proj.bias,
+                query,
+                key,
+                value,
+                self.embed_dim,
+                self.num_heads,
+                self.in_proj_weight,
+                self.in_proj_bias,
+                self.bias_k,
+                self.bias_v,
+                self.add_zero_attn,
+                self.dropout,
+                self.out_proj.weight,
+                self.out_proj.bias,
                 training=self.training,
-                key_padding_mask=key_padding_mask, need_weights=need_weights,
-                attn_mask=attn_mask)
+                key_padding_mask=key_padding_mask,
+                need_weights=need_weights,
+                attn_mask=attn_mask,
+            )
 
 
-def multi_head_attention_forward(query,  # type: Tensor
-                                 key,  # type: Tensor
-                                 value,  # type: Tensor
-                                 embed_dim_to_check,  # type: int
-                                 num_heads,  # type: int
-                                 in_proj_weight,  # type: Tensor
-                                 in_proj_bias,  # type: Tensor
-                                 bias_k,  # type: Optional[Tensor]
-                                 bias_v,  # type: Optional[Tensor]
-                                 add_zero_attn,  # type: bool
-                                 dropout_p,  # type: float
-                                 out_proj_weight,  # type: Tensor
-                                 out_proj_bias,  # type: Tensor
-                                 training=True,  # type: bool
-                                 key_padding_mask=None,  # type: Optional[Tensor]
-                                 need_weights=True,  # type: bool
-                                 attn_mask=None,  # type: Optional[Tensor]
-                                 use_separate_proj_weight=False,  # type: bool
-                                 q_proj_weight=None,  # type: Optional[Tensor]
-                                 k_proj_weight=None,  # type: Optional[Tensor]
-                                 v_proj_weight=None,  # type: Optional[Tensor]
-                                 static_k=None,  # type: Optional[Tensor]
-                                 static_v=None,  # type: Optional[Tensor]
-                                 ):
+def multi_head_attention_forward(
+    query,  # type: Tensor
+    key,  # type: Tensor
+    value,  # type: Tensor
+    embed_dim_to_check,  # type: int
+    num_heads,  # type: int
+    in_proj_weight,  # type: Tensor
+    in_proj_bias,  # type: Tensor
+    bias_k,  # type: Optional[Tensor]
+    bias_v,  # type: Optional[Tensor]
+    add_zero_attn,  # type: bool
+    dropout_p,  # type: float
+    out_proj_weight,  # type: Tensor
+    out_proj_bias,  # type: Tensor
+    training=True,  # type: bool
+    key_padding_mask=None,  # type: Optional[Tensor]
+    need_weights=True,  # type: bool
+    attn_mask=None,  # type: Optional[Tensor]
+    use_separate_proj_weight=False,  # type: bool
+    q_proj_weight=None,  # type: Optional[Tensor]
+    k_proj_weight=None,  # type: Optional[Tensor]
+    v_proj_weight=None,  # type: Optional[Tensor]
+    static_k=None,  # type: Optional[Tensor]
+    static_v=None,  # type: Optional[Tensor]
+):
     # type: (...) -> Tuple[Tensor, Optional[Tensor]]
     r"""
     Args:
@@ -319,7 +390,6 @@ def multi_head_attention_forward(query,  # type: Tensor
           L is the target sequence length, S is the source sequence length.
     """
 
-
     qkv_same = torch.equal(query, key) and torch.equal(key, value)
     kv_same = torch.equal(key, value)
 
@@ -329,7 +399,7 @@ def multi_head_attention_forward(query,  # type: Tensor
     assert key.size() == value.size()
 
     head_dim = embed_dim // num_heads
-    assert head_dim * num_heads == embed_dim, "embed_dim must be divisible by num_heads"
+    assert head_dim * num_heads == embed_dim, 'embed_dim must be divisible by num_heads'
     scaling = float(head_dim) ** -0.5
 
     if use_separate_proj_weight is not True:
@@ -353,7 +423,6 @@ def multi_head_attention_forward(query,  # type: Tensor
                 k = None
                 v = None
             else:
-
                 # This is inline in_proj function with in_proj_weight and in_proj_bias
                 _b = in_proj_bias
                 _start = embed_dim
@@ -405,8 +474,10 @@ def multi_head_attention_forward(query,  # type: Tensor
 
         if in_proj_bias is not None:
             q = F.linear(query, q_proj_weight_non_opt, in_proj_bias[0:embed_dim])
-            k = F.linear(key, k_proj_weight_non_opt, in_proj_bias[embed_dim:(embed_dim * 2)])
-            v = F.linear(value, v_proj_weight_non_opt, in_proj_bias[(embed_dim * 2):])
+            k = F.linear(
+                key, k_proj_weight_non_opt, in_proj_bias[embed_dim : (embed_dim * 2)]
+            )
+            v = F.linear(value, v_proj_weight_non_opt, in_proj_bias[(embed_dim * 2) :])
         else:
             q = F.linear(query, q_proj_weight_non_opt, in_proj_bias)
             k = F.linear(key, k_proj_weight_non_opt, in_proj_bias)
@@ -418,18 +489,32 @@ def multi_head_attention_forward(query,  # type: Tensor
             k = torch.cat([k, bias_k.repeat(1, bsz, 1)])
             v = torch.cat([v, bias_v.repeat(1, bsz, 1)])
             if attn_mask is not None:
-                attn_mask = torch.cat([attn_mask,
-                                       torch.zeros((attn_mask.size(0), 1),
-                                                   dtype=attn_mask.dtype,
-                                                   device=attn_mask.device)], dim=1)
+                attn_mask = torch.cat(
+                    [
+                        attn_mask,
+                        torch.zeros(
+                            (attn_mask.size(0), 1),
+                            dtype=attn_mask.dtype,
+                            device=attn_mask.device,
+                        ),
+                    ],
+                    dim=1,
+                )
             if key_padding_mask is not None:
                 key_padding_mask = torch.cat(
-                    [key_padding_mask, torch.zeros((key_padding_mask.size(0), 1),
-                                                   dtype=key_padding_mask.dtype,
-                                                   device=key_padding_mask.device)], dim=1)
+                    [
+                        key_padding_mask,
+                        torch.zeros(
+                            (key_padding_mask.size(0), 1),
+                            dtype=key_padding_mask.dtype,
+                            device=key_padding_mask.device,
+                        ),
+                    ],
+                    dim=1,
+                )
         else:
-            assert static_k is None, "bias cannot be added to static key."
-            assert static_v is None, "bias cannot be added to static value."
+            assert static_k is None, 'bias cannot be added to static key.'
+            assert static_v is None, 'bias cannot be added to static value.'
     else:
         assert bias_k is None
         assert bias_v is None
@@ -458,17 +543,48 @@ def multi_head_attention_forward(query,  # type: Tensor
 
     if add_zero_attn:
         src_len += 1
-        k = torch.cat([k, torch.zeros((k.size(0), 1) + k.size()[2:], dtype=k.dtype, device=k.device)], dim=1)
-        v = torch.cat([v, torch.zeros((v.size(0), 1) + v.size()[2:], dtype=v.dtype, device=v.device)], dim=1)
+        k = torch.cat(
+            [
+                k,
+                torch.zeros(
+                    (k.size(0), 1) + k.size()[2:], dtype=k.dtype, device=k.device
+                ),
+            ],
+            dim=1,
+        )
+        v = torch.cat(
+            [
+                v,
+                torch.zeros(
+                    (v.size(0), 1) + v.size()[2:], dtype=v.dtype, device=v.device
+                ),
+            ],
+            dim=1,
+        )
         if attn_mask is not None:
-            attn_mask = torch.cat([attn_mask, torch.zeros((attn_mask.size(0), 1),
-                                                          dtype=attn_mask.dtype,
-                                                          device=attn_mask.device)], dim=1)
+            attn_mask = torch.cat(
+                [
+                    attn_mask,
+                    torch.zeros(
+                        (attn_mask.size(0), 1),
+                        dtype=attn_mask.dtype,
+                        device=attn_mask.device,
+                    ),
+                ],
+                dim=1,
+            )
         if key_padding_mask is not None:
             key_padding_mask = torch.cat(
-                [key_padding_mask, torch.zeros((key_padding_mask.size(0), 1),
-                                               dtype=key_padding_mask.dtype,
-                                               device=key_padding_mask.device)], dim=1)
+                [
+                    key_padding_mask,
+                    torch.zeros(
+                        (key_padding_mask.size(0), 1),
+                        dtype=key_padding_mask.dtype,
+                        device=key_padding_mask.device,
+                    ),
+                ],
+                dim=1,
+            )
 
     attn_output_weights = torch.bmm(q, k.transpose(1, 2))
     assert list(attn_output_weights.size()) == [bsz * num_heads, tgt_len, src_len]
@@ -483,10 +599,11 @@ def multi_head_attention_forward(query,  # type: Tensor
             key_padding_mask.unsqueeze(1).unsqueeze(2),
             float('-inf'),
         )
-        attn_output_weights = attn_output_weights.view(bsz * num_heads, tgt_len, src_len)
+        attn_output_weights = attn_output_weights.view(
+            bsz * num_heads, tgt_len, src_len
+        )
 
-    attn_output_weights = F.softmax(
-        attn_output_weights, dim=-1)
+    attn_output_weights = F.softmax(attn_output_weights, dim=-1)
     attn_output_weights = F.dropout(attn_output_weights, p=dropout_p, training=training)
 
     attn_output = torch.bmm(attn_output_weights, v)
@@ -503,16 +620,18 @@ def multi_head_attention_forward(query,  # type: Tensor
 
 
 class FFN(nn.Module):
-    def __init__(self,
-                 in_channels,
-                 heads,
-                 head_conv=64,
-                 final_kernel=1,
-                 init_bias=-2.19,
-                 conv_cfg=dict(type='Conv1d'),
-                 norm_cfg=dict(type='BN1d'),
-                 bias='auto',
-                 **kwargs):
+    def __init__(
+        self,
+        in_channels,
+        heads,
+        head_conv=64,
+        final_kernel=1,
+        init_bias=-2.19,
+        conv_cfg=dict(type='Conv1d'),
+        norm_cfg=dict(type='BN1d'),
+        bias='auto',
+        **kwargs,
+    ):
         super(FFN, self).__init__()
 
         self.heads = heads
@@ -532,7 +651,9 @@ class FFN(nn.Module):
                         padding=final_kernel // 2,
                         bias=bias,
                         conv_cfg=conv_cfg,
-                        norm_cfg=norm_cfg))
+                        norm_cfg=norm_cfg,
+                    )
+                )
                 c_in = head_conv
 
             conv_layers.append(
@@ -543,7 +664,9 @@ class FFN(nn.Module):
                     kernel_size=final_kernel,
                     stride=1,
                     padding=final_kernel // 2,
-                    bias=True))
+                    bias=True,
+                )
+            )
             conv_layers = nn.Sequential(*conv_layers)
 
             self.__setattr__(head, conv_layers)
@@ -589,14 +712,15 @@ class FFN(nn.Module):
 
 
 class TransFusionBBoxCoder(BaseBBoxCoder):
-    def __init__(self,
-                 pc_range,
-                 out_size_factor,
-                 voxel_size,
-                 post_center_range=[-61.2, -61.2, -10.0, 61.2, 61.2, 10.0],
-                 score_threshold=0.0,
-                 code_size=10,
-                 ):
+    def __init__(
+        self,
+        pc_range,
+        out_size_factor,
+        voxel_size,
+        post_center_range=[-61.2, -61.2, -10.0, 61.2, 61.2, 10.0],
+        score_threshold=0.0,
+        code_size=10,
+    ):
         self.pc_range = pc_range
         self.out_size_factor = out_size_factor
         self.voxel_size = voxel_size
@@ -606,13 +730,19 @@ class TransFusionBBoxCoder(BaseBBoxCoder):
 
     def encode(self, dst_boxes):
         targets = torch.zeros([dst_boxes.shape[0], self.code_size]).to(dst_boxes.device)
-        targets[:, 0] = (dst_boxes[:, 0] - self.pc_range[0]) / (self.out_size_factor * self.voxel_size[0])
-        targets[:, 1] = (dst_boxes[:, 1] - self.pc_range[1]) / (self.out_size_factor * self.voxel_size[1])
+        targets[:, 0] = (dst_boxes[:, 0] - self.pc_range[0]) / (
+            self.out_size_factor * self.voxel_size[0]
+        )
+        targets[:, 1] = (dst_boxes[:, 1] - self.pc_range[1]) / (
+            self.out_size_factor * self.voxel_size[1]
+        )
         # targets[:, 2] = (dst_boxes[:, 2] - self.post_center_range[2]) / (self.post_center_range[5] - self.post_center_range[2])
         targets[:, 3] = dst_boxes[:, 3].log()
         targets[:, 4] = dst_boxes[:, 4].log()
         targets[:, 5] = dst_boxes[:, 5].log()
-        targets[:, 2] = dst_boxes[:, 2] + dst_boxes[:, 5] * 0.5  # bottom center to gravity center
+        targets[:, 2] = (
+            dst_boxes[:, 2] + dst_boxes[:, 5] * 0.5
+        )  # bottom center to gravity center
         targets[:, 6] = torch.sin(dst_boxes[:, 6])
         targets[:, 7] = torch.cos(dst_boxes[:, 6])
         if self.code_size == 10:
@@ -643,8 +773,14 @@ class TransFusionBBoxCoder(BaseBBoxCoder):
         final_scores = heatmap.max(1, keepdims=False).values
 
         # change size to real world metric
-        center[:, 0, :] = center[:, 0, :] * self.out_size_factor * self.voxel_size[0] + self.pc_range[0]
-        center[:, 1, :] = center[:, 1, :] * self.out_size_factor * self.voxel_size[1] + self.pc_range[1]
+        center[:, 0, :] = (
+            center[:, 0, :] * self.out_size_factor * self.voxel_size[0]
+            + self.pc_range[0]
+        )
+        center[:, 1, :] = (
+            center[:, 1, :] * self.out_size_factor * self.voxel_size[1]
+            + self.pc_range[1]
+        )
         # center[:, 2, :] = center[:, 2, :] * (self.post_center_range[5] - self.post_center_range[2]) + self.post_center_range[2]
         dim[:, 0, :] = dim[:, 0, :].exp()
         dim[:, 1, :] = dim[:, 1, :].exp()
@@ -654,20 +790,20 @@ class TransFusionBBoxCoder(BaseBBoxCoder):
         rot = torch.atan2(rots, rotc)
 
         if vel is None:
-            final_box_preds = torch.cat([center, height, dim, rot], dim=1).permute(0, 2, 1)
+            final_box_preds = torch.cat([center, height, dim, rot], dim=1).permute(
+                0, 2, 1
+            )
         else:
-            final_box_preds = torch.cat([center, height, dim, rot, vel], dim=1).permute(0, 2, 1)
+            final_box_preds = torch.cat([center, height, dim, rot, vel], dim=1).permute(
+                0, 2, 1
+            )
 
         predictions_dicts = []
         for i in range(heatmap.shape[0]):
             boxes3d = final_box_preds[i]
             scores = final_scores[i]
             labels = final_preds[i]
-            predictions_dict = {
-                'bboxes': boxes3d,
-                'scores': scores,
-                'labels': labels
-            }
+            predictions_dict = {'bboxes': boxes3d, 'scores': scores, 'labels': labels}
             predictions_dicts.append(predictions_dict)
 
         if filter is False:
@@ -679,11 +815,10 @@ class TransFusionBBoxCoder(BaseBBoxCoder):
 
         if self.post_center_range is not None:
             self.post_center_range = torch.tensor(
-                self.post_center_range, device=heatmap.device)
-            mask = (final_box_preds[..., :3] >=
-                    self.post_center_range[:3]).all(2)
-            mask &= (final_box_preds[..., :3] <=
-                     self.post_center_range[3:]).all(2)
+                self.post_center_range, device=heatmap.device
+            )
+            mask = (final_box_preds[..., :3] >= self.post_center_range[:3]).all(2)
+            mask &= (final_box_preds[..., :3] <= self.post_center_range[3:]).all(2)
 
             predictions_dicts = []
             for i in range(heatmap.shape[0]):
@@ -697,53 +832,56 @@ class TransFusionBBoxCoder(BaseBBoxCoder):
                 predictions_dict = {
                     'bboxes': boxes3d,
                     'scores': scores,
-                    'labels': labels
+                    'labels': labels,
                 }
 
                 predictions_dicts.append(predictions_dict)
         else:
             raise NotImplementedError(
                 'Need to reorganize output as a batch, only '
-                'support post_center_range is not None for now!')
+                'support post_center_range is not None for now!'
+            )
 
         return predictions_dicts
 
 
-
 class TransFusionHeadV2(nn.Module):
-    def __init__(self,
-                 num_proposals=128,
-                 auxiliary=True,
-                 in_channels=128 * 4,
-                 hidden_channel=128,
-                 num_classes=10,
-                 # config for Transformer
-                 num_decoder_layers=3,
-                 num_heads=8,
-                 nms_kernel_size=1,
-                 ffn_channel=256,
-                 dropout=0.1,
-                 bn_momentum=0.1,
-                 activation='relu',
-                 # config for FFN
-                 common_heads=dict(),
-                 num_heatmap_convs=2,
-                 conv_cfg=dict(type='Conv1d'),
-                 norm_cfg=dict(type='BN1d'),
-                 bias='auto',
-                 # loss
-                 loss_cls=dict(type='GaussianFocalLoss', reduction='mean'),
-                 loss_iou=dict(type='VarifocalLoss', use_sigmoid=True, iou_weighted=True, reduction='mean'),
-                 loss_bbox=dict(type='L1Loss', reduction='mean'),
-                 loss_heatmap=dict(type='GaussianFocalLoss', reduction='mean'),
-                 # others
-                 train_cfg=None,
-                 test_cfg=None,
-                 bev_shape = [180,180],
-                 pc_range=[-54, -54, -5, 54, 54, 3],
-                 voxel_size=[0.075, 0.075, 0.2],
-                 out_size_factor=8,
-                 ):
+    def __init__(
+        self,
+        num_proposals=128,
+        auxiliary=True,
+        in_channels=128 * 4,
+        hidden_channel=128,
+        num_classes=10,
+        # config for Transformer
+        num_decoder_layers=3,
+        num_heads=8,
+        nms_kernel_size=1,
+        ffn_channel=256,
+        dropout=0.1,
+        bn_momentum=0.1,
+        activation='relu',
+        # config for FFN
+        common_heads=dict(),
+        num_heatmap_convs=2,
+        conv_cfg=dict(type='Conv1d'),
+        norm_cfg=dict(type='BN1d'),
+        bias='auto',
+        # loss
+        loss_cls=dict(type='GaussianFocalLoss', reduction='mean'),
+        loss_iou=dict(
+            type='VarifocalLoss', use_sigmoid=True, iou_weighted=True, reduction='mean'
+        ),
+        loss_bbox=dict(type='L1Loss', reduction='mean'),
+        loss_heatmap=dict(type='GaussianFocalLoss', reduction='mean'),
+        # others
+        train_cfg=None,
+        test_cfg=None,
+        bev_shape=[180, 180],
+        pc_range=[-54, -54, -5, 54, 54, 3],
+        voxel_size=[0.075, 0.075, 0.2],
+        out_size_factor=8,
+    ):
         super(TransFusionHeadV2, self).__init__()
 
         self.fp16_enabled = False
@@ -759,7 +897,7 @@ class TransFusionHeadV2(nn.Module):
         self.train_cfg = train_cfg
         self.test_cfg = test_cfg
 
-        self.use_sigmoid_cls = loss_cls.get("use_sigmoid", False)
+        self.use_sigmoid_cls = loss_cls.get('use_sigmoid', False)
         if not self.use_sigmoid_cls:
             self.num_classes += 1
         self.loss_cls = build_loss(loss_cls)
@@ -771,12 +909,13 @@ class TransFusionHeadV2(nn.Module):
         self.bbox_coder = TransFusionBBoxCoder(
             pc_range=pc_range[:2],
             voxel_size=voxel_size[:2],
-            out_size_factor=out_size_factor)
+            out_size_factor=out_size_factor,
+        )
         self.sampling = False
 
         # a shared convolution
         self.shared_conv = build_conv_layer(
-            dict(type="Conv2d"),
+            dict(type='Conv2d'),
             in_channels,
             hidden_channel,
             kernel_size=3,
@@ -792,13 +931,13 @@ class TransFusionHeadV2(nn.Module):
                 kernel_size=3,
                 padding=1,
                 bias=bias,
-                conv_cfg=dict(type="Conv2d"),
-                norm_cfg=dict(type="BN2d"),
+                conv_cfg=dict(type='Conv2d'),
+                norm_cfg=dict(type='BN2d'),
             )
         )
         layers.append(
             build_conv_layer(
-                dict(type="Conv2d"),
+                dict(type='Conv2d'),
                 hidden_channel,
                 num_classes,
                 kernel_size=3,
@@ -867,7 +1006,7 @@ class TransFusionHeadV2(nn.Module):
         for m in self.decoder.parameters():
             if m.dim() > 1:
                 nn.init.xavier_uniform_(m)
-        if hasattr(self, "query"):
+        if hasattr(self, 'query'):
             nn.init.xavier_normal_(self.query)
         self.init_bn_momentum()
 
@@ -892,9 +1031,9 @@ class TransFusionHeadV2(nn.Module):
                 build_assigner(res) for res in self.train_cfg.assigner
             ]
 
-
     def forward_single(self, inputs):
         """Forward function for CenterPoint.
+
         Args:
             inputs (torch.Tensor): Input feature map with the shape of
                 [B, 512, 128(H), 128(W)].
@@ -922,41 +1061,40 @@ class TransFusionHeadV2(nn.Module):
         )
         local_max[:, :, padding:(-padding), padding:(-padding)] = local_max_inner
         ## for Pedestrian & Traffic_cone in nuScenes
-        if True or self.test_cfg["dataset"] == "nuScenes":
+        if True or self.test_cfg['dataset'] == 'nuScenes':
             local_max[
-            :,
-            8,
+                :,
+                8,
             ] = F.max_pool2d(heatmap[:, 8], kernel_size=1, stride=1, padding=0)
             local_max[
-            :,
-            9,
+                :,
+                9,
             ] = F.max_pool2d(heatmap[:, 9], kernel_size=1, stride=1, padding=0)
-        elif self.test_cfg["dataset"] == "Waymo":  # for Pedestrian & Cyclist in Waymo
+        elif self.test_cfg['dataset'] == 'Waymo':  # for Pedestrian & Cyclist in Waymo
             local_max[
-            :,
-            1,
+                :,
+                1,
             ] = F.max_pool2d(heatmap[:, 1], kernel_size=1, stride=1, padding=0)
             local_max[
-            :,
-            2,
+                :,
+                2,
             ] = F.max_pool2d(heatmap[:, 2], kernel_size=1, stride=1, padding=0)
         heatmap = heatmap * (heatmap == local_max)
         heatmap = heatmap.view(batch_size, heatmap.shape[1], -1)
 
         # top #num_proposals among all classes
         top_proposals = heatmap.view(batch_size, -1).argsort(dim=-1, descending=True)[
-                        ..., : self.num_proposals
-                        ]
+            ..., : self.num_proposals
+        ]
         top_proposals_class = top_proposals // heatmap.shape[-1]
         top_proposals_index = top_proposals % heatmap.shape[-1]
 
         query_pos = bev_pos.gather(
             index=top_proposals_index[:, None, :]
-                .permute(0, 2, 1)
-                .expand(-1, -1, bev_pos.shape[-1]),
+            .permute(0, 2, 1)
+            .expand(-1, -1, bev_pos.shape[-1]),
             dim=1,
-                )
-
+        )
 
         query_feat = lidar_feat_flatten.gather(
             index=top_proposals_index[:, None, :].expand(
@@ -973,7 +1111,6 @@ class TransFusionHeadV2(nn.Module):
         query_cat_encoding = self.class_encoding(one_hot.float())
         query_feat += query_cat_encoding
 
-
         #################################
         # transformer decoder layer (LiDAR feature as K,V)
         #################################
@@ -987,20 +1124,20 @@ class TransFusionHeadV2(nn.Module):
             )
             # Prediction
             res_layer = self.prediction_heads[i](query_feat)
-            res_layer["center"] = res_layer["center"] + query_pos.permute(0, 2, 1)
+            res_layer['center'] = res_layer['center'] + query_pos.permute(0, 2, 1)
             ret_dicts.append(res_layer)
 
             # for next level positional embedding
-            query_pos = res_layer["center"].detach().clone().permute(0, 2, 1)
+            query_pos = res_layer['center'].detach().clone().permute(0, 2, 1)
 
         #################################
         # transformer decoder layer (img feature as K,V)
         #################################
-        ret_dicts[0]["query_heatmap_score"] = heatmap.gather(
+        ret_dicts[0]['query_heatmap_score'] = heatmap.gather(
             index=top_proposals_index[:, None, :].expand(-1, self.num_classes, -1),
             dim=-1,
         )  # [bs, num_classes, num_proposals]
-        ret_dicts[0]["dense_heatmap"] = dense_heatmap
+        ret_dicts[0]['dense_heatmap'] = dense_heatmap
 
         if self.auxiliary is False:
             # only return the results of last decoder layer
@@ -1009,7 +1146,7 @@ class TransFusionHeadV2(nn.Module):
         # return all the layer's results for auxiliary superivison
         new_res = {}
         for key in ret_dicts[0].keys():
-            if key not in ["dense_heatmap", "dense_heatmap_old", "query_heatmap_score"]:
+            if key not in ['dense_heatmap', 'dense_heatmap_old', 'query_heatmap_score']:
                 new_res[key] = torch.cat(
                     [ret_dict[key] for ret_dict in ret_dicts], dim=-1
                 )
@@ -1019,6 +1156,7 @@ class TransFusionHeadV2(nn.Module):
 
     def forward(self, feats):
         """Forward pass.
+
         Args:
             feats (list[torch.Tensor]): Multi-level features, e.g.,
                 features produced by FPN.
@@ -1028,7 +1166,7 @@ class TransFusionHeadV2(nn.Module):
         if isinstance(feats, torch.Tensor):
             feats = [feats]
         res = multi_apply(self.forward_single, feats)
-        assert len(res) == 1, "only support one level features."
+        assert len(res) == 1, 'only support one level features.'
         return res
 
     def get_targets(self, gt_bboxes_3d, gt_labels_3d, preds_dict):
@@ -1099,23 +1237,23 @@ class TransFusionHeadV2(nn.Module):
                 - torch.Tensor: iou target. [1, num_proposals]
                 - int: number of positive proposals
         """
-        num_proposals = preds_dict["center"].shape[-1]
+        num_proposals = preds_dict['center'].shape[-1]
 
         # get pred boxes, carefully ! donot change the network outputs
-        score = copy.deepcopy(preds_dict["heatmap"].detach())
-        center = copy.deepcopy(preds_dict["center"].detach())
-        height = copy.deepcopy(preds_dict["height"].detach())
-        dim = copy.deepcopy(preds_dict["dim"].detach())
-        rot = copy.deepcopy(preds_dict["rot"].detach())
-        if "vel" in preds_dict.keys():
-            vel = copy.deepcopy(preds_dict["vel"].detach())
+        score = copy.deepcopy(preds_dict['heatmap'].detach())
+        center = copy.deepcopy(preds_dict['center'].detach())
+        height = copy.deepcopy(preds_dict['height'].detach())
+        dim = copy.deepcopy(preds_dict['dim'].detach())
+        rot = copy.deepcopy(preds_dict['rot'].detach())
+        if 'vel' in preds_dict.keys():
+            vel = copy.deepcopy(preds_dict['vel'].detach())
         else:
             vel = None
 
         boxes_dict = self.bbox_coder.decode(
             score, rot, dim, center, height, vel
         )  # decode the prediction to real world metric bbox
-        bboxes_tensor = boxes_dict[0]["bboxes"]
+        bboxes_tensor = boxes_dict[0]['bboxes']
         gt_bboxes_tensor = gt_bboxes_3d.tensor.to(score.device)
         # each layer should do label assign seperately.
         if self.auxiliary:
@@ -1126,14 +1264,14 @@ class TransFusionHeadV2(nn.Module):
         assign_result_list = []
         for idx_layer in range(num_layer):
             bboxes_tensor_layer = bboxes_tensor[
-                                  self.num_proposals * idx_layer : self.num_proposals * (idx_layer + 1), :
-                                  ]
+                self.num_proposals * idx_layer : self.num_proposals * (idx_layer + 1), :
+            ]
             score_layer = score[
-                          ...,
-                          self.num_proposals * idx_layer : self.num_proposals * (idx_layer + 1),
-                          ]
+                ...,
+                self.num_proposals * idx_layer : self.num_proposals * (idx_layer + 1),
+            ]
 
-            if self.train_cfg.assigner.type == "HungarianAssigner3D":
+            if self.train_cfg.assigner.type == 'HungarianAssigner3D':
                 assign_result = self.bbox_assigner.assign(
                     bboxes_tensor_layer,
                     gt_bboxes_tensor,
@@ -1141,7 +1279,7 @@ class TransFusionHeadV2(nn.Module):
                     score_layer,
                     self.train_cfg,
                 )
-            elif self.train_cfg.assigner.type == "HeuristicAssigner":
+            elif self.train_cfg.assigner.type == 'HeuristicAssigner':
                 assign_result = self.bbox_assigner.assign(
                     bboxes_tensor_layer,
                     gt_bboxes_tensor,
@@ -1206,11 +1344,11 @@ class TransFusionHeadV2(nn.Module):
         gt_bboxes_3d = torch.cat(
             [gt_bboxes_3d.gravity_center, gt_bboxes_3d.tensor[:, 3:]], dim=1
         ).to(device)
-        grid_size = torch.tensor(self.train_cfg["grid_size"])
-        pc_range = torch.tensor(self.train_cfg["point_cloud_range"])
-        voxel_size = torch.tensor(self.train_cfg["voxel_size"])
+        grid_size = torch.tensor(self.train_cfg['grid_size'])
+        pc_range = torch.tensor(self.train_cfg['point_cloud_range'])
+        voxel_size = torch.tensor(self.train_cfg['voxel_size'])
         feature_map_size = (
-                grid_size[:2] // self.train_cfg["out_size_factor"]
+            grid_size[:2] // self.train_cfg['out_size_factor']
         )  # [x_len, y_len]
         heatmap = gt_bboxes_3d.new_zeros(
             self.num_classes, feature_map_size[1], feature_map_size[0]
@@ -1218,24 +1356,24 @@ class TransFusionHeadV2(nn.Module):
         for idx in range(len(gt_bboxes_3d)):
             width = gt_bboxes_3d[idx][3]
             length = gt_bboxes_3d[idx][4]
-            width = width / voxel_size[0] / self.train_cfg["out_size_factor"]
-            length = length / voxel_size[1] / self.train_cfg["out_size_factor"]
+            width = width / voxel_size[0] / self.train_cfg['out_size_factor']
+            length = length / voxel_size[1] / self.train_cfg['out_size_factor']
             if width > 0 and length > 0:
                 radius = gaussian_radius(
-                    (length, width), min_overlap=self.train_cfg["gaussian_overlap"]
+                    (length, width), min_overlap=self.train_cfg['gaussian_overlap']
                 )
-                radius = max(self.train_cfg["min_radius"], int(radius))
+                radius = max(self.train_cfg['min_radius'], int(radius))
                 x, y = gt_bboxes_3d[idx][0], gt_bboxes_3d[idx][1]
 
                 coor_x = (
-                        (x - pc_range[0])
-                        / voxel_size[0]
-                        / self.train_cfg["out_size_factor"]
+                    (x - pc_range[0])
+                    / voxel_size[0]
+                    / self.train_cfg['out_size_factor']
                 )
                 coor_y = (
-                        (y - pc_range[1])
-                        / voxel_size[1]
-                        / self.train_cfg["out_size_factor"]
+                    (y - pc_range[1])
+                    / voxel_size[1]
+                    / self.train_cfg['out_size_factor']
                 )
 
                 center = torch.tensor(
@@ -1263,9 +1401,10 @@ class TransFusionHeadV2(nn.Module):
             heatmap[None],
         )
 
-    @force_fp32(apply_to=("preds_dicts"))
+    @force_fp32(apply_to=('preds_dicts'))
     def loss(self, gt_bboxes_3d, gt_labels_3d, preds_dicts, ins_heatmap=None, **kwargs):
         """Loss function for CenterHead.
+
         Args:
             gt_bboxes_3d (list[:obj:`LiDARInstance3DBoxes`]): Ground
                 truth gt boxes.
@@ -1285,7 +1424,7 @@ class TransFusionHeadV2(nn.Module):
             heatmap,
         ) = self.get_targets(gt_bboxes_3d, gt_labels_3d, preds_dicts[0])
 
-        if hasattr(self, "on_the_image_mask"):
+        if hasattr(self, 'on_the_image_mask'):
             label_weights = label_weights * self.on_the_image_mask
             bbox_weights = bbox_weights * self.on_the_image_mask[:, :, None]
             num_pos = bbox_weights.max(-1).values.sum()
@@ -1294,40 +1433,40 @@ class TransFusionHeadV2(nn.Module):
 
         # compute heatmap loss
         loss_heatmap = self.loss_heatmap(
-            clip_sigmoid(preds_dict["dense_heatmap"]),
+            clip_sigmoid(preds_dict['dense_heatmap']),
             heatmap,
             avg_factor=max(heatmap.eq(1).float().sum().item(), 1),
         )
-        loss_dict["loss_heatmap"] = loss_heatmap
+        loss_dict['loss_heatmap'] = loss_heatmap
         if ins_heatmap is not None:
             ins_loss = self.loss_heatmap_ins(
                 clip_sigmoid(ins_heatmap),
                 heatmap,
                 avg_factor=max(heatmap.eq(1).float().sum().item(), 1),
             )
-            loss_dict["loss_heatmap_ins"] = ins_loss
+            loss_dict['loss_heatmap_ins'] = ins_loss
 
         # compute loss for each layer
         for idx_layer in range(self.num_decoder_layers if self.auxiliary else 1):
             if idx_layer == self.num_decoder_layers - 1 or (
-                    idx_layer == 0 and self.auxiliary is False
+                idx_layer == 0 and self.auxiliary is False
             ):
-                prefix = "layer_-1"
+                prefix = 'layer_-1'
             else:
-                prefix = f"layer_{idx_layer}"
+                prefix = f'layer_{idx_layer}'
 
             layer_labels = labels[
-                           ...,
-                           idx_layer * self.num_proposals : (idx_layer + 1) * self.num_proposals,
-                           ].reshape(-1)
+                ...,
+                idx_layer * self.num_proposals : (idx_layer + 1) * self.num_proposals,
+            ].reshape(-1)
             layer_label_weights = label_weights[
-                                  ...,
-                                  idx_layer * self.num_proposals : (idx_layer + 1) * self.num_proposals,
-                                  ].reshape(-1)
-            layer_score = preds_dict["heatmap"][
-                          ...,
-                          idx_layer * self.num_proposals : (idx_layer + 1) * self.num_proposals,
-                          ]
+                ...,
+                idx_layer * self.num_proposals : (idx_layer + 1) * self.num_proposals,
+            ].reshape(-1)
+            layer_score = preds_dict['heatmap'][
+                ...,
+                idx_layer * self.num_proposals : (idx_layer + 1) * self.num_proposals,
+            ]
             layer_cls_score = layer_score.permute(0, 2, 1).reshape(-1, self.num_classes)
             layer_loss_cls = self.loss_cls(
                 layer_cls_score,
@@ -1336,29 +1475,29 @@ class TransFusionHeadV2(nn.Module):
                 avg_factor=max(num_pos, 1),
             )
 
-            layer_center = preds_dict["center"][
-                           ...,
-                           idx_layer * self.num_proposals : (idx_layer + 1) * self.num_proposals,
-                           ]
-            layer_height = preds_dict["height"][
-                           ...,
-                           idx_layer * self.num_proposals : (idx_layer + 1) * self.num_proposals,
-                           ]
-            layer_rot = preds_dict["rot"][
-                        ...,
-                        idx_layer * self.num_proposals : (idx_layer + 1) * self.num_proposals,
-                        ]
-            layer_dim = preds_dict["dim"][
-                        ...,
-                        idx_layer * self.num_proposals : (idx_layer + 1) * self.num_proposals,
-                        ]
-            if "vel" in preds_dict.keys():
-                layer_vel = preds_dict["vel"][
-                            ...,
-                            idx_layer
-                            * self.num_proposals : (idx_layer + 1)
-                                                   * self.num_proposals,
-                            ]
+            layer_center = preds_dict['center'][
+                ...,
+                idx_layer * self.num_proposals : (idx_layer + 1) * self.num_proposals,
+            ]
+            layer_height = preds_dict['height'][
+                ...,
+                idx_layer * self.num_proposals : (idx_layer + 1) * self.num_proposals,
+            ]
+            layer_rot = preds_dict['rot'][
+                ...,
+                idx_layer * self.num_proposals : (idx_layer + 1) * self.num_proposals,
+            ]
+            layer_dim = preds_dict['dim'][
+                ...,
+                idx_layer * self.num_proposals : (idx_layer + 1) * self.num_proposals,
+            ]
+            if 'vel' in preds_dict.keys():
+                layer_vel = preds_dict['vel'][
+                    ...,
+                    idx_layer
+                    * self.num_proposals : (idx_layer + 1)
+                    * self.num_proposals,
+                ]
                 preds = torch.cat(
                     [layer_center, layer_height, layer_dim, layer_rot, layer_vel], dim=1
                 ).permute(
@@ -1370,20 +1509,20 @@ class TransFusionHeadV2(nn.Module):
                 ).permute(
                     0, 2, 1
                 )  # [BS, num_proposals, code_size]
-            code_weights = self.train_cfg.get("code_weights", None)
+            code_weights = self.train_cfg.get('code_weights', None)
             layer_bbox_weights = bbox_weights[
-                                 :,
-                                 idx_layer * self.num_proposals : (idx_layer + 1) * self.num_proposals,
-                                 :,
-                                 ]
+                :,
+                idx_layer * self.num_proposals : (idx_layer + 1) * self.num_proposals,
+                :,
+            ]
             layer_reg_weights = layer_bbox_weights * layer_bbox_weights.new_tensor(
                 code_weights
             )
             layer_bbox_targets = bbox_targets[
-                                 :,
-                                 idx_layer * self.num_proposals : (idx_layer + 1) * self.num_proposals,
-                                 :,
-                                 ]
+                :,
+                idx_layer * self.num_proposals : (idx_layer + 1) * self.num_proposals,
+                :,
+            ]
             layer_loss_bbox = self.loss_bbox(
                 preds, layer_bbox_targets, layer_reg_weights, avg_factor=max(num_pos, 1)
             )
@@ -1392,16 +1531,17 @@ class TransFusionHeadV2(nn.Module):
             # layer_iou_target = ious[..., idx_layer*self.num_proposals:(idx_layer+1)*self.num_proposals]
             # layer_loss_iou = self.loss_iou(layer_iou, layer_iou_target, layer_bbox_weights.max(-1).values, avg_factor=max(num_pos, 1))
 
-            loss_dict[f"{prefix}_loss_cls"] = layer_loss_cls
-            loss_dict[f"{prefix}_loss_bbox"] = layer_loss_bbox
+            loss_dict[f'{prefix}_loss_cls'] = layer_loss_cls
+            loss_dict[f'{prefix}_loss_bbox'] = layer_loss_bbox
             # loss_dict[f'{prefix}_loss_iou'] = layer_loss_iou
 
-        loss_dict[f"matched_ious"] = layer_loss_cls.new_tensor(matched_ious)
+        loss_dict[f'matched_ious'] = layer_loss_cls.new_tensor(matched_ious)
 
         return loss_dict
 
     def get_bboxes(self, preds_dicts, metas, img=None, rescale=False, for_roi=False):
         """Generate bboxes from bbox head predictions.
+
         Args:
             preds_dicts (tuple[list[dict]]): Prediction results.
         Returns:
@@ -1409,22 +1549,22 @@ class TransFusionHeadV2(nn.Module):
         """
         rets = []
         for layer_id, preds_dict in enumerate(preds_dicts):
-            batch_size = preds_dict[0]["heatmap"].shape[0]
-            batch_score = preds_dict[0]["heatmap"][..., -self.num_proposals :].sigmoid()
+            batch_size = preds_dict[0]['heatmap'].shape[0]
+            batch_score = preds_dict[0]['heatmap'][..., -self.num_proposals :].sigmoid()
             # if self.loss_iou.loss_weight != 0:
             #    batch_score = torch.sqrt(batch_score * preds_dict[0]['iou'][..., -self.num_proposals:].sigmoid())
             one_hot = F.one_hot(
                 self.query_labels, num_classes=self.num_classes
             ).permute(0, 2, 1)
-            batch_score = batch_score * preds_dict[0]["query_heatmap_score"] * one_hot
+            batch_score = batch_score * preds_dict[0]['query_heatmap_score'] * one_hot
 
-            batch_center = preds_dict[0]["center"][..., -self.num_proposals :]
-            batch_height = preds_dict[0]["height"][..., -self.num_proposals :]
-            batch_dim = preds_dict[0]["dim"][..., -self.num_proposals :]
-            batch_rot = preds_dict[0]["rot"][..., -self.num_proposals :]
+            batch_center = preds_dict[0]['center'][..., -self.num_proposals :]
+            batch_height = preds_dict[0]['height'][..., -self.num_proposals :]
+            batch_dim = preds_dict[0]['dim'][..., -self.num_proposals :]
+            batch_rot = preds_dict[0]['rot'][..., -self.num_proposals :]
             batch_vel = None
-            if "vel" in preds_dict[0]:
-                batch_vel = preds_dict[0]["vel"][..., -self.num_proposals :]
+            if 'vel' in preds_dict[0]:
+                batch_vel = preds_dict[0]['vel'][..., -self.num_proposals :]
 
             temp = self.bbox_coder.decode(
                 batch_score,
@@ -1436,7 +1576,7 @@ class TransFusionHeadV2(nn.Module):
                 filter=True,
             )
 
-            if self.test_cfg["dataset"] == "nuScenes":
+            if self.test_cfg['dataset'] == 'nuScenes':
                 self.tasks = [
                     dict(
                         num_class=8,
@@ -1446,41 +1586,41 @@ class TransFusionHeadV2(nn.Module):
                     ),
                     dict(
                         num_class=1,
-                        class_names=["pedestrian"],
+                        class_names=['pedestrian'],
                         indices=[8],
                         radius=0.175,
                     ),
                     dict(
                         num_class=1,
-                        class_names=["traffic_cone"],
+                        class_names=['traffic_cone'],
                         indices=[9],
                         radius=0.175,
                     ),
                 ]
-            elif self.test_cfg["dataset"] == "Waymo":
+            elif self.test_cfg['dataset'] == 'Waymo':
                 self.tasks = [
-                    dict(num_class=1, class_names=["Car"], indices=[0], radius=0.7),
+                    dict(num_class=1, class_names=['Car'], indices=[0], radius=0.7),
                     dict(
-                        num_class=1, class_names=["Pedestrian"], indices=[1], radius=0.7
+                        num_class=1, class_names=['Pedestrian'], indices=[1], radius=0.7
                     ),
-                    dict(num_class=1, class_names=["Cyclist"], indices=[2], radius=0.7),
+                    dict(num_class=1, class_names=['Cyclist'], indices=[2], radius=0.7),
                 ]
 
             ret_layer = []
             for i in range(batch_size):
-                boxes3d = temp[i]["bboxes"]
-                scores = temp[i]["scores"]
-                labels = temp[i]["labels"]
+                boxes3d = temp[i]['bboxes']
+                scores = temp[i]['scores']
+                labels = temp[i]['labels']
                 ## adopt circle nms for different categories
-                if self.test_cfg["nms_type"] != None:
+                if self.test_cfg['nms_type'] != None:
                     keep_mask = torch.zeros_like(scores)
                     for task in self.tasks:
                         task_mask = torch.zeros_like(scores)
-                        for cls_idx in task["indices"]:
+                        for cls_idx in task['indices']:
                             task_mask += labels == cls_idx
                         task_mask = task_mask.bool()
-                        if task["radius"] > 0:
-                            if self.test_cfg["nms_type"] == "circle":
+                        if task['radius'] > 0:
+                            if self.test_cfg['nms_type'] == 'circle':
                                 boxes_for_nms = torch.cat(
                                     [
                                         boxes3d[task_mask][:, :2],
@@ -1491,12 +1631,12 @@ class TransFusionHeadV2(nn.Module):
                                 task_keep_indices = torch.tensor(
                                     circle_nms(
                                         boxes_for_nms.detach().cpu().numpy(),
-                                        task["radius"],
+                                        task['radius'],
                                     )
                                 )
                             else:
                                 boxes_for_nms = xywhr2xyxyr(
-                                    metas[i]["box_type_3d"](
+                                    metas[i]['box_type_3d'](
                                         boxes3d[task_mask][:, :7], 7
                                     ).bev
                                 )
@@ -1504,9 +1644,9 @@ class TransFusionHeadV2(nn.Module):
                                 task_keep_indices = nms_gpu(
                                     boxes_for_nms,
                                     top_scores,
-                                    thresh=task["radius"],
-                                    pre_maxsize=self.test_cfg["pre_maxsize"],
-                                    post_max_size=self.test_cfg["post_maxsize"],
+                                    thresh=task['radius'],
+                                    pre_maxsize=self.test_cfg['pre_maxsize'],
+                                    post_max_size=self.test_cfg['post_maxsize'],
                                 )
                         else:
                             task_keep_indices = torch.arange(task_mask.sum())
@@ -1529,11 +1669,11 @@ class TransFusionHeadV2(nn.Module):
         assert len(rets[0]) == 1
         res = [
             [
-                metas[0]["box_type_3d"](
-                    rets[0][0]["bboxes"], box_dim=rets[0][0]["bboxes"].shape[-1]
+                metas[0]['box_type_3d'](
+                    rets[0][0]['bboxes'], box_dim=rets[0][0]['bboxes'].shape[-1]
                 ),
-                rets[0][0]["scores"],
-                rets[0][0]["labels"].int(),
+                rets[0][0]['scores'],
+                rets[0][0]['labels'].int(),
             ]
         ]
         return res

@@ -51,26 +51,36 @@ class Base3DInferencer(BaseInferencer):
     preprocess_kwargs: set = {'cam_type'}
     forward_kwargs: set = set()
     visualize_kwargs: set = {
-        'return_vis', 'show', 'wait_time', 'draw_pred', 'pred_score_thr',
-        'img_out_dir', 'no_save_vis', 'cam_type_dir'
+        'return_vis',
+        'show',
+        'wait_time',
+        'draw_pred',
+        'pred_score_thr',
+        'img_out_dir',
+        'no_save_vis',
+        'cam_type_dir',
     }
     postprocess_kwargs: set = {
-        'print_result', 'pred_out_dir', 'return_datasample', 'no_save_pred'
+        'print_result',
+        'pred_out_dir',
+        'return_datasample',
+        'no_save_pred',
     }
 
-    def __init__(self,
-                 model: Union[ModelType, str, None] = None,
-                 weights: Optional[str] = None,
-                 device: Optional[str] = None,
-                 scope: str = 'mmdet3d',
-                 palette: str = 'none') -> None:
+    def __init__(
+        self,
+        model: Union[ModelType, str, None] = None,
+        weights: Optional[str] = None,
+        device: Optional[str] = None,
+        scope: str = 'mmdet3d',
+        palette: str = 'none',
+    ) -> None:
         # A global counter tracking the number of frames processed, for
         # naming of the output results
         self.num_predicted_frames = 0
         self.palette = palette
         init_default_scope(scope)
-        super().__init__(
-            model=model, weights=weights, device=device, scope=scope)
+        super().__init__(model=model, weights=weights, device=device, scope=scope)
         self.model = revert_sync_batchnorm(self.model)
 
     def _convert_syncbn(self, cfg: ConfigType):
@@ -83,8 +93,7 @@ class Base3DInferencer(BaseInferencer):
         if isinstance(cfg, dict):
             for item in cfg:
                 if item == 'norm_cfg':
-                    cfg[item]['type'] = cfg[item]['type']. \
-                                        replace('naiveSyncBN', 'BN')
+                    cfg[item]['type'] = cfg[item]['type'].replace('naiveSyncBN', 'BN')
                 else:
                     self._convert_syncbn(cfg[item])
 
@@ -144,10 +153,9 @@ class Base3DInferencer(BaseInferencer):
         visualizer.dataset_meta = self.model.dataset_meta
         return visualizer
 
-    def _dispatch_kwargs(self,
-                         out_dir: str = '',
-                         cam_type: str = '',
-                         **kwargs) -> Tuple[Dict, Dict, Dict, Dict]:
+    def _dispatch_kwargs(
+        self, out_dir: str = '', cam_type: str = '', **kwargs
+    ) -> Tuple[Dict, Dict, Dict, Dict]:
         """Dispatch kwargs to preprocess(), forward(), visualize() and
         postprocess() according to the actual demands.
 
@@ -170,11 +178,13 @@ class Base3DInferencer(BaseInferencer):
             kwargs['cam_type_dir'] = cam_type
         return super()._dispatch_kwargs(**kwargs)
 
-    def __call__(self,
-                 inputs: InputsType,
-                 batch_size: int = 1,
-                 return_datasamples: bool = False,
-                 **kwargs) -> Optional[dict]:
+    def __call__(
+        self,
+        inputs: InputsType,
+        batch_size: int = 1,
+        return_datasamples: bool = False,
+        **kwargs,
+    ) -> Optional[dict]:
         """Call the inferencer.
 
         Args:
@@ -202,19 +212,18 @@ class Base3DInferencer(BaseInferencer):
 
         cam_type = preprocess_kwargs.pop('cam_type', 'CAM2')
         ori_inputs = self._inputs_to_list(inputs, cam_type=cam_type)
-        inputs = self.preprocess(
-            ori_inputs, batch_size=batch_size, **preprocess_kwargs)
+        inputs = self.preprocess(ori_inputs, batch_size=batch_size, **preprocess_kwargs)
         preds = []
 
         results_dict = {'predictions': [], 'visualization': []}
-        for data in (track(inputs, description='Inference')
-                     if self.show_progress else inputs):
+        for data in (
+            track(inputs, description='Inference') if self.show_progress else inputs
+        ):
             preds.extend(self.forward(data, **forward_kwargs))
-            visualization = self.visualize(ori_inputs, preds,
-                                           **visualize_kwargs)
-            results = self.postprocess(preds, visualization,
-                                       return_datasamples,
-                                       **postprocess_kwargs)
+            visualization = self.visualize(ori_inputs, preds, **visualize_kwargs)
+            results = self.postprocess(
+                preds, visualization, return_datasamples, **postprocess_kwargs
+            )
             results_dict['predictions'].extend(results['predictions'])
             if results['visualization'] is not None:
                 results_dict['visualization'].extend(results['visualization'])
@@ -277,7 +286,8 @@ class Base3DInferencer(BaseInferencer):
                 'Currently does not support saving datasample '
                 'when return_datasample is set to True. '
                 'Prediction results are not saved!',
-                level=logging.WARNING)
+                level=logging.WARNING,
+            )
         # Add img to the results after printing and dumping
         result_dict['predictions'] = results
         if print_result:
@@ -287,9 +297,7 @@ class Base3DInferencer(BaseInferencer):
 
     # TODO: The data format and fields saved in json need further discussion.
     #  Maybe should include model name, timestamp, filename, image info etc.
-    def pred2dict(self,
-                  data_sample: Det3DDataSample,
-                  pred_out_dir: str = '') -> Dict:
+    def pred2dict(self, data_sample: Det3DDataSample, pred_out_dir: str = '') -> Dict:
         """Extract elements necessary to represent a prediction into a
         dictionary.
 
@@ -311,13 +319,12 @@ class Base3DInferencer(BaseInferencer):
             result = {
                 'labels_3d': pred_instances_3d.labels_3d.tolist(),
                 'scores_3d': pred_instances_3d.scores_3d.tolist(),
-                'bboxes_3d': pred_instances_3d.bboxes_3d.tensor.cpu().tolist()
+                'bboxes_3d': pred_instances_3d.bboxes_3d.tensor.cpu().tolist(),
             }
 
         if 'pred_pts_seg' in data_sample:
             pred_pts_seg = data_sample.pred_pts_seg.numpy()
-            result['pts_semantic_mask'] = \
-                pred_pts_seg.pts_semantic_mask.tolist()
+            result['pts_semantic_mask'] = pred_pts_seg.pts_semantic_mask.tolist()
 
         if data_sample.box_mode_3d == Box3DMode.LIDAR:
             result['box_type_3d'] = 'LiDAR'
@@ -330,17 +337,17 @@ class Base3DInferencer(BaseInferencer):
             if 'lidar_path' in data_sample:
                 lidar_path = osp.basename(data_sample.lidar_path)
                 lidar_path = osp.splitext(lidar_path)[0]
-                out_json_path = osp.join(pred_out_dir, 'preds',
-                                         lidar_path + '.json')
+                out_json_path = osp.join(pred_out_dir, 'preds', lidar_path + '.json')
             elif 'img_path' in data_sample:
                 img_path = osp.basename(data_sample.img_path)
                 img_path = osp.splitext(img_path)[0]
-                out_json_path = osp.join(pred_out_dir, 'preds',
-                                         img_path + '.json')
+                out_json_path = osp.join(pred_out_dir, 'preds', img_path + '.json')
             else:
                 out_json_path = osp.join(
-                    pred_out_dir, 'preds',
-                    f'{str(self.num_visualized_imgs).zfill(8)}.json')
+                    pred_out_dir,
+                    'preds',
+                    f'{str(self.num_visualized_imgs).zfill(8)}.json',
+                )
             dump(result, out_json_path)
 
         return result

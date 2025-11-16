@@ -24,7 +24,8 @@ class BenchmarkHook(Hook):
         speed = message_hub.get_scalar('train/time').mean(max_iter_num - 50)
         message_hub.update_scalar('train/speed', speed)
         runner.logger.info(
-            f'Training speed of epoch {runner.epoch + 1} is {speed} s/iter')
+            f'Training speed of epoch {runner.epoch + 1} is {speed} s/iter'
+        )
 
     def after_train(self, runner) -> None:
         """Log average training speed of entire training process.
@@ -34,5 +35,6 @@ class BenchmarkHook(Hook):
         """
         message_hub = runner.message_hub
         avg_speed = message_hub.get_scalar('train/speed').mean()
-        runner.logger.info('Average training speed of entire training process'
-                           f'is {avg_speed} s/iter')
+        runner.logger.info(
+            'Average training speed of entire training process' f'is {avg_speed} s/iter'
+        )

@@ -23,12 +23,14 @@ class BatchSampler:
         drop_reminder (bool): Drop reminder. Defaults to False.
     """
 
-    def __init__(self,
-                 sampled_list: List[dict],
-                 name: Optional[str] = None,
-                 epoch: Optional[int] = None,
-                 shuffle: bool = True,
-                 drop_reminder: bool = False) -> None:
+    def __init__(
+        self,
+        sampled_list: List[dict],
+        name: Optional[str] = None,
+        epoch: Optional[int] = None,
+        shuffle: bool = True,
+        drop_reminder: bool = False,
+    ) -> None:
         self._sampled_list = sampled_list
         self._indices = np.arange(len(sampled_list))
         if shuffle:
@@ -51,10 +53,10 @@ class BatchSampler:
             list[int]: Indices of sampled ground truths.
         """
         if self._idx + num >= self._example_num:
-            ret = self._indices[self._idx:].copy()
+            ret = self._indices[self._idx :].copy()
             self._reset()
         else:
-            ret = self._indices[self._idx:self._idx + num]
+            ret = self._indices[self._idx : self._idx + num]
             self._idx += num
         return ret
 
@@ -96,20 +98,23 @@ class DataBaseSampler(object):
             corresponding backend. Defaults to None.
     """
 
-    def __init__(self,
-                 info_path: str,
-                 data_root: str,
-                 rate: float,
-                 prepare: dict,
-                 sample_groups: dict,
-                 classes: Optional[List[str]] = None,
-                 points_loader: dict = dict(
-                     type='LoadPointsFromFile',
-                     coord_type='LIDAR',
-                     load_dim=4,
-                     use_dim=[0, 1, 2, 3],
-                     backend_args=None),
-                 backend_args: Optional[dict] = None) -> None:
+    def __init__(
+        self,
+        info_path: str,
+        data_root: str,
+        rate: float,
+        prepare: dict,
+        sample_groups: dict,
+        classes: Optional[List[str]] = None,
+        points_loader: dict = dict(
+            type='LoadPointsFromFile',
+            coord_type='LIDAR',
+            load_dim=4,
+            use_dim=[0, 1, 2, 3],
+            backend_args=None,
+        ),
+        backend_args: Optional[dict] = None,
+    ) -> None:
         super().__init__()
         self.data_root = data_root
         self.info_path = info_path
@@ -122,13 +127,13 @@ class DataBaseSampler(object):
         self.backend_args = backend_args
 
         # load data base infos
-        with get_local_path(
-                info_path, backend_args=self.backend_args) as local_path:
+        with get_local_path(info_path, backend_args=self.backend_args) as local_path:
             # loading data from a file-like object needs file format
             db_infos = mmengine.load(open(local_path, 'rb'), file_format='pkl')
 
         # filter database infos
         from mmengine.logging import MMLogger
+
         logger: MMLogger = MMLogger.get_current_instance()
         for k, v in db_infos.items():
             logger.info(f'load {len(v)} {k} database infos in DataBaseSampler')
@@ -172,8 +177,7 @@ class DataBaseSampler(object):
         new_db_infos = {}
         for key, dinfos in db_infos.items():
             new_db_infos[key] = [
-                info for info in dinfos
-                if info['difficulty'] not in removed_difficulty
+                info for info in dinfos if info['difficulty'] not in removed_difficulty
             ]
         return new_db_infos
 
@@ -199,11 +203,13 @@ class DataBaseSampler(object):
                 db_infos[name] = filtered_infos
         return db_infos
 
-    def sample_all(self,
-                   gt_bboxes: np.ndarray,
-                   gt_labels: np.ndarray,
-                   img: Optional[np.ndarray] = None,
-                   ground_plane: Optional[np.ndarray] = None) -> dict:
+    def sample_all(
+        self,
+        gt_bboxes: np.ndarray,
+        gt_labels: np.ndarray,
+        img: Optional[np.ndarray] = None,
+        ground_plane: Optional[np.ndarray] = None,
+    ) -> dict:
         """Sampling all categories of bboxes.
 
         Args:
@@ -225,13 +231,15 @@ class DataBaseSampler(object):
         """
         sampled_num_dict = {}
         sample_num_per_class = []
-        for class_name, max_sample_num in zip(self.sample_classes,
-                                              self.sample_max_nums):
+        for class_name, max_sample_num in zip(
+            self.sample_classes, self.sample_max_nums
+        ):
             class_label = self.cat2label[class_name]
             # sampled_num = int(max_sample_num -
             #                   np.sum([n == class_name for n in gt_names]))
-            sampled_num = int(max_sample_num -
-                              np.sum([n == class_label for n in gt_labels]))
+            sampled_num = int(
+                max_sample_num - np.sum([n == class_label for n in gt_labels])
+            )
             sampled_num = np.round(self.rate * sampled_num).astype(np.int64)
             sampled_num_dict[class_name] = sampled_num
             sample_num_per_class.append(sampled_num)
@@ -240,24 +248,25 @@ class DataBaseSampler(object):
         sampled_gt_bboxes = []
         avoid_coll_boxes = gt_bboxes
 
-        for class_name, sampled_num in zip(self.sample_classes,
-                                           sample_num_per_class):
+        for class_name, sampled_num in zip(self.sample_classes, sample_num_per_class):
             if sampled_num > 0:
-                sampled_cls = self.sample_class_v2(class_name, sampled_num,
-                                                   avoid_coll_boxes)
+                sampled_cls = self.sample_class_v2(
+                    class_name, sampled_num, avoid_coll_boxes
+                )
 
                 sampled += sampled_cls
                 if len(sampled_cls) > 0:
                     if len(sampled_cls) == 1:
-                        sampled_gt_box = sampled_cls[0]['box3d_lidar'][
-                            np.newaxis, ...]
+                        sampled_gt_box = sampled_cls[0]['box3d_lidar'][np.newaxis, ...]
                     else:
                         sampled_gt_box = np.stack(
-                            [s['box3d_lidar'] for s in sampled_cls], axis=0)
+                            [s['box3d_lidar'] for s in sampled_cls], axis=0
+                        )
 
                     sampled_gt_bboxes += [sampled_gt_box]
                     avoid_coll_boxes = np.concatenate(
-                        [avoid_coll_boxes, sampled_gt_box], axis=0)
+                        [avoid_coll_boxes, sampled_gt_box], axis=0
+                    )
 
         ret = None
         if len(sampled) > 0:
@@ -268,9 +277,11 @@ class DataBaseSampler(object):
             s_points_list = []
             count = 0
             for info in sampled:
-                file_path = os.path.join(
-                    self.data_root,
-                    info['path']) if self.data_root else info['path']
+                file_path = (
+                    os.path.join(self.data_root, info['path'])
+                    if self.data_root
+                    else info['path']
+                )
                 results = dict(lidar_points=dict(lidar_path=file_path))
                 s_points = self.points_loader(results)['points']
                 s_points.translate(info['box3d_lidar'][:3])
@@ -279,33 +290,29 @@ class DataBaseSampler(object):
 
                 s_points_list.append(s_points)
 
-            gt_labels = np.array([self.cat2label[s['name']] for s in sampled],
-                                 dtype=np.long)
+            gt_labels = np.array(
+                [self.cat2label[s['name']] for s in sampled], dtype=np.long
+            )
 
             if ground_plane is not None:
                 xyz = sampled_gt_bboxes[:, :3]
-                dz = (ground_plane[:3][None, :] *
-                      xyz).sum(-1) + ground_plane[3]
+                dz = (ground_plane[:3][None, :] * xyz).sum(-1) + ground_plane[3]
                 sampled_gt_bboxes[:, 2] -= dz
                 for i, s_points in enumerate(s_points_list):
                     s_points.tensor[:, 2].sub_(dz[i])
 
             ret = {
-                'gt_labels_3d':
-                gt_labels,
-                'gt_bboxes_3d':
-                sampled_gt_bboxes,
-                'points':
-                s_points_list[0].cat(s_points_list),
-                'group_ids':
-                np.arange(gt_bboxes.shape[0],
-                          gt_bboxes.shape[0] + len(sampled))
+                'gt_labels_3d': gt_labels,
+                'gt_bboxes_3d': sampled_gt_bboxes,
+                'points': s_points_list[0].cat(s_points_list),
+                'group_ids': np.arange(
+                    gt_bboxes.shape[0], gt_bboxes.shape[0] + len(sampled)
+                ),
             }
 
         return ret
 
-    def sample_class_v2(self, name: str, num: int,
-                        gt_bboxes: np.ndarray) -> List[dict]:
+    def sample_class_v2(self, name: str, num: int, gt_bboxes: np.ndarray) -> List[dict]:
         """Sampling specific categories of bounding boxes.
 
         Args:
@@ -321,14 +328,16 @@ class DataBaseSampler(object):
         num_gt = gt_bboxes.shape[0]
         num_sampled = len(sampled)
         gt_bboxes_bv = box_np_ops.center_to_corner_box2d(
-            gt_bboxes[:, 0:2], gt_bboxes[:, 3:5], gt_bboxes[:, 6])
+            gt_bboxes[:, 0:2], gt_bboxes[:, 3:5], gt_bboxes[:, 6]
+        )
 
         sp_boxes = np.stack([i['box3d_lidar'] for i in sampled], axis=0)
         boxes = np.concatenate([gt_bboxes, sp_boxes], axis=0).copy()
 
-        sp_boxes_new = boxes[gt_bboxes.shape[0]:]
+        sp_boxes_new = boxes[gt_bboxes.shape[0] :]
         sp_boxes_bv = box_np_ops.center_to_corner_box2d(
-            sp_boxes_new[:, 0:2], sp_boxes_new[:, 3:5], sp_boxes_new[:, 6])
+            sp_boxes_new[:, 0:2], sp_boxes_new[:, 3:5], sp_boxes_new[:, 6]
+        )
 
         total_bv = np.concatenate([gt_bboxes_bv, sp_boxes_bv], axis=0)
         coll_mat = data_augment_utils.box_collision_test(total_bv, total_bv)

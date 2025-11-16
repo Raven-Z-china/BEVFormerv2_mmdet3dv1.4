@@ -14,8 +14,7 @@ from mmdet3d.models.layers.spconv import IS_SPCONV2_AVAILABLE
 from mmdet3d.utils.typing_utils import InstanceList
 
 if IS_SPCONV2_AVAILABLE:
-    from spconv.pytorch import (SparseConvTensor, SparseMaxPool3d,
-                                SparseSequential)
+    from spconv.pytorch import SparseConvTensor, SparseMaxPool3d, SparseSequential
 else:
     from mmcv.ops import SparseConvTensor, SparseMaxPool3d, SparseSequential
 
@@ -24,8 +23,11 @@ from torch import nn as nn
 
 from mmdet3d.models.layers import nms_bev, nms_normal_bev
 from mmdet3d.registry import MODELS, TASK_UTILS
-from mmdet3d.structures.bbox_3d import (LiDARInstance3DBoxes,
-                                        rotation_3d_in_axis, xywhr2xyxyr)
+from mmdet3d.structures.bbox_3d import (
+    LiDARInstance3DBoxes,
+    rotation_3d_in_axis,
+    xywhr2xyxyr,
+)
 from mmdet3d.utils.typing_utils import SamplingResultList
 
 
@@ -60,31 +62,30 @@ class PartA2BboxHead(BaseModule):
         loss_cls (dict, optional): Config dict of classifacation loss.
     """
 
-    def __init__(self,
-                 num_classes: int,
-                 seg_in_channels: int,
-                 part_in_channels: int,
-                 seg_conv_channels: List[int] = None,
-                 part_conv_channels: List[int] = None,
-                 merge_conv_channels: List[int] = None,
-                 down_conv_channels: List[int] = None,
-                 shared_fc_channels: List[int] = None,
-                 cls_channels: List[int] = None,
-                 reg_channels: List[int] = None,
-                 dropout_ratio: float = 0.1,
-                 roi_feat_size: int = 14,
-                 with_corner_loss: bool = True,
-                 bbox_coder: dict = dict(type='DeltaXYZWLHRBBoxCoder'),
-                 conv_cfg: dict = dict(type='Conv1d'),
-                 norm_cfg: dict = dict(type='BN1d', eps=1e-3, momentum=0.01),
-                 loss_bbox: dict = dict(
-                     type='SmoothL1Loss', beta=1.0 / 9.0, loss_weight=2.0),
-                 loss_cls: dict = dict(
-                     type='CrossEntropyLoss',
-                     use_sigmoid=True,
-                     reduction='none',
-                     loss_weight=1.0),
-                 init_cfg: dict = None) -> None:
+    def __init__(
+        self,
+        num_classes: int,
+        seg_in_channels: int,
+        part_in_channels: int,
+        seg_conv_channels: List[int] = None,
+        part_conv_channels: List[int] = None,
+        merge_conv_channels: List[int] = None,
+        down_conv_channels: List[int] = None,
+        shared_fc_channels: List[int] = None,
+        cls_channels: List[int] = None,
+        reg_channels: List[int] = None,
+        dropout_ratio: float = 0.1,
+        roi_feat_size: int = 14,
+        with_corner_loss: bool = True,
+        bbox_coder: dict = dict(type='DeltaXYZWLHRBBoxCoder'),
+        conv_cfg: dict = dict(type='Conv1d'),
+        norm_cfg: dict = dict(type='BN1d', eps=1e-3, momentum=0.01),
+        loss_bbox: dict = dict(type='SmoothL1Loss', beta=1.0 / 9.0, loss_weight=2.0),
+        loss_cls: dict = dict(
+            type='CrossEntropyLoss', use_sigmoid=True, reduction='none', loss_weight=1.0
+        ),
+        init_cfg: dict = None,
+    ) -> None:
         super(PartA2BboxHead, self).__init__(init_cfg=init_cfg)
         self.num_classes = num_classes
         self.with_corner_loss = with_corner_loss
@@ -107,7 +108,9 @@ class PartA2BboxHead(BaseModule):
                     padding=1,
                     norm_cfg=norm_cfg,
                     indice_key=f'rcnn_part{i}',
-                    conv_type='SubMConv3d'))
+                    conv_type='SubMConv3d',
+                )
+            )
             part_channel_last = channel
         self.part_conv = SparseSequential(*part_conv)
 
@@ -122,7 +125,9 @@ class PartA2BboxHead(BaseModule):
                     padding=1,
                     norm_cfg=norm_cfg,
                     indice_key=f'rcnn_seg{i}',
-                    conv_type='SubMConv3d'))
+                    conv_type='SubMConv3d',
+                )
+            )
             seg_channel_last = channel
         self.seg_conv = SparseSequential(*seg_conv)
 
@@ -138,7 +143,9 @@ class PartA2BboxHead(BaseModule):
                     3,
                     padding=1,
                     norm_cfg=norm_cfg,
-                    indice_key='rcnn_down0'))
+                    indice_key='rcnn_down0',
+                )
+            )
             merge_conv_channel_last = channel
 
         down_conv_channel_last = merge_conv_channel_last
@@ -151,12 +158,15 @@ class PartA2BboxHead(BaseModule):
                     3,
                     padding=1,
                     norm_cfg=norm_cfg,
-                    indice_key='rcnn_down1'))
+                    indice_key='rcnn_down1',
+                )
+            )
             down_conv_channel_last = channel
 
         self.conv_down.add_module('merge_conv', SparseSequential(*merge_conv))
-        self.conv_down.add_module('max_pool3d',
-                                  SparseMaxPool3d(kernel_size=2, stride=2))
+        self.conv_down.add_module(
+            'max_pool3d', SparseMaxPool3d(kernel_size=2, stride=2)
+        )
         self.conv_down.add_module('down_conv', SparseSequential(*conv_down))
 
         shared_fc_list = []
@@ -171,7 +181,9 @@ class PartA2BboxHead(BaseModule):
                     padding=0,
                     conv_cfg=conv_cfg,
                     norm_cfg=norm_cfg,
-                    inplace=True))
+                    inplace=True,
+                )
+            )
             pre_channel = shared_fc_channels[k]
 
             if k != len(shared_fc_channels) - 1 and dropout_ratio > 0:
@@ -193,16 +205,15 @@ class PartA2BboxHead(BaseModule):
                     padding=0,
                     conv_cfg=conv_cfg,
                     norm_cfg=norm_cfg,
-                    inplace=True))
+                    inplace=True,
+                )
+            )
             pre_channel = cls_channels[k]
         cls_layers.append(
             ConvModule(
-                pre_channel,
-                cls_channel,
-                1,
-                padding=0,
-                conv_cfg=conv_cfg,
-                act_cfg=None))
+                pre_channel, cls_channel, 1, padding=0, conv_cfg=conv_cfg, act_cfg=None
+            )
+        )
         if dropout_ratio >= 0:
             cls_layers.insert(1, nn.Dropout(dropout_ratio))
 
@@ -220,7 +231,9 @@ class PartA2BboxHead(BaseModule):
                     padding=0,
                     conv_cfg=conv_cfg,
                     norm_cfg=norm_cfg,
-                    inplace=True))
+                    inplace=True,
+                )
+            )
             pre_channel = reg_channels[k]
         reg_layers.append(
             ConvModule(
@@ -229,7 +242,9 @@ class PartA2BboxHead(BaseModule):
                 1,
                 padding=0,
                 conv_cfg=conv_cfg,
-                act_cfg=None))
+                act_cfg=None,
+            )
+        )
         if dropout_ratio >= 0:
             reg_layers.insert(1, nn.Dropout(dropout_ratio))
 
@@ -237,9 +252,8 @@ class PartA2BboxHead(BaseModule):
 
         if init_cfg is None:
             self.init_cfg = dict(
-                type='Xavier',
-                layer=['Conv2d', 'Conv1d'],
-                distribution='uniform')
+                type='Xavier', layer=['Conv2d', 'Conv1d'], distribution='uniform'
+            )
 
     def init_weights(self):
         super().init_weights()
@@ -263,24 +277,28 @@ class PartA2BboxHead(BaseModule):
         # (non_empty_num, 4) ==> [bs_idx, x_idx, y_idx, z_idx]
         sparse_idx = part_feats.sum(dim=-1).nonzero(as_tuple=False)
 
-        part_features = part_feats[sparse_idx[:, 0], sparse_idx[:, 1],
-                                   sparse_idx[:, 2], sparse_idx[:, 3]]
-        seg_features = seg_feats[sparse_idx[:, 0], sparse_idx[:, 1],
-                                 sparse_idx[:, 2], sparse_idx[:, 3]]
+        part_features = part_feats[
+            sparse_idx[:, 0], sparse_idx[:, 1], sparse_idx[:, 2], sparse_idx[:, 3]
+        ]
+        seg_features = seg_feats[
+            sparse_idx[:, 0], sparse_idx[:, 1], sparse_idx[:, 2], sparse_idx[:, 3]
+        ]
         coords = sparse_idx.int().contiguous()
-        part_features = SparseConvTensor(part_features, coords, sparse_shape,
-                                         rcnn_batch_size)
-        seg_features = SparseConvTensor(seg_features, coords, sparse_shape,
-                                        rcnn_batch_size)
+        part_features = SparseConvTensor(
+            part_features, coords, sparse_shape, rcnn_batch_size
+        )
+        seg_features = SparseConvTensor(
+            seg_features, coords, sparse_shape, rcnn_batch_size
+        )
 
         # forward rcnn network
         x_part = self.part_conv(part_features)
         x_rpn = self.seg_conv(seg_features)
 
-        merged_feature = torch.cat((x_rpn.features, x_part.features),
-                                   dim=1)  # (N, C)
-        shared_feature = SparseConvTensor(merged_feature, coords, sparse_shape,
-                                          rcnn_batch_size)
+        merged_feature = torch.cat((x_rpn.features, x_part.features), dim=1)  # (N, C)
+        shared_feature = SparseConvTensor(
+            merged_feature, coords, sparse_shape, rcnn_batch_size
+        )
 
         x = self.conv_down(shared_feature)
 
@@ -288,17 +306,27 @@ class PartA2BboxHead(BaseModule):
 
         shared_feature = self.shared_fc(shared_feature)
 
-        cls_score = self.conv_cls(shared_feature).transpose(
-            1, 2).contiguous().squeeze(dim=1)  # (B, 1)
-        bbox_pred = self.conv_reg(shared_feature).transpose(
-            1, 2).contiguous().squeeze(dim=1)  # (B, C)
+        cls_score = (
+            self.conv_cls(shared_feature).transpose(1, 2).contiguous().squeeze(dim=1)
+        )  # (B, 1)
+        bbox_pred = (
+            self.conv_reg(shared_feature).transpose(1, 2).contiguous().squeeze(dim=1)
+        )  # (B, C)
 
         return cls_score, bbox_pred
 
-    def loss(self, cls_score: Tensor, bbox_pred: Tensor, rois: Tensor,
-             labels: Tensor, bbox_targets: Tensor, pos_gt_bboxes: Tensor,
-             reg_mask: Tensor, label_weights: Tensor,
-             bbox_weights: Tensor) -> Dict:
+    def loss(
+        self,
+        cls_score: Tensor,
+        bbox_pred: Tensor,
+        rois: Tensor,
+        labels: Tensor,
+        bbox_targets: Tensor,
+        pos_gt_bboxes: Tensor,
+        reg_mask: Tensor,
+        label_weights: Tensor,
+        bbox_weights: Tensor,
+    ) -> Dict:
         """Computing losses.
 
         Args:
@@ -329,7 +357,7 @@ class PartA2BboxHead(BaseModule):
 
         # calculate regression loss
         code_size = self.bbox_coder.code_size
-        pos_inds = (reg_mask > 0)
+        pos_inds = reg_mask > 0
         if pos_inds.any() == 0:
             # fake a part loss
             losses['loss_bbox'] = loss_cls.new_tensor(0) * loss_cls.sum()
@@ -337,11 +365,14 @@ class PartA2BboxHead(BaseModule):
                 losses['loss_corner'] = loss_cls.new_tensor(0) * loss_cls.sum()
         else:
             pos_bbox_pred = bbox_pred.view(rcnn_batch_size, -1)[pos_inds]
-            bbox_weights_flat = bbox_weights[pos_inds].view(-1, 1).repeat(
-                1, pos_bbox_pred.shape[-1])
+            bbox_weights_flat = (
+                bbox_weights[pos_inds].view(-1, 1).repeat(1, pos_bbox_pred.shape[-1])
+            )
             loss_bbox = self.loss_bbox(
-                pos_bbox_pred.unsqueeze(dim=0), bbox_targets.unsqueeze(dim=0),
-                bbox_weights_flat.unsqueeze(dim=0))
+                pos_bbox_pred.unsqueeze(dim=0),
+                bbox_targets.unsqueeze(dim=0),
+                bbox_weights_flat.unsqueeze(dim=0),
+            )
             losses['loss_bbox'] = loss_bbox
 
             if self.with_corner_loss:
@@ -353,27 +384,27 @@ class PartA2BboxHead(BaseModule):
                 batch_anchors[..., 0:3] = 0
                 # decode boxes
                 pred_boxes3d = self.bbox_coder.decode(
-                    batch_anchors,
-                    pos_bbox_pred.view(-1, code_size)).view(-1, code_size)
+                    batch_anchors, pos_bbox_pred.view(-1, code_size)
+                ).view(-1, code_size)
 
                 pred_boxes3d[..., 0:3] = rotation_3d_in_axis(
-                    pred_boxes3d[..., 0:3].unsqueeze(1),
-                    pos_rois_rotation,
-                    axis=2).squeeze(1)
+                    pred_boxes3d[..., 0:3].unsqueeze(1), pos_rois_rotation, axis=2
+                ).squeeze(1)
 
                 pred_boxes3d[:, 0:3] += roi_xyz
 
                 # calculate corner loss
-                loss_corner = self.get_corner_loss_lidar(
-                    pred_boxes3d, pos_gt_bboxes)
+                loss_corner = self.get_corner_loss_lidar(pred_boxes3d, pos_gt_bboxes)
                 losses['loss_corner'] = loss_corner
 
         return losses
 
-    def get_targets(self,
-                    sampling_results: SamplingResultList,
-                    rcnn_train_cfg: dict,
-                    concat: bool = True) -> Tuple[Tensor]:
+    def get_targets(
+        self,
+        sampling_results: SamplingResultList,
+        rcnn_train_cfg: dict,
+        concat: bool = True,
+    ) -> Tuple[Tensor]:
         """Generate targets.
 
         Args:
@@ -393,10 +424,17 @@ class PartA2BboxHead(BaseModule):
             pos_bboxes_list,
             pos_gt_bboxes_list,
             iou_list,
-            cfg=rcnn_train_cfg)
+            cfg=rcnn_train_cfg,
+        )
 
-        (label, bbox_targets, pos_gt_bboxes, reg_mask, label_weights,
-         bbox_weights) = targets
+        (
+            label,
+            bbox_targets,
+            pos_gt_bboxes,
+            reg_mask,
+            label_weights,
+            bbox_weights,
+        ) = targets
 
         if concat:
             label = torch.cat(label, 0)
@@ -410,11 +448,18 @@ class PartA2BboxHead(BaseModule):
             bbox_weights = torch.cat(bbox_weights, 0)
             bbox_weights /= torch.clamp(bbox_weights.sum(), min=1.0)
 
-        return (label, bbox_targets, pos_gt_bboxes, reg_mask, label_weights,
-                bbox_weights)
+        return (
+            label,
+            bbox_targets,
+            pos_gt_bboxes,
+            reg_mask,
+            label_weights,
+            bbox_weights,
+        )
 
-    def _get_target_single(self, pos_bboxes: Tensor, pos_gt_bboxes: Tensor,
-                           ious: Tensor, cfg: dict) -> Tuple[Tensor]:
+    def _get_target_single(
+        self, pos_bboxes: Tensor, pos_gt_bboxes: Tensor, ious: Tensor, cfg: dict
+    ) -> Tuple[Tensor]:
         """Generate training targets for a single sample.
 
         Args:
@@ -443,7 +488,7 @@ class PartA2BboxHead(BaseModule):
 
         # box regression target
         reg_mask = pos_bboxes.new_zeros(ious.size(0)).long()
-        reg_mask[0:pos_gt_bboxes.size(0)] = 1
+        reg_mask[0 : pos_gt_bboxes.size(0)] = 1
         bbox_weights = (reg_mask > 0).float()
         if reg_mask.bool().any():
             pos_gt_bboxes_ct = pos_gt_bboxes.clone().detach()
@@ -454,14 +499,15 @@ class PartA2BboxHead(BaseModule):
             pos_gt_bboxes_ct[..., 0:3] -= roi_center
             pos_gt_bboxes_ct[..., 6] -= roi_ry
             pos_gt_bboxes_ct[..., 0:3] = rotation_3d_in_axis(
-                pos_gt_bboxes_ct[..., 0:3].unsqueeze(1), -roi_ry,
-                axis=2).squeeze(1)
+                pos_gt_bboxes_ct[..., 0:3].unsqueeze(1), -roi_ry, axis=2
+            ).squeeze(1)
 
             # flip orientation if rois have opposite orientation
             ry_label = pos_gt_bboxes_ct[..., 6] % (2 * np.pi)  # 0 ~ 2pi
             opposite_flag = (ry_label > np.pi * 0.5) & (ry_label < np.pi * 1.5)
             ry_label[opposite_flag] = (ry_label[opposite_flag] + np.pi) % (
-                2 * np.pi)  # (0 ~ pi/2, 3pi/2 ~ 2pi)
+                2 * np.pi
+            )  # (0 ~ pi/2, 3pi/2 ~ 2pi)
             flag = ry_label > np.pi
             ry_label[flag] = ry_label[flag] - np.pi * 2  # (-pi/2, pi/2)
             ry_label = torch.clamp(ry_label, min=-np.pi / 2, max=np.pi / 2)
@@ -470,19 +516,23 @@ class PartA2BboxHead(BaseModule):
             rois_anchor = pos_bboxes.clone().detach()
             rois_anchor[:, 0:3] = 0
             rois_anchor[:, 6] = 0
-            bbox_targets = self.bbox_coder.encode(rois_anchor,
-                                                  pos_gt_bboxes_ct)
+            bbox_targets = self.bbox_coder.encode(rois_anchor, pos_gt_bboxes_ct)
         else:
             # no fg bbox
             bbox_targets = pos_gt_bboxes.new_empty((0, 7))
 
-        return (label, bbox_targets, pos_gt_bboxes, reg_mask, label_weights,
-                bbox_weights)
+        return (
+            label,
+            bbox_targets,
+            pos_gt_bboxes,
+            reg_mask,
+            label_weights,
+            bbox_weights,
+        )
 
-    def get_corner_loss_lidar(self,
-                              pred_bbox3d: Tensor,
-                              gt_bbox3d: Tensor,
-                              delta: float = 1.0) -> Tensor:
+    def get_corner_loss_lidar(
+        self, pred_bbox3d: Tensor, gt_bbox3d: Tensor, delta: float = 1.0
+    ) -> Tensor:
         """Calculate corner loss of given boxes.
 
         Args:
@@ -508,24 +558,26 @@ class PartA2BboxHead(BaseModule):
 
         corner_dist = torch.min(
             torch.norm(pred_box_corners - gt_box_corners, dim=2),
-            torch.norm(pred_box_corners - gt_box_corners_flip,
-                       dim=2))  # (N, 8)
+            torch.norm(pred_box_corners - gt_box_corners_flip, dim=2),
+        )  # (N, 8)
         # huber loss
         abs_error = corner_dist.abs()
         quadratic = abs_error.clamp(max=delta)
-        linear = (abs_error - quadratic)
+        linear = abs_error - quadratic
         corner_loss = 0.5 * quadratic**2 + delta * linear
 
         return corner_loss.mean(dim=1)
 
-    def get_results(self,
-                    rois: Tensor,
-                    cls_score: Tensor,
-                    bbox_pred: Tensor,
-                    class_labels: Tensor,
-                    class_pred: Tensor,
-                    input_metas: List[dict],
-                    cfg: dict = None) -> InstanceList:
+    def get_results(
+        self,
+        rois: Tensor,
+        cls_score: Tensor,
+        bbox_pred: Tensor,
+        class_labels: Tensor,
+        class_pred: Tensor,
+        input_metas: List[dict],
+        cfg: dict = None,
+    ) -> InstanceList:
         """Generate bboxes from bbox head predictions.
 
         Args:
@@ -561,7 +613,8 @@ class PartA2BboxHead(BaseModule):
         local_roi_boxes[..., 0:3] = 0
         rcnn_boxes3d = self.bbox_coder.decode(local_roi_boxes, bbox_pred)
         rcnn_boxes3d[..., 0:3] = rotation_3d_in_axis(
-            rcnn_boxes3d[..., 0:3].unsqueeze(1), roi_ry, axis=2).squeeze(1)
+            rcnn_boxes3d[..., 0:3].unsqueeze(1), roi_ry, axis=2
+        ).squeeze(1)
         rcnn_boxes3d[:, 0:3] += roi_xyz
 
         # post processing
@@ -572,30 +625,37 @@ class PartA2BboxHead(BaseModule):
 
             cur_box_prob = class_pred[batch_id]
             cur_rcnn_boxes3d = rcnn_boxes3d[roi_batch_id == batch_id]
-            keep = self.multi_class_nms(cur_box_prob, cur_rcnn_boxes3d,
-                                        cfg.score_thr, cfg.nms_thr,
-                                        input_metas[batch_id],
-                                        cfg.use_rotate_nms)
+            keep = self.multi_class_nms(
+                cur_box_prob,
+                cur_rcnn_boxes3d,
+                cfg.score_thr,
+                cfg.nms_thr,
+                input_metas[batch_id],
+                cfg.use_rotate_nms,
+            )
             selected_bboxes = cur_rcnn_boxes3d[keep]
             selected_label_preds = cur_class_labels[keep]
             selected_scores = cur_cls_score[keep]
 
             results = InstanceData()
             results.bboxes_3d = input_metas[batch_id]['box_type_3d'](
-                selected_bboxes, self.bbox_coder.code_size)
+                selected_bboxes, self.bbox_coder.code_size
+            )
             results.scores_3d = selected_scores
             results.labels_3d = selected_label_preds
 
             result_list.append(results)
         return result_list
 
-    def multi_class_nms(self,
-                        box_probs: Tensor,
-                        box_preds: Tensor,
-                        score_thr: float,
-                        nms_thr: float,
-                        input_meta: dict,
-                        use_rotate_nms: bool = True) -> Tensor:
+    def multi_class_nms(
+        self,
+        box_probs: Tensor,
+        box_preds: Tensor,
+        score_thr: float,
+        nms_thr: float,
+        input_meta: dict,
+        use_rotate_nms: bool = True,
+    ) -> Tensor:
         """Multi-class NMS for box head.
 
         Note:
@@ -621,38 +681,48 @@ class PartA2BboxHead(BaseModule):
         else:
             nms_func = nms_normal_bev
 
-        assert box_probs.shape[
-            1] == self.num_classes, f'box_probs shape: {str(box_probs.shape)}'
+        assert (
+            box_probs.shape[1] == self.num_classes
+        ), f'box_probs shape: {str(box_probs.shape)}'
         selected_list = []
         selected_labels = []
-        boxes_for_nms = xywhr2xyxyr(input_meta['box_type_3d'](
-            box_preds, self.bbox_coder.code_size).bev)
+        boxes_for_nms = xywhr2xyxyr(
+            input_meta['box_type_3d'](box_preds, self.bbox_coder.code_size).bev
+        )
 
-        score_thresh = score_thr if isinstance(
-            score_thr, list) else [score_thr for x in range(self.num_classes)]
-        nms_thresh = nms_thr if isinstance(
-            nms_thr, list) else [nms_thr for x in range(self.num_classes)]
+        score_thresh = (
+            score_thr
+            if isinstance(score_thr, list)
+            else [score_thr for x in range(self.num_classes)]
+        )
+        nms_thresh = (
+            nms_thr
+            if isinstance(nms_thr, list)
+            else [nms_thr for x in range(self.num_classes)]
+        )
         for k in range(0, self.num_classes):
             class_scores_keep = box_probs[:, k] >= score_thresh[k]
 
             if class_scores_keep.int().sum() > 0:
-                original_idxs = class_scores_keep.nonzero(
-                    as_tuple=False).view(-1)
+                original_idxs = class_scores_keep.nonzero(as_tuple=False).view(-1)
                 cur_boxes_for_nms = boxes_for_nms[class_scores_keep]
                 cur_rank_scores = box_probs[class_scores_keep, k]
 
-                cur_selected = nms_func(cur_boxes_for_nms, cur_rank_scores,
-                                        nms_thresh[k])
+                cur_selected = nms_func(
+                    cur_boxes_for_nms, cur_rank_scores, nms_thresh[k]
+                )
 
                 if cur_selected.shape[0] == 0:
                     continue
                 selected_list.append(original_idxs[cur_selected])
                 selected_labels.append(
-                    torch.full([cur_selected.shape[0]],
-                               k + 1,
-                               dtype=torch.int64,
-                               device=box_preds.device))
+                    torch.full(
+                        [cur_selected.shape[0]],
+                        k + 1,
+                        dtype=torch.int64,
+                        device=box_preds.device,
+                    )
+                )
 
-        keep = torch.cat(
-            selected_list, dim=0) if len(selected_list) > 0 else []
+        keep = torch.cat(selected_list, dim=0) if len(selected_list) > 0 else []
         return keep

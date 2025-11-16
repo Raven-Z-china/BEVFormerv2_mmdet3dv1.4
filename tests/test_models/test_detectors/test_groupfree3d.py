@@ -4,12 +4,10 @@ import torch
 from mmengine import DefaultScope
 
 from mmdet3d.registry import MODELS
-from mmdet3d.testing import (create_detector_inputs, get_detector_cfg,
-                             setup_seed)
+from mmdet3d.testing import create_detector_inputs, get_detector_cfg, setup_seed
 
 
 class TestGroupfree3d(unittest.TestCase):
-
     def test_groupfree3d(self):
         import mmdet3d.models
 
@@ -17,14 +15,16 @@ class TestGroupfree3d(unittest.TestCase):
         DefaultScope.get_instance('test_groupfree3d', scope_name='mmdet3d')
         setup_seed(0)
         voxel_net_cfg = get_detector_cfg(
-            'groupfree3d/groupfree3d_head-L6-O256_4xb8_scannet-seg.py')
+            'groupfree3d/groupfree3d_head-L6-O256_4xb8_scannet-seg.py'
+        )
         model = MODELS.build(voxel_net_cfg)
         num_gt_instance = 5
         packed_inputs = create_detector_inputs(
             num_gt_instance=num_gt_instance,
             points_feat_dim=3,
             with_pts_semantic_mask=True,
-            with_pts_instance_mask=True)
+            with_pts_instance_mask=True,
+        )
 
         if torch.cuda.is_available():
             model = model.cuda()

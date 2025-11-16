@@ -6,17 +6,18 @@ import torch
 from torch import Tensor
 
 
-def get_edge_indices(img_metas: List[dict],
-                     downsample_ratio: int,
-                     step: int = 1,
-                     pad_mode: str = 'default',
-                     dtype: type = np.float32,
-                     device: str = 'cpu') -> List[Tensor]:
-    """Function to filter the objects label outside the image.
-    The edge_indices are generated using numpy on cpu rather
-    than on CUDA due to the latency issue. When batch size = 8,
-    this function with numpy array is ~8 times faster than that
-    with CUDA tensor (0.09s and 0.72s in 100 runs).
+def get_edge_indices(
+    img_metas: List[dict],
+    downsample_ratio: int,
+    step: int = 1,
+    pad_mode: str = 'default',
+    dtype: type = np.float32,
+    device: str = 'cpu',
+) -> List[Tensor]:
+    """Function to filter the objects label outside the image. The edge_indices
+    are generated using numpy on cpu rather than on CUDA due to the latency
+    issue. When batch size = 8, this function with numpy array is ~8 times
+    faster than that with CUDA tensor (0.09s and 0.72s in 100 runs).
 
     Args:
         img_metas (List[dict]): Meta information of each image, e.g.,
@@ -83,8 +84,7 @@ def get_edge_indices(img_metas: List[dict],
         edge_indices_edge = np.stack((x, y), axis=1)
         edge_indices.append(edge_indices_edge)
 
-        edge_indices = \
-            np.concatenate([index for index in edge_indices], axis=0)
+        edge_indices = np.concatenate([index for index in edge_indices], axis=0)
         edge_indices = torch.from_numpy(edge_indices).to(device).long()
         edge_indices_list.append(edge_indices)
 

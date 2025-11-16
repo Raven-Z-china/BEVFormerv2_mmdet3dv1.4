@@ -21,13 +21,15 @@ def parse_args():
         type=int,
         nargs='+',
         default=[40000, 4],
-        help='input point cloud size')
+        help='input point cloud size',
+    )
     parser.add_argument(
         '--modality',
         type=str,
         default='point',
         choices=['point', 'image', 'multi'],
-        help='input data modality')
+        help='input data modality',
+    )
     parser.add_argument(
         '--cfg-options',
         nargs='+',
@@ -37,7 +39,8 @@ def parse_args():
         'be overwritten is a list, it should be like key="[a,b]" or key=a,b '
         'It also allows nested list/tuple values, e.g. key="[(a,b),(c,d)]" '
         'Note that the quotation marks are necessary and that no white space '
-        'is allowed.')
+        'is allowed.',
+    )
     args = parser.parse_args()
     return args
 
@@ -52,13 +55,14 @@ def main():
         if len(args.shape) == 1:
             input_shape = (3, args.shape[0], args.shape[0])
         elif len(args.shape) == 2:
-            input_shape = (3, ) + tuple(args.shape)
+            input_shape = (3,) + tuple(args.shape)
         else:
             raise ValueError('invalid input shape')
     elif args.modality == 'multi':
         raise NotImplementedError(
             'FLOPs counter is currently not supported for models with '
-            'multi-modality input')
+            'multi-modality input'
+        )
 
     cfg = Config.fromfile(args.config)
     if args.cfg_options is not None:
@@ -72,11 +76,15 @@ def main():
 
     flops, params = get_model_complexity_info(model, input_shape)
     split_line = '=' * 30
-    print(f'{split_line}\nInput shape: {input_shape}\n'
-          f'Flops: {flops}\nParams: {params}\n{split_line}')
-    print('!!!Please be cautious if you use the results in papers. '
-          'You may need to check if all ops are supported and verify that the '
-          'flops computation is correct.')
+    print(
+        f'{split_line}\nInput shape: {input_shape}\n'
+        f'Flops: {flops}\nParams: {params}\n{split_line}'
+    )
+    print(
+        '!!!Please be cautious if you use the results in papers. '
+        'You may need to check if all ops are supported and verify that the '
+        'flops computation is correct.'
+    )
 
 
 if __name__ == '__main__':

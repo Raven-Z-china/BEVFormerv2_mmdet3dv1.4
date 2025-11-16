@@ -25,11 +25,13 @@ class DGCNNFAModule(BaseModule):
             optional): Initialization config dict. Defaults to None.
     """
 
-    def __init__(self,
-                 mlp_channels: List[int],
-                 norm_cfg: ConfigType = dict(type='BN1d'),
-                 act_cfg: ConfigType = dict(type='ReLU'),
-                 init_cfg: OptMultiConfig = None) -> None:
+    def __init__(
+        self,
+        mlp_channels: List[int],
+        norm_cfg: ConfigType = dict(type='BN1d'),
+        act_cfg: ConfigType = dict(type='ReLU'),
+        init_cfg: OptMultiConfig = None,
+    ) -> None:
         super(DGCNNFAModule, self).__init__(init_cfg=init_cfg)
         self.mlps = nn.Sequential()
         for i in range(len(mlp_channels) - 1):
@@ -38,11 +40,13 @@ class DGCNNFAModule(BaseModule):
                 ConvModule(
                     mlp_channels[i],
                     mlp_channels[i + 1],
-                    kernel_size=(1, ),
-                    stride=(1, ),
+                    kernel_size=(1,),
+                    stride=(1,),
                     conv_cfg=dict(type='Conv1d'),
                     norm_cfg=norm_cfg,
-                    act_cfg=act_cfg))
+                    act_cfg=act_cfg,
+                ),
+            )
 
     def forward(self, points: List[Tensor]) -> Tensor:
         """forward.

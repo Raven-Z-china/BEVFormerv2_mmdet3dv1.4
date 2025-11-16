@@ -3,7 +3,6 @@ import logging
 from functools import wraps
 
 import torch.distributed as dist
-
 from detectron2.utils import comm as d2_comm
 
 LOG = logging.getLogger(__name__)
@@ -16,12 +15,14 @@ def is_distributed():
 
 
 def broadcast_from_master(fn):
-    """If distributed, only the master executes the function and broadcast the results to other workers.
+    """If distributed, only the master executes the function and broadcast the
+    results to other workers.
 
     Usage:
     @broadcast_from_master
     def foo(a, b): ...
     """
+
     @wraps(fn)
     def wrapper(*args, **kwargs):  # pylint: disable=unused-argument
         global _NESTED_BROADCAST_FROM_MASTER
@@ -31,15 +32,19 @@ def broadcast_from_master(fn):
 
         if _NESTED_BROADCAST_FROM_MASTER:
             assert d2_comm.is_main_process()
-            LOG.warning(f"_NESTED_BROADCAST_FROM_MASTER = True, {fn.__name__}")
+            LOG.warning(f'_NESTED_BROADCAST_FROM_MASTER = True, {fn.__name__}')
             return fn(*args, **kwargs)
 
         if d2_comm.is_main_process():
             _NESTED_BROADCAST_FROM_MASTER = True
-            ret = [fn(*args, **kwargs), ]
+            ret = [
+                fn(*args, **kwargs),
+            ]
             _NESTED_BROADCAST_FROM_MASTER = False
         else:
-            ret = [None, ]
+            ret = [
+                None,
+            ]
         if dist.is_initialized():
             dist.broadcast_object_list(ret)
         ret = ret[0]
@@ -57,6 +62,7 @@ def master_only(fn):
     @master_only
     def foo(a, b): ...
     """
+
     @wraps(fn)
     def wrapped_fn(*args, **kwargs):
         if d2_comm.is_main_process():
@@ -81,7 +87,7 @@ def gather_dict(dikt):
         gathered_dict = {}
         for dic in dict_lst:
             for k in dic.keys():
-                assert k not in gathered_dict, f"Dictionary key overlaps: {k}"
+                assert k not in gathered_dict, f'Dictionary key overlaps: {k}'
             gathered_dict.update(dic)
         return gathered_dict
     else:

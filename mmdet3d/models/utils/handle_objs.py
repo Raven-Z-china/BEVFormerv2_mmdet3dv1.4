@@ -7,12 +7,14 @@ from torch import Tensor
 from mmdet3d.structures import CameraInstance3DBoxes
 
 
-def filter_outside_objs(gt_bboxes_list: List[Tensor],
-                        gt_labels_list: List[Tensor],
-                        gt_bboxes_3d_list: List[CameraInstance3DBoxes],
-                        gt_labels_3d_list: List[Tensor],
-                        centers2d_list: List[Tensor],
-                        img_metas: List[dict]) -> None:
+def filter_outside_objs(
+    gt_bboxes_list: List[Tensor],
+    gt_labels_list: List[Tensor],
+    gt_bboxes_3d_list: List[CameraInstance3DBoxes],
+    gt_labels_3d_list: List[Tensor],
+    centers2d_list: List[Tensor],
+    img_metas: List[dict],
+) -> None:
     """Function to filter the objects label outside the image.
 
     Args:
@@ -35,10 +37,12 @@ def filter_outside_objs(gt_bboxes_list: List[Tensor],
     for i in range(bs):
         centers2d = centers2d_list[i].clone()
         img_shape = img_metas[i]['img_shape']
-        keep_inds = (centers2d[:, 0] > 0) & \
-                    (centers2d[:, 0] < img_shape[1]) & \
-                    (centers2d[:, 1] > 0) & \
-                    (centers2d[:, 1] < img_shape[0])
+        keep_inds = (
+            (centers2d[:, 0] > 0)
+            & (centers2d[:, 0] < img_shape[1])
+            & (centers2d[:, 1] > 0)
+            & (centers2d[:, 1] < img_shape[0])
+        )
         centers2d_list[i] = centers2d[keep_inds]
         gt_labels_list[i] = gt_labels_list[i][keep_inds]
         gt_bboxes_list[i] = gt_bboxes_list[i][keep_inds]
@@ -46,8 +50,9 @@ def filter_outside_objs(gt_bboxes_list: List[Tensor],
         gt_labels_3d_list[i] = gt_labels_3d_list[i][keep_inds]
 
 
-def get_centers2d_target(centers2d: Tensor, centers: Tensor,
-                         img_shape: tuple) -> Tensor:
+def get_centers2d_target(
+    centers2d: Tensor, centers: Tensor, img_shape: tuple
+) -> Tensor:
     """Function to get target centers2d.
 
     Args:
@@ -68,19 +73,36 @@ def get_centers2d_target(centers2d: Tensor, centers: Tensor,
     top_x = -b / a
     bottom_x = (h - 1 - b) / a
 
-    left_coors = torch.stack((left_y.new_zeros(N, ), left_y), dim=1)
-    right_coors = torch.stack((right_y.new_full((N, ), w - 1), right_y), dim=1)
-    top_coors = torch.stack((top_x, top_x.new_zeros(N, )), dim=1)
-    bottom_coors = torch.stack((bottom_x, bottom_x.new_full((N, ), h - 1)),
-                               dim=1)
+    left_coors = torch.stack(
+        (
+            left_y.new_zeros(
+                N,
+            ),
+            left_y,
+        ),
+        dim=1,
+    )
+    right_coors = torch.stack((right_y.new_full((N,), w - 1), right_y), dim=1)
+    top_coors = torch.stack(
+        (
+            top_x,
+            top_x.new_zeros(
+                N,
+            ),
+        ),
+        dim=1,
+    )
+    bottom_coors = torch.stack((bottom_x, bottom_x.new_full((N,), h - 1)), dim=1)
 
-    intersects = torch.stack(
-        [left_coors, right_coors, top_coors, bottom_coors], dim=1)
+    intersects = torch.stack([left_coors, right_coors, top_coors, bottom_coors], dim=1)
     intersects_x = intersects[:, :, 0]
     intersects_y = intersects[:, :, 1]
-    inds = (intersects_x >= 0) & (intersects_x <=
-                                  w - 1) & (intersects_y >= 0) & (
-                                      intersects_y <= h - 1)
+    inds = (
+        (intersects_x >= 0)
+        & (intersects_x <= w - 1)
+        & (intersects_y >= 0)
+        & (intersects_y <= h - 1)
+    )
     valid_intersects = intersects[inds].reshape(N, 2, 2)
     dist = torch.norm(valid_intersects - centers2d.unsqueeze(1), dim=2)
     min_idx = torch.argmin(dist, dim=1)
@@ -92,8 +114,7 @@ def get_centers2d_target(centers2d: Tensor, centers: Tensor,
 
 
 def handle_proj_objs(
-        centers2d_list: List[Tensor], gt_bboxes_list: List[Tensor],
-        img_metas: List[dict]
+    centers2d_list: List[Tensor], gt_bboxes_list: List[Tensor], img_metas: List[dict]
 ) -> Tuple[List[Tensor], List[Tensor], List[Tensor]]:
     """Function to handle projected object centers2d, generate target
     centers2d.
@@ -124,10 +145,12 @@ def handle_proj_objs(
         gt_bbox = gt_bboxes_list[i]
         img_shape = img_metas[i]['img_shape']
         centers2d_target = centers2d.clone()
-        inside_inds = (centers2d[:, 0] > 0) & \
-                      (centers2d[:, 0] < img_shape[1]) & \
-                      (centers2d[:, 1] > 0) & \
-                      (centers2d[:, 1] < img_shape[0])
+        inside_inds = (
+            (centers2d[:, 0] > 0)
+            & (centers2d[:, 0] < img_shape[1])
+            & (centers2d[:, 1] > 0)
+            & (centers2d[:, 1] < img_shape[0])
+        )
         outside_inds = ~inside_inds
 
         # if there are outside objects
@@ -136,7 +159,8 @@ def handle_proj_objs(
             outside_centers2d = centers2d[outside_inds]
             match_centers = centers[outside_inds]
             target_outside_centers2d = get_centers2d_target(
-                outside_centers2d, match_centers, img_shape)
+                outside_centers2d, match_centers, img_shape
+            )
             centers2d_target[outside_inds] = target_outside_centers2d
 
         offsets2d = centers2d - centers2d_target.round().int()

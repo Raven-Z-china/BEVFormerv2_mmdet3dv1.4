@@ -11,7 +11,8 @@ optim_wrapper = dict(
     type=OptimWrapper,
     optimizer=dict(type=AdamW, lr=lr, weight_decay=0.01),
     # max_norm=10 is better for SECOND
-    clip_grad=dict(max_norm=35, norm_type=2))
+    clip_grad=dict(max_norm=35, norm_type=2),
+)
 
 # training schedule for 2x
 train_cfg = dict(type=EpochBasedTrainLoop, max_epochs=24, val_interval=24)
@@ -20,19 +21,10 @@ test_cfg = dict(type=TestLoop)
 
 # learning rate
 param_scheduler = [
+    dict(type=LinearLR, start_factor=1.0 / 1000, by_epoch=False, begin=0, end=1000),
     dict(
-        type=LinearLR,
-        start_factor=1.0 / 1000,
-        by_epoch=False,
-        begin=0,
-        end=1000),
-    dict(
-        type=MultiStepLR,
-        begin=0,
-        end=24,
-        by_epoch=True,
-        milestones=[20, 23],
-        gamma=0.1)
+        type=MultiStepLR, begin=0, end=24, by_epoch=True, milestones=[20, 23], gamma=0.1
+    ),
 ]
 
 # Default setting for scaling LR automatically

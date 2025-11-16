@@ -4,12 +4,10 @@ import torch
 from mmengine import DefaultScope
 
 from mmdet3d.registry import MODELS
-from mmdet3d.testing import (create_detector_inputs, get_detector_cfg,
-                             setup_seed)
+from mmdet3d.testing import create_detector_inputs, get_detector_cfg, setup_seed
 
 
 class TestImvoteNet(unittest.TestCase):
-
     def test_imvotenet_only_img(self):
         import mmdet3d.models
 
@@ -17,11 +15,13 @@ class TestImvoteNet(unittest.TestCase):
         DefaultScope.get_instance('test_imvotenet_img', scope_name='mmdet3d')
         setup_seed(0)
         votenet_net_cfg = get_detector_cfg(
-            'imvotenet/imvotenet_faster-rcnn-r50_fpn_4xb2_sunrgbd-3d.py')
+            'imvotenet/imvotenet_faster-rcnn-r50_fpn_4xb2_sunrgbd-3d.py'
+        )
         model = MODELS.build(votenet_net_cfg)
 
         packed_inputs = create_detector_inputs(
-            with_points=False, with_img=True, img_size=128)
+            with_points=False, with_img=True, img_size=128
+        )
 
         if torch.cuda.is_available():
             model = model.cuda()
@@ -51,14 +51,13 @@ class TestImvoteNet(unittest.TestCase):
         DefaultScope.get_instance('test_imvotenet', scope_name='mmdet3d')
         setup_seed(0)
         votenet_net_cfg = get_detector_cfg(
-            'imvotenet/imvotenet_stage2_8xb16_sunrgbd-3d.py')
+            'imvotenet/imvotenet_stage2_8xb16_sunrgbd-3d.py'
+        )
         model = MODELS.build(votenet_net_cfg)
 
         packed_inputs = create_detector_inputs(
-            with_points=True,
-            with_img=True,
-            img_size=128,
-            bboxes_3d_type='depth')
+            with_points=True, with_img=True, img_size=128, bboxes_3d_type='depth'
+        )
 
         if torch.cuda.is_available():
             model = model.cuda()

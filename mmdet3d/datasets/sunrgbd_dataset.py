@@ -46,27 +46,46 @@ class SUNRGBDDataset(Det3DDataset):
             Defaults to False.
     """
     METAINFO = {
-        'classes': ('bed', 'table', 'sofa', 'chair', 'toilet', 'desk',
-                    'dresser', 'night_stand', 'bookshelf', 'bathtub'),
-        'palette': [(255, 187, 120), (255, 152, 150), (140, 86, 75),
-                    (188, 189, 34), (44, 160, 44), (247, 182, 210),
-                    (196, 156, 148), (23, 190, 207), (148, 103, 189),
-                    (227, 119, 194)]
+        'classes': (
+            'bed',
+            'table',
+            'sofa',
+            'chair',
+            'toilet',
+            'desk',
+            'dresser',
+            'night_stand',
+            'bookshelf',
+            'bathtub',
+        ),
+        'palette': [
+            (255, 187, 120),
+            (255, 152, 150),
+            (140, 86, 75),
+            (188, 189, 34),
+            (44, 160, 44),
+            (247, 182, 210),
+            (196, 156, 148),
+            (23, 190, 207),
+            (148, 103, 189),
+            (227, 119, 194),
+        ],
     }
 
-    def __init__(self,
-                 data_root: str,
-                 ann_file: str,
-                 metainfo: Optional[dict] = None,
-                 data_prefix: dict = dict(
-                     pts='points', img='sunrgbd_trainval/image'),
-                 pipeline: List[Union[dict, Callable]] = [],
-                 default_cam_key: str = 'CAM0',
-                 modality: dict = dict(use_camera=True, use_lidar=True),
-                 box_type_3d: str = 'Depth',
-                 filter_empty_gt: bool = True,
-                 test_mode: bool = False,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        data_root: str,
+        ann_file: str,
+        metainfo: Optional[dict] = None,
+        data_prefix: dict = dict(pts='points', img='sunrgbd_trainval/image'),
+        pipeline: List[Union[dict, Callable]] = [],
+        default_cam_key: str = 'CAM0',
+        modality: dict = dict(use_camera=True, use_lidar=True),
+        box_type_3d: str = 'Depth',
+        filter_empty_gt: bool = True,
+        test_mode: bool = False,
+        **kwargs
+    ) -> None:
         super().__init__(
             data_root=data_root,
             ann_file=ann_file,
@@ -78,9 +97,9 @@ class SUNRGBDDataset(Det3DDataset):
             box_type_3d=box_type_3d,
             filter_empty_gt=filter_empty_gt,
             test_mode=test_mode,
-            **kwargs)
-        assert 'use_camera' in self.modality and \
-            'use_lidar' in self.modality
+            **kwargs
+        )
+        assert 'use_camera' in self.modality and 'use_lidar' in self.modality
         assert self.modality['use_camera'] or self.modality['use_lidar']
 
     def parse_data_info(self, info: dict) -> dict:
@@ -99,22 +118,21 @@ class SUNRGBDDataset(Det3DDataset):
         """
 
         if self.modality['use_lidar']:
-            info['lidar_points']['lidar_path'] = \
-                osp.join(
-                    self.data_prefix.get('pts', ''),
-                    info['lidar_points']['lidar_path'])
+            info['lidar_points']['lidar_path'] = osp.join(
+                self.data_prefix.get('pts', ''), info['lidar_points']['lidar_path']
+            )
 
         if self.modality['use_camera']:
             for cam_id, img_info in info['images'].items():
                 if 'img_path' in img_info:
                     img_info['img_path'] = osp.join(
-                        self.data_prefix.get('img', ''), img_info['img_path'])
+                        self.data_prefix.get('img', ''), img_info['img_path']
+                    )
             if self.default_cam_key is not None:
-                info['img_path'] = info['images'][
-                    self.default_cam_key]['img_path']
+                info['img_path'] = info['images'][self.default_cam_key]['img_path']
                 info['depth2img'] = np.array(
-                    info['images'][self.default_cam_key]['depth2img'],
-                    dtype=np.float32)
+                    info['images'][self.default_cam_key]['depth2img'], dtype=np.float32
+                )
 
         if not self.test_mode:
             # used in traing
@@ -138,10 +156,10 @@ class SUNRGBDDataset(Det3DDataset):
         if ann_info is None:
             ann_info = dict()
             ann_info['gt_bboxes_3d'] = np.zeros((0, 6), dtype=np.float32)
-            ann_info['gt_labels_3d'] = np.zeros((0, ), dtype=np.int64)
+            ann_info['gt_labels_3d'] = np.zeros((0,), dtype=np.int64)
         # to target box structure
         ann_info['gt_bboxes_3d'] = DepthInstance3DBoxes(
-            ann_info['gt_bboxes_3d'],
-            origin=(0.5, 0.5, 0.5)).convert_to(self.box_mode_3d)
+            ann_info['gt_bboxes_3d'], origin=(0.5, 0.5, 0.5)
+        ).convert_to(self.box_mode_3d)
 
         return ann_info

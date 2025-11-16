@@ -31,16 +31,18 @@ class H3DNet(TwoStage3DDetector):
             ``pad_size_divisor``, ``pad_value``, ``mean`` and ``std``.
     """
 
-    def __init__(self,
-                 backbone: dict,
-                 neck: Optional[dict] = None,
-                 rpn_head: Optional[dict] = None,
-                 roi_head: Optional[dict] = None,
-                 train_cfg: Optional[dict] = None,
-                 test_cfg: Optional[dict] = None,
-                 init_cfg: Optional[dict] = None,
-                 data_preprocessor: Optional[dict] = None,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        backbone: dict,
+        neck: Optional[dict] = None,
+        rpn_head: Optional[dict] = None,
+        roi_head: Optional[dict] = None,
+        train_cfg: Optional[dict] = None,
+        test_cfg: Optional[dict] = None,
+        init_cfg: Optional[dict] = None,
+        data_preprocessor: Optional[dict] = None,
+        **kwargs
+    ) -> None:
         super(H3DNet, self).__init__(
             backbone=backbone,
             neck=neck,
@@ -50,7 +52,8 @@ class H3DNet(TwoStage3DDetector):
             test_cfg=test_cfg,
             init_cfg=init_cfg,
             data_preprocessor=data_preprocessor,
-            **kwargs)
+            **kwargs
+        )
 
     def extract_feat(self, batch_inputs_dict: dict) -> None:
         """Directly extract features from the backbone+neck.
@@ -71,8 +74,12 @@ class H3DNet(TwoStage3DDetector):
             x = self.neck(x)
         return x
 
-    def loss(self, batch_inputs_dict: Dict[str, Union[List, Tensor]],
-             batch_data_samples: List[Det3DDataSample], **kwargs) -> dict:
+    def loss(
+        self,
+        batch_inputs_dict: Dict[str, Union[List, Tensor]],
+        batch_data_samples: List[Det3DDataSample],
+        **kwargs
+    ) -> dict:
         """
         Args:
             batch_inputs_dict (dict): The model input dict which include
@@ -95,31 +102,30 @@ class H3DNet(TwoStage3DDetector):
 
         losses = dict()
         if self.with_rpn:
-            proposal_cfg = self.train_cfg.get('rpn_proposal',
-                                              self.test_cfg.rpn)
+            proposal_cfg = self.train_cfg.get('rpn_proposal', self.test_cfg.rpn)
             # note, the feats_dict would be added new key & value in rpn_head
             rpn_losses, rpn_proposals = self.rpn_head.loss_and_predict(
                 batch_inputs_dict['points'],
                 feats_dict,
                 batch_data_samples,
                 ret_target=True,
-                proposal_cfg=proposal_cfg)
+                proposal_cfg=proposal_cfg,
+            )
             feats_dict['targets'] = rpn_losses.pop('targets')
             losses.update(rpn_losses)
             feats_dict['rpn_proposals'] = rpn_proposals
         else:
             raise NotImplementedError
 
-        roi_losses = self.roi_head.loss(batch_inputs_dict['points'],
-                                        feats_dict, batch_data_samples,
-                                        **kwargs)
+        roi_losses = self.roi_head.loss(
+            batch_inputs_dict['points'], feats_dict, batch_data_samples, **kwargs
+        )
         losses.update(roi_losses)
 
         return losses
 
     def predict(
-            self, batch_input_dict: Dict,
-            batch_data_samples: List[Det3DDataSample]
+        self, batch_input_dict: Dict, batch_data_samples: List[Det3DDataSample]
     ) -> List[Det3DDataSample]:
         """Get model predictions.
 
@@ -144,7 +150,8 @@ class H3DNet(TwoStage3DDetector):
                 batch_input_dict['points'],
                 feats_dict,
                 batch_data_samples,
-                use_nms=proposal_cfg.use_nms)
+                use_nms=proposal_cfg.use_nms,
+            )
             feats_dict['rpn_proposals'] = rpn_proposals
         else:
             raise NotImplementedError
@@ -153,5 +160,6 @@ class H3DNet(TwoStage3DDetector):
             batch_input_dict['points'],
             feats_dict,
             batch_data_samples,
-            suffix='_optimized')
+            suffix='_optimized',
+        )
         return self.add_pred_to_datasample(batch_data_samples, results_list)

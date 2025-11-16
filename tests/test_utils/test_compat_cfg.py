@@ -1,8 +1,11 @@
 import pytest
 from mmengine import ConfigDict
 
-from mmdet3d.utils.compat_cfg import (compat_imgs_per_gpu, compat_loader_args,
-                                      compat_runner_args)
+from mmdet3d.utils.compat_cfg import (
+    compat_imgs_per_gpu,
+    compat_loader_args,
+    compat_runner_args,
+)
 
 
 def test_compat_runner_args():
@@ -31,7 +34,10 @@ def test_compat_loader_args():
                 workers_per_gpu=1,
                 val=dict(samples_per_gpu=3),
                 test=dict(samples_per_gpu=2),
-                train=dict())))
+                train=dict(),
+            )
+        )
+    )
     cfg = compat_loader_args(cfg)
 
     assert cfg.data.train_dataloader.workers_per_gpu == 1
@@ -50,9 +56,11 @@ def test_compat_loader_args():
                 persistent_workers=True,
                 workers_per_gpu=1,
                 val=dict(samples_per_gpu=3),
-                test=[dict(samples_per_gpu=2),
-                      dict(samples_per_gpu=3)],
-                train=dict())))
+                test=[dict(samples_per_gpu=2), dict(samples_per_gpu=3)],
+                train=dict(),
+            )
+        )
+    )
 
     cfg = compat_loader_args(cfg)
 
@@ -66,7 +74,10 @@ def test_compat_loader_args():
                 val=dict(samples_per_gpu=3),
                 test=dict(samples_per_gpu=2),
                 train=dict(),
-                train_dataloader=dict(samples_per_gpu=2))))
+                train_dataloader=dict(samples_per_gpu=2),
+            )
+        )
+    )
     # samples_per_gpu can not be set in `train_dataloader`
     # and data field at the same time
     with pytest.raises(AssertionError):
@@ -80,7 +91,10 @@ def test_compat_loader_args():
                 val=dict(samples_per_gpu=3),
                 test=dict(samples_per_gpu=2),
                 train=dict(),
-                val_dataloader=dict(samples_per_gpu=2))))
+                val_dataloader=dict(samples_per_gpu=2),
+            )
+        )
+    )
     # samples_per_gpu can not be set in `val_dataloader`
     # and data field at the same time
     with pytest.raises(AssertionError):
@@ -93,7 +107,10 @@ def test_compat_loader_args():
                 workers_per_gpu=1,
                 val=dict(samples_per_gpu=3),
                 test=dict(samples_per_gpu=2),
-                test_dataloader=dict(samples_per_gpu=2))))
+                test_dataloader=dict(samples_per_gpu=2),
+            )
+        )
+    )
     # samples_per_gpu can not be set in `test_dataloader`
     # and data field at the same time
     with pytest.raises(AssertionError):
@@ -104,10 +121,9 @@ def test_compat_imgs_per_gpu():
     cfg = ConfigDict(
         dict(
             data=dict(
-                imgs_per_gpu=1,
-                samples_per_gpu=2,
-                val=dict(),
-                test=dict(),
-                train=dict())))
+                imgs_per_gpu=1, samples_per_gpu=2, val=dict(), test=dict(), train=dict()
+            )
+        )
+    )
     cfg = compat_imgs_per_gpu(cfg)
     assert cfg.data.samples_per_gpu == cfg.data.imgs_per_gpu

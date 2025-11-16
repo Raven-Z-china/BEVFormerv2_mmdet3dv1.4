@@ -9,11 +9,12 @@ from mmdet3d.structures import limit_period
 
 
 def update_sunrgbd_infos(root_dir, out_dir, pkl_files):
-    print(f'{pkl_files} will be modified because '
-          f'of the refactor of the Depth coordinate system.')
+    print(
+        f'{pkl_files} will be modified because '
+        f'of the refactor of the Depth coordinate system.'
+    )
     if root_dir == out_dir:
-        print(f'Warning, you are overwriting '
-              f'the original data under {root_dir}.')
+        print(f'Warning, you are overwriting ' f'the original data under {root_dir}.')
         time.sleep(3)
     for pkl_file in pkl_files:
         in_path = osp.join(root_dir, pkl_file)
@@ -23,8 +24,9 @@ def update_sunrgbd_infos(root_dir, out_dir, pkl_files):
         for item in mmengine.track_iter_progress(a):
             if 'rotation_y' in item['annos']:
                 item['annos']['rotation_y'] = -item['annos']['rotation_y']
-                item['annos']['gt_boxes_upright_depth'][:, -1:] = \
-                    -item['annos']['gt_boxes_upright_depth'][:, -1:]
+                item['annos']['gt_boxes_upright_depth'][:, -1:] = -item['annos'][
+                    'gt_boxes_upright_depth'
+                ][:, -1:]
 
         out_path = osp.join(out_dir, pkl_file)
         print(f'Writing to output file: {out_path}.')
@@ -32,11 +34,12 @@ def update_sunrgbd_infos(root_dir, out_dir, pkl_files):
 
 
 def update_outdoor_dbinfos(root_dir, out_dir, pkl_files):
-    print(f'{pkl_files} will be modified because '
-          f'of the refactor of the LIDAR coordinate system.')
+    print(
+        f'{pkl_files} will be modified because '
+        f'of the refactor of the LIDAR coordinate system.'
+    )
     if root_dir == out_dir:
-        print(f'Warning, you are overwriting '
-              f'the original data under {root_dir}.')
+        print(f'Warning, you are overwriting ' f'the original data under {root_dir}.')
         time.sleep(3)
     for pkl_file in pkl_files:
         in_path = osp.join(root_dir, pkl_file)
@@ -53,7 +56,8 @@ def update_outdoor_dbinfos(root_dir, out_dir, pkl_files):
                 # change yaw
                 item['box3d_lidar'][6] = -boxes[6] - np.pi / 2
                 item['box3d_lidar'][6] = limit_period(
-                    item['box3d_lidar'][6], period=np.pi * 2)
+                    item['box3d_lidar'][6], period=np.pi * 2
+                )
 
         out_path = osp.join(out_dir, pkl_file)
         print(f'Writing to output file: {out_path}.')
@@ -61,12 +65,12 @@ def update_outdoor_dbinfos(root_dir, out_dir, pkl_files):
 
 
 def update_nuscenes_or_lyft_infos(root_dir, out_dir, pkl_files):
-
-    print(f'{pkl_files} will be modified because '
-          f'of the refactor of the LIDAR coordinate system.')
+    print(
+        f'{pkl_files} will be modified because '
+        f'of the refactor of the LIDAR coordinate system.'
+    )
     if root_dir == out_dir:
-        print(f'Warning, you are overwriting '
-              f'the original data under {root_dir}.')
+        print(f'Warning, you are overwriting ' f'the original data under {root_dir}.')
         time.sleep(3)
     for pkl_file in pkl_files:
         in_path = osp.join(root_dir, pkl_file)
@@ -81,33 +85,34 @@ def update_nuscenes_or_lyft_infos(root_dir, out_dir, pkl_files):
             # change yaw
             item['gt_boxes'][:, 6] = -boxes[:, 6] - np.pi / 2
             item['gt_boxes'][:, 6] = limit_period(
-                item['gt_boxes'][:, 6], period=np.pi * 2)
+                item['gt_boxes'][:, 6], period=np.pi * 2
+            )
 
         out_path = osp.join(out_dir, pkl_file)
         print(f'Writing to output file: {out_path}.')
         mmengine.dump(a, out_path, 'pkl')
 
 
-parser = argparse.ArgumentParser(description='Arg parser for data coords '
-                                 'update due to coords sys refactor.')
+parser = argparse.ArgumentParser(
+    description='Arg parser for data coords ' 'update due to coords sys refactor.'
+)
 parser.add_argument('dataset', metavar='kitti', help='name of the dataset')
 parser.add_argument(
     '--root-dir',
     type=str,
     default='./data/kitti',
-    help='specify the root dir of dataset')
+    help='specify the root dir of dataset',
+)
 parser.add_argument(
     '--version',
     type=str,
     default='v1.0',
     required=False,
-    help='specify the dataset version, no need for kitti')
+    help='specify the dataset version, no need for kitti',
+)
 parser.add_argument(
-    '--out-dir',
-    type=str,
-    default=None,
-    required=False,
-    help='name of info pkl')
+    '--out-dir', type=str, default=None, required=False, help='name of info pkl'
+)
 args = parser.parse_args()
 
 if __name__ == '__main__':
@@ -119,7 +124,8 @@ if __name__ == '__main__':
         # so we only update dbinfos
         pkl_files = ['kitti_dbinfos_train.pkl']
         update_outdoor_dbinfos(
-            root_dir=args.root_dir, out_dir=args.out_dir, pkl_files=pkl_files)
+            root_dir=args.root_dir, out_dir=args.out_dir, pkl_files=pkl_files
+        )
     elif args.dataset == 'nuscenes':
         # nuScenes infos is in LIDAR coord sys (changed)
         # nuScenes dbinfos is in LIDAR coord sys (changed)
@@ -130,27 +136,29 @@ if __name__ == '__main__':
         else:
             pkl_files.append('nuscenes_infos_train_tiny.pkl')
         update_nuscenes_or_lyft_infos(
-            root_dir=args.root_dir, out_dir=args.out_dir, pkl_files=pkl_files)
+            root_dir=args.root_dir, out_dir=args.out_dir, pkl_files=pkl_files
+        )
         if args.version != 'v1.0-mini':
             pkl_files = ['nuscenes_dbinfos_train.pkl']
             update_outdoor_dbinfos(
-                root_dir=args.root_dir,
-                out_dir=args.out_dir,
-                pkl_files=pkl_files)
+                root_dir=args.root_dir, out_dir=args.out_dir, pkl_files=pkl_files
+            )
     elif args.dataset == 'lyft':
         # Lyft infos is in LIDAR coord sys (changed)
         # Lyft has no dbinfos
         # so we update infos
         pkl_files = ['lyft_infos_train.pkl', 'lyft_infos_val.pkl']
         update_nuscenes_or_lyft_infos(
-            root_dir=args.root_dir, out_dir=args.out_dir, pkl_files=pkl_files)
+            root_dir=args.root_dir, out_dir=args.out_dir, pkl_files=pkl_files
+        )
     elif args.dataset == 'waymo':
         # Waymo infos is in CAM coord sys (unchanged)
         # Waymo dbinfos is in LIDAR coord sys (changed)
         # so we only update dbinfos
         pkl_files = ['waymo_dbinfos_train.pkl']
         update_outdoor_dbinfos(
-            root_dir=args.root_dir, out_dir=args.out_dir, pkl_files=pkl_files)
+            root_dir=args.root_dir, out_dir=args.out_dir, pkl_files=pkl_files
+        )
     elif args.dataset == 'scannet':
         # ScanNet infos is in DEPTH coord sys (changed)
         # but bbox is without yaw
@@ -165,4 +173,5 @@ if __name__ == '__main__':
         # so we update infos
         pkl_files = ['sunrgbd_infos_train.pkl', 'sunrgbd_infos_val.pkl']
         update_sunrgbd_infos(
-            root_dir=args.root_dir, out_dir=args.out_dir, pkl_files=pkl_files)
+            root_dir=args.root_dir, out_dir=args.out_dir, pkl_files=pkl_files
+        )

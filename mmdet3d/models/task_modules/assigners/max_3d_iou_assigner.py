@@ -46,13 +46,13 @@ class Max3DIoUAssigner(MaxIoUAssigner):
         self,
         pos_iou_thr: float,
         neg_iou_thr: Union[float, tuple],
-        min_pos_iou: float = .0,
+        min_pos_iou: float = 0.0,
         gt_max_assign_all: bool = True,
         ignore_iof_thr: float = -1,
         ignore_wrt_candidates: bool = True,
         match_low_quality: bool = True,
         gpu_assign_thr: float = -1,
-        iou_calculator: dict = dict(type='BboxOverlaps2D')
+        iou_calculator: dict = dict(type='BboxOverlaps2D'),
     ) -> None:
         self.pos_iou_thr = pos_iou_thr
         self.neg_iou_thr = neg_iou_thr
@@ -64,11 +64,13 @@ class Max3DIoUAssigner(MaxIoUAssigner):
         self.match_low_quality = match_low_quality
         self.iou_calculator = TASK_UTILS.build(iou_calculator)
 
-    def assign(self,
-               pred_instances: InstanceData,
-               gt_instances: InstanceData,
-               gt_instances_ignore: Optional[InstanceData] = None,
-               **kwargs) -> AssignResult:
+    def assign(
+        self,
+        pred_instances: InstanceData,
+        gt_instances: InstanceData,
+        gt_instances_ignore: Optional[InstanceData] = None,
+        **kwargs
+    ) -> AssignResult:
         """Assign gt to bboxes.
 
         This method assign a gt bbox to every bbox (proposal/anchor), each bbox
@@ -126,8 +128,11 @@ class Max3DIoUAssigner(MaxIoUAssigner):
         else:
             gt_bboxes_ignore = None
 
-        assign_on_cpu = True if (self.gpu_assign_thr > 0) and (
-            gt_bboxes.shape[0] > self.gpu_assign_thr) else False
+        assign_on_cpu = (
+            True
+            if (self.gpu_assign_thr > 0) and (gt_bboxes.shape[0] > self.gpu_assign_thr)
+            else False
+        )
         # compute overlap and assign gt on CPU when number of GT is large
         if assign_on_cpu:
             device = priors.device
@@ -139,15 +144,21 @@ class Max3DIoUAssigner(MaxIoUAssigner):
 
         overlaps = self.iou_calculator(gt_bboxes, priors)
 
-        if (self.ignore_iof_thr > 0 and gt_bboxes_ignore is not None
-                and gt_bboxes_ignore.numel() > 0 and priors.numel() > 0):
+        if (
+            self.ignore_iof_thr > 0
+            and gt_bboxes_ignore is not None
+            and gt_bboxes_ignore.numel() > 0
+            and priors.numel() > 0
+        ):
             if self.ignore_wrt_candidates:
                 ignore_overlaps = self.iou_calculator(
-                    priors, gt_bboxes_ignore, mode='iof')
+                    priors, gt_bboxes_ignore, mode='iof'
+                )
                 ignore_max_overlaps, _ = ignore_overlaps.max(dim=1)
             else:
                 ignore_overlaps = self.iou_calculator(
-                    gt_bboxes_ignore, priors, mode='iof')
+                    gt_bboxes_ignore, priors, mode='iof'
+                )
                 ignore_max_overlaps, _ = ignore_overlaps.max(dim=0)
             overlaps[:, ignore_max_overlaps > self.ignore_iof_thr] = -1
 

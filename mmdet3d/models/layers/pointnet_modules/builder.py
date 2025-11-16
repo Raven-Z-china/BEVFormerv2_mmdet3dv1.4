@@ -5,8 +5,8 @@ from mmengine.registry import Registry
 from torch import nn as nn
 
 SA_MODULES = Registry(
-    name='point_sa_module',
-    locations=['mmdet3d.models.layers.pointnet_modules'])
+    name='point_sa_module', locations=['mmdet3d.models.layers.pointnet_modules']
+)
 
 
 def build_sa_module(cfg: Union[dict, None], *args, **kwargs) -> nn.Module:

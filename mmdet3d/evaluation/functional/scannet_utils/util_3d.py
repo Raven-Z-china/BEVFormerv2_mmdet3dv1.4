@@ -12,6 +12,7 @@ class Instance:
         mesh_vert_instances (np.array): Instance ids for each point.
         instance_id: Id of single instance.
     """
+
     instance_id = 0
     label_id = 0
     vert_count = 0
@@ -23,8 +24,7 @@ class Instance:
             return
         self.instance_id = int(instance_id)
         self.label_id = int(self.get_label_id(instance_id))
-        self.vert_count = int(
-            self.get_instance_verts(mesh_vert_instances, instance_id))
+        self.vert_count = int(self.get_instance_verts(mesh_vert_instances, instance_id))
 
     @staticmethod
     def get_label_id(instance_id):
@@ -35,8 +35,7 @@ class Instance:
         return (mesh_vert_instances == instance_id).sum()
 
     def to_json(self):
-        return json.dumps(
-            self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
+        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
 
     def to_dict(self):
         dict = {}

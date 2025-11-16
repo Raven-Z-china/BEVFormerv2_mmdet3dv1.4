@@ -24,15 +24,17 @@ class PointRCNN(TwoStage3DDetector):
         init_cfg (dict, optional): Config of initialization. Defaults to None.
     """
 
-    def __init__(self,
-                 backbone: dict,
-                 neck: Optional[dict] = None,
-                 rpn_head: Optional[dict] = None,
-                 roi_head: Optional[dict] = None,
-                 train_cfg: Optional[dict] = None,
-                 test_cfg: Optional[dict] = None,
-                 init_cfg: Optional[dict] = None,
-                 data_preprocessor: Optional[dict] = None) -> None:
+    def __init__(
+        self,
+        backbone: dict,
+        neck: Optional[dict] = None,
+        rpn_head: Optional[dict] = None,
+        roi_head: Optional[dict] = None,
+        train_cfg: Optional[dict] = None,
+        test_cfg: Optional[dict] = None,
+        init_cfg: Optional[dict] = None,
+        data_preprocessor: Optional[dict] = None,
+    ) -> None:
         super(PointRCNN, self).__init__(
             backbone=backbone,
             neck=neck,
@@ -41,7 +43,8 @@ class PointRCNN(TwoStage3DDetector):
             train_cfg=train_cfg,
             test_cfg=test_cfg,
             init_cfg=init_cfg,
-            data_preprocessor=data_preprocessor)
+            data_preprocessor=data_preprocessor,
+        )
 
     def extract_feat(self, batch_inputs_dict: Dict) -> Dict:
         """Directly extract features from the backbone+neck.
@@ -64,4 +67,5 @@ class PointRCNN(TwoStage3DDetector):
         return dict(
             fp_features=x['fp_features'].clone(),
             fp_points=x['fp_xyz'].clone(),
-            raw_points=points)
+            raw_points=points,
+        )

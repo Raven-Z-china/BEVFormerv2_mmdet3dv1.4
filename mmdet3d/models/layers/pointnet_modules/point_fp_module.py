@@ -24,10 +24,12 @@ class PointFPModule(BaseModule):
             optional): Initialization config dict. Defaults to None.
     """
 
-    def __init__(self,
-                 mlp_channels: List[int],
-                 norm_cfg: ConfigType = dict(type='BN2d'),
-                 init_cfg: OptMultiConfig = None) -> None:
+    def __init__(
+        self,
+        mlp_channels: List[int],
+        norm_cfg: ConfigType = dict(type='BN2d'),
+        init_cfg: OptMultiConfig = None,
+    ) -> None:
         super(PointFPModule, self).__init__(init_cfg=init_cfg)
         self.mlps = nn.Sequential()
         for i in range(len(mlp_channels) - 1):
@@ -39,10 +41,13 @@ class PointFPModule(BaseModule):
                     kernel_size=(1, 1),
                     stride=(1, 1),
                     conv_cfg=dict(type='Conv2d'),
-                    norm_cfg=norm_cfg))
+                    norm_cfg=norm_cfg,
+                ),
+            )
 
-    def forward(self, target: Tensor, source: Tensor, target_feats: Tensor,
-                source_feats: Tensor) -> Tensor:
+    def forward(
+        self, target: Tensor, source: Tensor, target_feats: Tensor, source_feats: Tensor
+    ) -> Tensor:
         """Forward.
 
         Args:
@@ -66,12 +71,14 @@ class PointFPModule(BaseModule):
 
             interpolated_feats = three_interpolate(source_feats, idx, weight)
         else:
-            interpolated_feats = source_feats.expand(*source_feats.size()[0:2],
-                                                     target.size(1))
+            interpolated_feats = source_feats.expand(
+                *source_feats.size()[0:2], target.size(1)
+            )
 
         if target_feats is not None:
-            new_features = torch.cat([interpolated_feats, target_feats],
-                                     dim=1)  # (B, C2 + C1, n)
+            new_features = torch.cat(
+                [interpolated_feats, target_feats], dim=1
+            )  # (B, C2 + C1, n)
         else:
             new_features = interpolated_feats
 

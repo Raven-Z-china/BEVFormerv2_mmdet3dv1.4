@@ -64,14 +64,10 @@ class NoStemRegNet(RegNet):
         (1, 1008, 1, 1)
     """
 
-    def __init__(self,
-                 arch: dict,
-                 init_cfg: OptMultiConfig = None,
-                 **kwargs) -> None:
+    def __init__(self, arch: dict, init_cfg: OptMultiConfig = None, **kwargs) -> None:
         super(NoStemRegNet, self).__init__(arch, init_cfg=init_cfg, **kwargs)
 
-    def _make_stem_layer(self, in_channels: int,
-                         base_channels: int) -> nn.Module:
+    def _make_stem_layer(self, in_channels: int, base_channels: int) -> nn.Module:
         """Override the original function that do not initialize a stem layer
         since 3D detector's voxel encoder works like a stem layer."""
         return

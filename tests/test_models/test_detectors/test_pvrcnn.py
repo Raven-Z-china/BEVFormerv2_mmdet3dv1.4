@@ -4,20 +4,17 @@ import torch
 from mmengine import DefaultScope
 
 from mmdet3d.registry import MODELS
-from mmdet3d.testing import (create_detector_inputs, get_detector_cfg,
-                             setup_seed)
+from mmdet3d.testing import create_detector_inputs, get_detector_cfg, setup_seed
 
 
 class TestPVRCNN(unittest.TestCase):
-
     def test_pvrcnn(self):
         import mmdet3d.models
 
         assert hasattr(mmdet3d.models, 'PointVoxelRCNN')
         DefaultScope.get_instance('test_pvrcnn', scope_name='mmdet3d')
         setup_seed(0)
-        pvrcnn_cfg = get_detector_cfg(
-            'pv_rcnn/pv_rcnn_8xb2-80e_kitti-3d-3class.py')
+        pvrcnn_cfg = get_detector_cfg('pv_rcnn/pv_rcnn_8xb2-80e_kitti-3d-3class.py')
         model = MODELS.build(pvrcnn_cfg)
         num_gt_instance = 2
         packed_inputs = create_detector_inputs(num_gt_instance=num_gt_instance)

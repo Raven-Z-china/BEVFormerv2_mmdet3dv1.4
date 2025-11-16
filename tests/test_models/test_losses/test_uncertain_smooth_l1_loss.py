@@ -20,7 +20,8 @@ def test_uncertain_smooth_l1_loss():
 
     # test uncertain l1 loss
     uncertain_l1_loss_cfg = dict(
-        type='UncertainL1Loss', alpha=1.0, reduction='mean', loss_weight=1.0)
+        type='UncertainL1Loss', alpha=1.0, reduction='mean', loss_weight=1.0
+    )
     uncertain_l1_loss = MODELS.build(uncertain_l1_loss_cfg)
     mean_l1_loss = uncertain_l1_loss(pred, target, sigma)
     expected_l1_loss = torch.tensor(4.7069)
@@ -32,9 +33,9 @@ def test_uncertain_smooth_l1_loss():
         alpha=1.0,
         beta=0.5,
         reduction='mean',
-        loss_weight=1.0)
+        loss_weight=1.0,
+    )
     uncertain_smooth_l1_loss = MODELS.build(uncertain_smooth_l1_loss_cfg)
     mean_smooth_l1_loss = uncertain_smooth_l1_loss(pred, target, sigma)
     expected_smooth_l1_loss = torch.tensor(3.9795)
-    assert torch.allclose(
-        mean_smooth_l1_loss, expected_smooth_l1_loss, atol=1e-4)
+    assert torch.allclose(mean_smooth_l1_loss, expected_smooth_l1_loss, atol=1e-4)

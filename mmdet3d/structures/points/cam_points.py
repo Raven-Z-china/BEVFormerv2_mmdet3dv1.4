@@ -27,12 +27,15 @@ class CameraPoints(BasePoints):
         rotation_axis (int): Default rotation axis for points rotation.
     """
 
-    def __init__(self,
-                 tensor: Union[Tensor, np.ndarray, Sequence[Sequence[float]]],
-                 points_dim: int = 3,
-                 attribute_dims: Optional[dict] = None) -> None:
+    def __init__(
+        self,
+        tensor: Union[Tensor, np.ndarray, Sequence[Sequence[float]]],
+        points_dim: int = 3,
+        attribute_dims: Optional[dict] = None,
+    ) -> None:
         super(CameraPoints, self).__init__(
-            tensor, points_dim=points_dim, attribute_dims=attribute_dims)
+            tensor, points_dim=points_dim, attribute_dims=attribute_dims
+        )
         self.rotation_axis = 1
 
     def flip(self, bev_direction: str = 'horizontal') -> None:
@@ -53,10 +56,9 @@ class CameraPoints(BasePoints):
         """Tensor: BEV of the points in shape (N, 2)."""
         return self.tensor[:, [0, 2]]
 
-    def convert_to(self,
-                   dst: int,
-                   rt_mat: Optional[Union[Tensor,
-                                          np.ndarray]] = None) -> 'BasePoints':
+    def convert_to(
+        self, dst: int, rt_mat: Optional[Union[Tensor, np.ndarray]] = None
+    ) -> 'BasePoints':
         """Convert self to ``dst`` mode.
 
         Args:
@@ -73,5 +75,7 @@ class CameraPoints(BasePoints):
             ``dst`` mode.
         """
         from mmdet3d.structures.bbox_3d import Coord3DMode
+
         return Coord3DMode.convert_point(
-            point=self, src=Coord3DMode.CAM, dst=dst, rt_mat=rt_mat)
+            point=self, src=Coord3DMode.CAM, dst=dst, rt_mat=rt_mat
+        )

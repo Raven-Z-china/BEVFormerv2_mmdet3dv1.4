@@ -9,18 +9,23 @@ from torch import nn
 from mmdet3d.utils import ConfigType, OptConfigType, OptMultiConfig
 
 try:
-    from MinkowskiEngine import (MinkowskiBatchNorm, MinkowskiConvolution,
-                                 MinkowskiConvolutionTranspose, MinkowskiReLU,
-                                 MinkowskiSyncBatchNorm, SparseTensor)
+    from MinkowskiEngine import (
+        MinkowskiBatchNorm,
+        MinkowskiConvolution,
+        MinkowskiConvolutionTranspose,
+        MinkowskiReLU,
+        MinkowskiSyncBatchNorm,
+        SparseTensor,
+    )
     from MinkowskiEngine.modules.resnet_block import BasicBlock, Bottleneck
 except ImportError:
     SparseTensor = None
     from mmcv.cnn.resnet import BasicBlock, Bottleneck
+
     IS_MINKOWSKI_ENGINE_AVAILABLE = False
 else:
     MODELS._register_module(MinkowskiConvolution, 'MinkowskiConvNd')
-    MODELS._register_module(MinkowskiConvolutionTranspose,
-                            'MinkowskiConvNdTranspose')
+    MODELS._register_module(MinkowskiConvolutionTranspose, 'MinkowskiConvNdTranspose')
     MODELS._register_module(MinkowskiBatchNorm, 'MinkowskiBN')
     MODELS._register_module(MinkowskiSyncBatchNorm, 'MinkowskiSyncBN')
     MODELS._register_module(MinkowskiReLU, 'MinkowskiReLU')
@@ -47,19 +52,20 @@ class MinkowskiConvModule(BaseModule):
             Defaults to None.
     """
 
-    def __init__(self,
-                 in_channels: int,
-                 out_channels: int,
-                 kernel_size: Union[int, Tuple[int, int, int]],
-                 stride: Union[int, Tuple[int, int, int]] = 1,
-                 dilation: int = 1,
-                 bias: bool = False,
-                 conv_cfg: OptConfigType = None,
-                 norm_cfg: ConfigType = dict(type='MinkowskiBN'),
-                 act_cfg: ConfigType = dict(
-                     type='MinkowskiReLU', inplace=True),
-                 init_cfg: OptMultiConfig = None,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: Union[int, Tuple[int, int, int]],
+        stride: Union[int, Tuple[int, int, int]] = 1,
+        dilation: int = 1,
+        bias: bool = False,
+        conv_cfg: OptConfigType = None,
+        norm_cfg: ConfigType = dict(type='MinkowskiBN'),
+        act_cfg: ConfigType = dict(type='MinkowskiReLU', inplace=True),
+        init_cfg: OptMultiConfig = None,
+        **kwargs
+    ) -> None:
         super().__init__(init_cfg)
         layers = []
         if conv_cfg is None:
@@ -72,7 +78,8 @@ class MinkowskiConvModule(BaseModule):
             stride,
             dilation,
             bias,
-            dimension=3)
+            dimension=3,
+        )
         layers.append(conv)
 
         if norm_cfg is not None:
@@ -105,16 +112,18 @@ class MinkowskiBasicBlock(BasicBlock, BaseModule):
             Defaults to None.
     """
 
-    def __init__(self,
-                 inplanes: int,
-                 planes: int,
-                 stride: int = 1,
-                 dilation: int = 1,
-                 downsample: Optional[nn.Module] = None,
-                 bn_momentum: float = 0.1,
-                 dimension: int = 3,
-                 init_cfg: OptConfigType = None,
-                 **kwargs):
+    def __init__(
+        self,
+        inplanes: int,
+        planes: int,
+        stride: int = 1,
+        dilation: int = 1,
+        downsample: Optional[nn.Module] = None,
+        bn_momentum: float = 0.1,
+        dimension: int = 3,
+        init_cfg: OptConfigType = None,
+        **kwargs
+    ):
         BaseModule.__init__(self, init_cfg)
         BasicBlock.__init__(
             self,
@@ -124,7 +133,8 @@ class MinkowskiBasicBlock(BasicBlock, BaseModule):
             dilation=dilation,
             downsample=downsample,
             bn_momentum=bn_momentum,
-            dimension=dimension)
+            dimension=dimension,
+        )
 
 
 class MinkowskiBottleneck(Bottleneck, BaseModule):
@@ -144,16 +154,18 @@ class MinkowskiBottleneck(Bottleneck, BaseModule):
             Defaults to None.
     """
 
-    def __init__(self,
-                 inplanes: int,
-                 planes: int,
-                 stride: int = 1,
-                 dilation: int = 1,
-                 downsample: Optional[nn.Module] = None,
-                 bn_momentum: float = 0.1,
-                 dimension: int = 3,
-                 init_cfg: OptConfigType = None,
-                 **kwargs):
+    def __init__(
+        self,
+        inplanes: int,
+        planes: int,
+        stride: int = 1,
+        dilation: int = 1,
+        downsample: Optional[nn.Module] = None,
+        bn_momentum: float = 0.1,
+        dimension: int = 3,
+        init_cfg: OptConfigType = None,
+        **kwargs
+    ):
         BaseModule.__init__(self, init_cfg)
         Bottleneck.__init__(
             self,
@@ -163,4 +175,5 @@ class MinkowskiBottleneck(Bottleneck, BaseModule):
             dilation=dilation,
             downsample=downsample,
             bn_momentum=bn_momentum,
-            dimension=dimension)
+            dimension=dimension,
+        )

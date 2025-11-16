@@ -6,12 +6,10 @@ import os.path as osp
 
 from mmengine.config import Config, DictAction
 from mmengine.logging import print_log
-from mmengine.registry import RUNNERS
+from mmengine.registry import MODELS, RUNNERS
 from mmengine.runner import Runner
 
 from mmdet3d.utils import replace_ceph_backend
-
-from mmengine.registry import MODELS
 
 
 def parse_args():
@@ -22,17 +20,18 @@ def parse_args():
         '--amp',
         action='store_true',
         default=False,
-        help='enable automatic-mixed-precision training')
+        help='enable automatic-mixed-precision training',
+    )
     parser.add_argument(
         '--sync_bn',
         choices=['none', 'torch', 'mmcv'],
         default='none',
         help='convert all BatchNorm layers in the model to SyncBatchNorm '
-        '(SyncBN) or mmcv.ops.sync_bn.SyncBatchNorm (MMSyncBN) layers.')
+        '(SyncBN) or mmcv.ops.sync_bn.SyncBatchNorm (MMSyncBN) layers.',
+    )
     parser.add_argument(
-        '--auto-scale-lr',
-        action='store_true',
-        help='enable automatically scaling LR.')
+        '--auto-scale-lr', action='store_true', help='enable automatically scaling LR.'
+    )
     parser.add_argument(
         '--resume',
         nargs='?',
@@ -40,9 +39,11 @@ def parse_args():
         const='auto',
         help='If specify checkpoint path, resume from it, while if not '
         'specify, try to auto resume from the latest checkpoint '
-        'in the work directory.')
+        'in the work directory.',
+    )
     parser.add_argument(
-        '--ceph', action='store_true', help='Use ceph as data storage backend')
+        '--ceph', action='store_true', help='Use ceph as data storage backend'
+    )
     parser.add_argument(
         '--cfg-options',
         nargs='+',
@@ -52,12 +53,14 @@ def parse_args():
         'be overwritten is a list, it should be like key="[a,b]" or key=a,b '
         'It also allows nested list/tuple values, e.g. key="[(a,b),(c,d)]" '
         'Note that the quotation marks are necessary and that no white space '
-        'is allowed.')
+        'is allowed.',
+    )
     parser.add_argument(
         '--launcher',
         choices=['none', 'pytorch', 'slurm', 'mpi'],
         default='none',
-        help='job launcher')
+        help='job launcher',
+    )
     # When using PyTorch version >= 2.0.0, the `torch.distributed.launch`
     # will pass the `--local-rank` parameter to `tools/train.py` instead
     # of `--local_rank`.
@@ -88,8 +91,9 @@ def main():
         cfg.work_dir = args.work_dir
     elif cfg.get('work_dir', None) is None:
         # use config filename as default work_dir if cfg.work_dir is None
-        cfg.work_dir = osp.join('./work_dirs',
-                                osp.splitext(osp.basename(args.config))[0])
+        cfg.work_dir = osp.join(
+            './work_dirs', osp.splitext(osp.basename(args.config))[0]
+        )
 
     # enable automatic-mixed-precision training
     if args.amp is True:
@@ -98,11 +102,13 @@ def main():
             print_log(
                 'AMP training is already enabled in your config.',
                 logger='current',
-                level=logging.WARNING)
+                level=logging.WARNING,
+            )
         else:
             assert optim_wrapper == 'OptimWrapper', (
                 '`--amp` is only supported when the optimizer wrapper type is '
-                f'`OptimWrapper` but got {optim_wrapper}.')
+                f'`OptimWrapper` but got {optim_wrapper}.'
+            )
             cfg.optim_wrapper.type = 'AmpOptimWrapper'
             cfg.optim_wrapper.loss_scale = 'dynamic'
 
@@ -112,15 +118,19 @@ def main():
 
     # enable automatically scaling LR
     if args.auto_scale_lr:
-        if 'auto_scale_lr' in cfg and \
-                'enable' in cfg.auto_scale_lr and \
-                'base_batch_size' in cfg.auto_scale_lr:
+        if (
+            'auto_scale_lr' in cfg
+            and 'enable' in cfg.auto_scale_lr
+            and 'base_batch_size' in cfg.auto_scale_lr
+        ):
             cfg.auto_scale_lr.enable = True
         else:
-            raise RuntimeError('Can not find "auto_scale_lr" or '
-                               '"auto_scale_lr.enable" or '
-                               '"auto_scale_lr.base_batch_size" in your'
-                               ' configuration file.')
+            raise RuntimeError(
+                'Can not find "auto_scale_lr" or '
+                '"auto_scale_lr.enable" or '
+                '"auto_scale_lr.base_batch_size" in your'
+                ' configuration file.'
+            )
 
     # resume is determined in this priority: resume from > auto_resume
     if args.resume == 'auto':
@@ -129,7 +139,7 @@ def main():
     elif args.resume is not None:
         cfg.resume = True
         cfg.load_from = args.resume
-        
+
     # build the runner from config
     if 'runner_type' not in cfg:
         # build the default runner

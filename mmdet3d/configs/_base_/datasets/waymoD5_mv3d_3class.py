@@ -2,11 +2,19 @@
 from mmengine.dataset.sampler import DefaultSampler
 
 from mmdet3d.datasets.transforms.formating import Pack3DDetInputs
-from mmdet3d.datasets.transforms.loading import (LoadAnnotations3D,
-                                                 LoadMultiViewImageFromFiles)
+from mmdet3d.datasets.transforms.loading import (
+    LoadAnnotations3D,
+    LoadMultiViewImageFromFiles,
+)
 from mmdet3d.datasets.transforms.transforms_3d import (  # noqa
-    MultiViewWrapper, ObjectNameFilter, ObjectRangeFilter,
-    PhotoMetricDistortion3D, RandomCrop3D, RandomFlip3D, RandomResize3D)
+    MultiViewWrapper,
+    ObjectNameFilter,
+    ObjectRangeFilter,
+    PhotoMetricDistortion3D,
+    RandomCrop3D,
+    RandomFlip3D,
+    RandomResize3D,
+)
 from mmdet3d.datasets.waymo_dataset import WaymoDataset
 from mmdet3d.evaluation.metrics.waymo_metric import WaymoMetric
 
@@ -41,16 +49,14 @@ train_transforms = [
         type=RandomResize3D,
         scale=(1248, 832),
         ratio_range=(0.95, 1.05),
-        keep_ratio=True),
+        keep_ratio=True,
+    ),
     dict(type=RandomCrop3D, crop_size=(720, 1080)),
     dict(type=RandomFlip3D, flip_ratio_bev_horizontal=0.5, flip_box3d=False),
 ]
 
 train_pipeline = [
-    dict(
-        type=LoadMultiViewImageFromFiles,
-        to_float32=True,
-        backend_args=backend_args),
+    dict(type=LoadMultiViewImageFromFiles, to_float32=True, backend_args=backend_args),
     dict(
         type=LoadAnnotations3D,
         with_bbox=True,
@@ -58,40 +64,36 @@ train_pipeline = [
         with_attr_label=False,
         with_bbox_3d=True,
         with_label_3d=True,
-        with_bbox_depth=True),
+        with_bbox_depth=True,
+    ),
     dict(type=MultiViewWrapper, transforms=train_transforms),
     dict(type=ObjectRangeFilter, point_cloud_range=point_cloud_range),
     dict(type=ObjectNameFilter, classes=class_names),
-    dict(type=Pack3DDetInputs, keys=[
-        'img',
-        'gt_bboxes_3d',
-        'gt_labels_3d',
-    ]),
+    dict(
+        type=Pack3DDetInputs,
+        keys=[
+            'img',
+            'gt_bboxes_3d',
+            'gt_labels_3d',
+        ],
+    ),
 ]
 test_transforms = [
     dict(
-        type=RandomResize3D,
-        scale=(1248, 832),
-        ratio_range=(1., 1.),
-        keep_ratio=True)
+        type=RandomResize3D, scale=(1248, 832), ratio_range=(1.0, 1.0), keep_ratio=True
+    )
 ]
 test_pipeline = [
-    dict(
-        type=LoadMultiViewImageFromFiles,
-        to_float32=True,
-        backend_args=backend_args),
+    dict(type=LoadMultiViewImageFromFiles, to_float32=True, backend_args=backend_args),
     dict(type=MultiViewWrapper, transforms=test_transforms),
-    dict(type=Pack3DDetInputs, keys=['img'])
+    dict(type=Pack3DDetInputs, keys=['img']),
 ]
 # construct a pipeline for data and gt loading in show function
 # please keep its loading function consistent with test_pipeline (e.g. client)
 eval_pipeline = [
-    dict(
-        type=LoadMultiViewImageFromFiles,
-        to_float32=True,
-        backend_args=backend_args),
+    dict(type=LoadMultiViewImageFromFiles, to_float32=True, backend_args=backend_args),
     dict(type=MultiViewWrapper, transforms=test_transforms),
-    dict(type=Pack3DDetInputs, keys=['img'])
+    dict(type=Pack3DDetInputs, keys=['img']),
 ]
 metainfo = dict(classes=class_names)
 
@@ -110,14 +112,17 @@ train_dataloader = dict(
             CAM_FRONT_LEFT='training/image_1',
             CAM_FRONT_RIGHT='training/image_2',
             CAM_SIDE_LEFT='training/image_3',
-            CAM_SIDE_RIGHT='training/image_4'),
+            CAM_SIDE_RIGHT='training/image_4',
+        ),
         pipeline=train_pipeline,
         modality=input_modality,
         test_mode=False,
         metainfo=metainfo,
         box_type_3d='Lidar',
         load_interval=5,
-        backend_args=backend_args))
+        backend_args=backend_args,
+    ),
+)
 
 val_dataloader = dict(
     batch_size=1,
@@ -135,13 +140,16 @@ val_dataloader = dict(
             CAM_FRONT_LEFT='training/image_1',
             CAM_FRONT_RIGHT='training/image_2',
             CAM_SIDE_LEFT='training/image_3',
-            CAM_SIDE_RIGHT='training/image_4'),
+            CAM_SIDE_RIGHT='training/image_4',
+        ),
         pipeline=eval_pipeline,
         modality=input_modality,
         test_mode=True,
         metainfo=metainfo,
         box_type_3d='Lidar',
-        backend_args=backend_args))
+        backend_args=backend_args,
+    ),
+)
 
 test_dataloader = dict(
     batch_size=1,
@@ -159,19 +167,23 @@ test_dataloader = dict(
             CAM_FRONT_LEFT='training/image_1',
             CAM_FRONT_RIGHT='training/image_2',
             CAM_SIDE_LEFT='training/image_3',
-            CAM_SIDE_RIGHT='training/image_4'),
+            CAM_SIDE_RIGHT='training/image_4',
+        ),
         pipeline=eval_pipeline,
         modality=input_modality,
         test_mode=True,
         metainfo=metainfo,
         box_type_3d='Lidar',
-        backend_args=backend_args))
+        backend_args=backend_args,
+    ),
+)
 val_evaluator = dict(
     type=WaymoMetric,
     ann_file='./data/waymo/kitti_format/waymo_infos_val.pkl',
     waymo_bin_file='./data/waymo/waymo_format/cam_gt.bin',
     data_root='./data/waymo/waymo_format',
     metric='LET_mAP',
-    backend_args=backend_args)
+    backend_args=backend_args,
+)
 
 test_evaluator = val_evaluator

@@ -12,22 +12,27 @@ def _generate_nus_dataset_config():
     data_root = 'tests/data/lyft'
     ann_file = 'lyft_infos.pkl'
     classes = [
-        'car', 'truck', 'bus', 'emergency_vehicle', 'other_vehicle',
-        'motorcycle', 'bicycle', 'pedestrian', 'animal'
+        'car',
+        'truck',
+        'bus',
+        'emergency_vehicle',
+        'other_vehicle',
+        'motorcycle',
+        'bicycle',
+        'pedestrian',
+        'animal',
     ]
     if 'Identity' not in TRANSFORMS:
 
         @TRANSFORMS.register_module()
         class Identity(BaseTransform):
-
             def transform(self, info):
                 packed_input = dict(data_samples=Det3DDataSample())
                 if 'ann_info' in info:
-                    packed_input[
-                        'data_samples'].gt_instances_3d = InstanceData()
-                    packed_input[
-                        'data_samples'].gt_instances_3d.labels_3d = info[
-                            'ann_info']['gt_labels_3d']
+                    packed_input['data_samples'].gt_instances_3d = InstanceData()
+                    packed_input['data_samples'].gt_instances_3d.labels_3d = info[
+                        'ann_info'
+                    ]['gt_labels_3d']
                 return packed_input
 
     pipeline = [
@@ -40,8 +45,14 @@ def _generate_nus_dataset_config():
 
 def test_getitem():
     np.random.seed(0)
-    data_root, ann_file, classes, data_prefix, pipeline, modality = \
-        _generate_nus_dataset_config()
+    (
+        data_root,
+        ann_file,
+        classes,
+        data_prefix,
+        pipeline,
+        modality,
+    ) = _generate_nus_dataset_config()
 
     lyft_dataset = LyftDataset(
         data_root,
@@ -49,7 +60,8 @@ def test_getitem():
         data_prefix=data_prefix,
         pipeline=pipeline,
         metainfo=dict(classes=classes),
-        modality=modality)
+        modality=modality,
+    )
 
     lyft_dataset.prepare_data(0)
     input_dict = lyft_dataset.get_data_info(0)

@@ -4,12 +4,10 @@ import torch
 from mmengine import DefaultScope
 
 from mmdet3d.registry import MODELS
-from mmdet3d.testing import (create_detector_inputs, get_detector_cfg,
-                             setup_seed)
+from mmdet3d.testing import create_detector_inputs, get_detector_cfg, setup_seed
 
 
 class TestMVXNet(unittest.TestCase):
-
     def test_mvxnet(self):
         import mmdet3d.models
 
@@ -23,10 +21,10 @@ class TestMVXNet(unittest.TestCase):
         model = MODELS.build(mvx_net_cfg)
         num_gt_instance = 1
         packed_inputs = create_detector_inputs(
-            with_img=False, num_gt_instance=num_gt_instance, points_feat_dim=4)
+            with_img=False, num_gt_instance=num_gt_instance, points_feat_dim=4
+        )
 
         if torch.cuda.is_available():
-
             model = model.cuda()
             # test simple_test
             data = model.data_preprocessor(packed_inputs, True)

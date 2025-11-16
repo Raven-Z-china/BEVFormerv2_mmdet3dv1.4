@@ -4,12 +4,10 @@ import torch
 from mmengine import DefaultScope
 
 from mmdet3d.registry import MODELS
-from mmdet3d.testing import (create_detector_inputs, get_detector_cfg,
-                             setup_seed)
+from mmdet3d.testing import create_detector_inputs, get_detector_cfg, setup_seed
 
 
 class TestVotenet(unittest.TestCase):
-
     def test_voxel_net(self):
         import mmdet3d.models
 

@@ -50,23 +50,24 @@ class LyftMetric(BaseMetric):
             corresponding backend. Defaults to None.
     """
 
-    def __init__(self,
-                 data_root: str,
-                 ann_file: str,
-                 metric: Union[str, List[str]] = 'bbox',
-                 modality=dict(
-                     use_camera=False,
-                     use_lidar=True,
-                 ),
-                 prefix: Optional[str] = None,
-                 jsonfile_prefix: str = None,
-                 format_only: bool = False,
-                 csv_savepath: str = None,
-                 collect_device: str = 'cpu',
-                 backend_args: Optional[dict] = None) -> None:
+    def __init__(
+        self,
+        data_root: str,
+        ann_file: str,
+        metric: Union[str, List[str]] = 'bbox',
+        modality=dict(
+            use_camera=False,
+            use_lidar=True,
+        ),
+        prefix: Optional[str] = None,
+        jsonfile_prefix: str = None,
+        format_only: bool = False,
+        csv_savepath: str = None,
+        collect_device: str = 'cpu',
+        backend_args: Optional[dict] = None,
+    ) -> None:
         self.default_prefix = 'Lyft metric'
-        super(LyftMetric, self).__init__(
-            collect_device=collect_device, prefix=prefix)
+        super(LyftMetric, self).__init__(collect_device=collect_device, prefix=prefix)
         self.ann_file = ann_file
         self.data_root = data_root
         self.modality = modality
@@ -122,22 +123,20 @@ class LyftMetric(BaseMetric):
 
         # load annotations
         self.data_infos = load(
-            osp.join(self.data_root, self.ann_file),
-            backend_args=self.backend_args)['data_list']
-        result_dict, tmp_dir = self.format_results(results, classes,
-                                                   self.jsonfile_prefix,
-                                                   self.csv_savepath)
+            osp.join(self.data_root, self.ann_file), backend_args=self.backend_args
+        )['data_list']
+        result_dict, tmp_dir = self.format_results(
+            results, classes, self.jsonfile_prefix, self.csv_savepath
+        )
 
         metric_dict = {}
 
         if self.format_only:
-            logger.info(
-                f'results are saved in {osp.dirname(self.csv_savepath)}')
+            logger.info(f'results are saved in {osp.dirname(self.csv_savepath)}')
             return metric_dict
 
         for metric in self.metrics:
-            ap_dict = self.lyft_evaluate(
-                result_dict, metric=metric, logger=logger)
+            ap_dict = self.lyft_evaluate(result_dict, metric=metric, logger=logger)
             for result in ap_dict:
                 metric_dict[result] = ap_dict[result]
 
@@ -150,7 +149,7 @@ class LyftMetric(BaseMetric):
         results: List[dict],
         classes: Optional[List[str]] = None,
         jsonfile_prefix: Optional[str] = None,
-        csv_savepath: Optional[str] = None
+        csv_savepath: Optional[str] = None,
     ) -> Tuple[dict, Union[tempfile.TemporaryDirectory, None]]:
         """Format the results to json (standard format for COCO evaluation).
 
@@ -191,15 +190,14 @@ class LyftMetric(BaseMetric):
                 # 'img_pred_instances_3d'
                 results_ = [out[name] for out in results]
                 tmp_file_ = osp.join(jsonfile_prefix, name)
-                result_dict[name] = self._format_bbox(results_,
-                                                      sample_idx_list, classes,
-                                                      tmp_file_)
+                result_dict[name] = self._format_bbox(
+                    results_, sample_idx_list, classes, tmp_file_
+                )
         if csv_savepath is not None:
             if 'pred_instances_3d' in result_dict:
                 self.json2csv(result_dict['pred_instances_3d'], csv_savepath)
             elif 'pts_pred_instances_3d' in result_dict:
-                self.json2csv(result_dict['pts_pred_instances_3d'],
-                              csv_savepath)
+                self.json2csv(result_dict['pts_pred_instances_3d'], csv_savepath)
         return result_dict, tmp_dir
 
     def json2csv(self, json_path: str, csv_savepath: str) -> None:
@@ -221,17 +219,28 @@ class LyftMetric(BaseMetric):
             predictions = results[token]
             prediction_str = ''
             for i in range(len(predictions)):
-                prediction_str += \
-                    str(predictions[i]['score']) + ' ' + \
-                    str(predictions[i]['translation'][0]) + ' ' + \
-                    str(predictions[i]['translation'][1]) + ' ' + \
-                    str(predictions[i]['translation'][2]) + ' ' + \
-                    str(predictions[i]['size'][0]) + ' ' + \
-                    str(predictions[i]['size'][1]) + ' ' + \
-                    str(predictions[i]['size'][2]) + ' ' + \
-                    str(Quaternion(list(predictions[i]['rotation']))
-                        .yaw_pitch_roll[0]) + ' ' + \
-                    predictions[i]['name'] + ' '
+                prediction_str += (
+                    str(predictions[i]['score'])
+                    + ' '
+                    + str(predictions[i]['translation'][0])
+                    + ' '
+                    + str(predictions[i]['translation'][1])
+                    + ' '
+                    + str(predictions[i]['translation'][2])
+                    + ' '
+                    + str(predictions[i]['size'][0])
+                    + ' '
+                    + str(predictions[i]['size'][1])
+                    + ' '
+                    + str(predictions[i]['size'][2])
+                    + ' '
+                    + str(
+                        Quaternion(list(predictions[i]['rotation'])).yaw_pitch_roll[0]
+                    )
+                    + ' '
+                    + predictions[i]['name']
+                    + ' '
+                )
             prediction_str = prediction_str[:-1]
             idx = Id_list.index(token)
             pred_list[idx] = prediction_str
@@ -239,11 +248,13 @@ class LyftMetric(BaseMetric):
         mmengine.mkdir_or_exist(os.path.dirname(csv_savepath))
         df.to_csv(csv_savepath, index=False)
 
-    def _format_bbox(self,
-                     results: List[dict],
-                     sample_idx_list: List[int],
-                     classes: Optional[List[str]] = None,
-                     jsonfile_prefix: Optional[str] = None) -> str:
+    def _format_bbox(
+        self,
+        results: List[dict],
+        sample_idx_list: List[int],
+        classes: Optional[List[str]] = None,
+        jsonfile_prefix: Optional[str] = None,
+    ) -> str:
         """Convert the results to the standard format.
 
         Args:
@@ -266,8 +277,7 @@ class LyftMetric(BaseMetric):
             boxes = output_to_lyft_box(det)
             sample_idx = sample_idx_list[i]
             sample_token = self.data_infos[sample_idx]['token']
-            boxes = lidar_lyft_box_to_global(self.data_infos[sample_idx],
-                                             boxes)
+            boxes = lidar_lyft_box_to_global(self.data_infos[sample_idx], boxes)
             for i, box in enumerate(boxes):
                 name = classes[box.label]
                 lyft_anno = dict(
@@ -276,7 +286,8 @@ class LyftMetric(BaseMetric):
                     size=box.wlh.tolist(),
                     rotation=box.orientation.elements.tolist(),
                     name=name,
-                    score=box.score)
+                    score=box.score,
+                )
                 annos.append(lyft_anno)
             lyft_annos[sample_token] = annos
         lyft_submissions = {
@@ -290,10 +301,9 @@ class LyftMetric(BaseMetric):
         mmengine.dump(lyft_submissions, res_path)
         return res_path
 
-    def lyft_evaluate(self,
-                      result_dict: dict,
-                      metric: str = 'bbox',
-                      logger: Optional[MMLogger] = None) -> Dict[str, float]:
+    def lyft_evaluate(
+        self, result_dict: dict, metric: str = 'bbox', logger: Optional[MMLogger] = None
+    ) -> Dict[str, float]:
         """Evaluation in Lyft protocol.
 
         Args:
@@ -309,14 +319,14 @@ class LyftMetric(BaseMetric):
         for name in result_dict:
             print(f'Evaluating bboxes of {name}')
             ret_dict = self._evaluate_single(
-                result_dict[name], logger=logger, result_name=name)
+                result_dict[name], logger=logger, result_name=name
+            )
             metric_dict.update(ret_dict)
         return metric_dict
 
-    def _evaluate_single(self,
-                         result_path: str,
-                         logger: MMLogger = None,
-                         result_name: str = 'pts_bbox') -> dict:
+    def _evaluate_single(
+        self, result_path: str, logger: MMLogger = None, result_name: str = 'pts_bbox'
+    ) -> dict:
         """Evaluation for a single model in Lyft protocol.
 
         Args:
@@ -333,12 +343,19 @@ class LyftMetric(BaseMetric):
         lyft = Lyft(
             data_path=osp.join(self.data_root, self.version),
             json_path=osp.join(self.data_root, self.version, self.version),
-            verbose=True)
+            verbose=True,
+        )
         eval_set_map = {
             'v1.01-train': 'val',
         }
-        metrics = lyft_eval(lyft, self.data_root, result_path,
-                            eval_set_map[self.version], output_dir, logger)
+        metrics = lyft_eval(
+            lyft,
+            self.data_root,
+            result_path,
+            eval_set_map[self.version],
+            output_dir,
+            logger,
+        )
 
         # record metrics
         detail = dict()
@@ -380,13 +397,13 @@ def output_to_lyft_box(detection: dict) -> List[LyftBox]:
             lyft_box_dims[i],
             quat,
             label=labels[i],
-            score=scores[i])
+            score=scores[i],
+        )
         box_list.append(box)
     return box_list
 
 
-def lidar_lyft_box_to_global(info: dict,
-                             boxes: List[LyftBox]) -> List[LyftBox]:
+def lidar_lyft_box_to_global(info: dict, boxes: List[LyftBox]) -> List[LyftBox]:
     """Convert the box from ego to global coordinate.
 
     Args:

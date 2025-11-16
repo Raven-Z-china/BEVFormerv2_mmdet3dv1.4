@@ -2,17 +2,18 @@
 # Adapted from AdelaiDet:
 #   https://github.com/aim-uofa/AdelaiDet
 import torch
-from fvcore.nn import sigmoid_focal_loss
-from torch import nn
-from torch.nn import functional as F
-
 from detectron2.layers import Conv2d, batched_nms, cat, get_norm
 from detectron2.structures import Boxes, Instances
 from detectron2.utils.comm import get_world_size
-
+from fvcore.nn import sigmoid_focal_loss
 from projects.BEVFormerv3.bevformerv2.dd3d.layers.iou_loss import IOULoss
-from projects.BEVFormerv3.bevformerv2.dd3d.layers.normalization import ModuleListDial, Scale
+from projects.BEVFormerv3.bevformerv2.dd3d.layers.normalization import (
+    ModuleListDial,
+    Scale,
+)
 from projects.BEVFormerv3.bevformerv2.dd3d.utils.comm import reduce_sum
+from torch import nn
+from torch.nn import functional as F
 
 INF = 100000000
 
@@ -22,22 +23,25 @@ def compute_ctrness_targets(reg_targets):
         return reg_targets.new_zeros(len(reg_targets))
     left_right = reg_targets[:, [0, 2]]
     top_bottom = reg_targets[:, [1, 3]]
-    ctrness = (left_right.min(dim=-1)[0] / left_right.max(dim=-1)[0]) * \
-                 (top_bottom.min(dim=-1)[0] / top_bottom.max(dim=-1)[0])
+    ctrness = (left_right.min(dim=-1)[0] / left_right.max(dim=-1)[0]) * (
+        top_bottom.min(dim=-1)[0] / top_bottom.max(dim=-1)[0]
+    )
     return torch.sqrt(ctrness)
 
 
 class FCOS2DHead(nn.Module):
-    def __init__(self, 
-                 num_classes, 
-                 input_shape,
-                 num_cls_convs=4,
-                 num_box_convs=4,
-                 norm='BN',
-                 use_deformable=False,
-                 use_scale=True,
-                 box2d_scale_init_factor=1.0,
-                 version='v2'):
+    def __init__(
+        self,
+        num_classes,
+        input_shape,
+        num_cls_convs=4,
+        num_box_convs=4,
+        norm='BN',
+        use_deformable=False,
+        use_scale=True,
+        box2d_scale_init_factor=1.0,
+        version='v2',
+    ):
         super().__init__()
 
         self.num_classes = num_classes
@@ -50,37 +54,58 @@ class FCOS2DHead(nn.Module):
         self._version = version
 
         in_channels = [s.channels for s in input_shape]
-        assert len(set(in_channels)) == 1, "Each level must have the same channel!"
+        assert len(set(in_channels)) == 1, 'Each level must have the same channel!'
         in_channels = in_channels[0]
 
         if use_deformable:
-            raise ValueError("Not supported yet.")
+            raise ValueError('Not supported yet.')
 
         head_configs = {'cls': num_cls_convs, 'box2d': num_box_convs}
 
         for head_name, num_convs in head_configs.items():
             tower = []
-            if self._version == "v1":
+            if self._version == 'v1':
                 for _ in range(num_convs):
                     conv_func = nn.Conv2d
-                    tower.append(conv_func(in_channels, in_channels, kernel_size=3, stride=1, padding=1, bias=True))
-                    if norm == "GN":
+                    tower.append(
+                        conv_func(
+                            in_channels,
+                            in_channels,
+                            kernel_size=3,
+                            stride=1,
+                            padding=1,
+                            bias=True,
+                        )
+                    )
+                    if norm == 'GN':
                         raise NotImplementedError()
-                    elif norm == "NaiveGN":
+                    elif norm == 'NaiveGN':
                         raise NotImplementedError()
-                    elif norm == "BN":
-                        tower.append(ModuleListDial([nn.BatchNorm2d(in_channels) for _ in range(self.num_levels)]))
-                    elif norm == "SyncBN":
+                    elif norm == 'BN':
+                        tower.append(
+                            ModuleListDial(
+                                [
+                                    nn.BatchNorm2d(in_channels)
+                                    for _ in range(self.num_levels)
+                                ]
+                            )
+                        )
+                    elif norm == 'SyncBN':
                         raise NotImplementedError()
                     tower.append(nn.ReLU())
-            elif self._version == "v2":
+            elif self._version == 'v2':
                 for _ in range(num_convs):
-                    if norm in ("BN", "FrozenBN", "SyncBN", "GN"):
+                    if norm in ('BN', 'FrozenBN', 'SyncBN', 'GN'):
                         # NOTE: need to add norm here!
                         # Each FPN level has its own batchnorm layer.
                         # NOTE: do not use dd3d train.py!
                         # "BN" is converted to "SyncBN" in distributed training (see train.py)
-                        norm_layer = ModuleListDial([get_norm(norm, in_channels) for _ in range(self.num_levels)])
+                        norm_layer = ModuleListDial(
+                            [
+                                get_norm(norm, in_channels)
+                                for _ in range(self.num_levels)
+                            ]
+                        )
                     else:
                         norm_layer = get_norm(norm, in_channels)
                     tower.append(
@@ -92,35 +117,44 @@ class FCOS2DHead(nn.Module):
                             padding=1,
                             bias=norm_layer is None,
                             norm=norm_layer,
-                            activation=F.relu
+                            activation=F.relu,
                         )
                     )
             else:
-                raise ValueError(f"Invalid FCOS2D version: {self._version}")
+                raise ValueError(f'Invalid FCOS2D version: {self._version}')
             self.add_module(f'{head_name}_tower', nn.Sequential(*tower))
 
-        self.cls_logits = nn.Conv2d(in_channels, self.num_classes, kernel_size=3, stride=1, padding=1)
+        self.cls_logits = nn.Conv2d(
+            in_channels, self.num_classes, kernel_size=3, stride=1, padding=1
+        )
         self.box2d_reg = nn.Conv2d(in_channels, 4, kernel_size=3, stride=1, padding=1)
         self.centerness = nn.Conv2d(in_channels, 1, kernel_size=3, stride=1, padding=1)
 
         if self.use_scale:
-            if self._version == "v1":
-                self.scales_reg = nn.ModuleList([
-                    Scale(init_value=stride * self.box2d_scale_init_factor) for stride in self.in_strides
-                ])
+            if self._version == 'v1':
+                self.scales_reg = nn.ModuleList(
+                    [
+                        Scale(init_value=stride * self.box2d_scale_init_factor)
+                        for stride in self.in_strides
+                    ]
+                )
             else:
-                self.scales_box2d_reg = nn.ModuleList([
-                    Scale(init_value=stride * self.box2d_scale_init_factor) for stride in self.in_strides
-                ])
+                self.scales_box2d_reg = nn.ModuleList(
+                    [
+                        Scale(init_value=stride * self.box2d_scale_init_factor)
+                        for stride in self.in_strides
+                    ]
+                )
 
         self.init_weights()
 
     def init_weights(self):
-
         for tower in [self.cls_tower, self.box2d_tower]:
             for l in tower.modules():
                 if isinstance(l, nn.Conv2d):
-                    torch.nn.init.kaiming_normal_(l.weight, mode='fan_out', nonlinearity='relu')
+                    torch.nn.init.kaiming_normal_(
+                        l.weight, mode='fan_out', nonlinearity='relu'
+                    )
                     if l.bias is not None:
                         torch.nn.init.constant_(l.bias, 0)
 
@@ -138,7 +172,7 @@ class FCOS2DHead(nn.Module):
         box2d_reg = []
         centerness = []
 
-        extra_output = {"cls_tower_out": []}
+        extra_output = {'cls_tower_out': []}
 
         for l, feature in enumerate(x):
             cls_tower_out = self.cls_tower(feature)
@@ -150,7 +184,7 @@ class FCOS2DHead(nn.Module):
             box_reg = self.box2d_reg(bbox_tower_out)
             if self.use_scale:
                 # TODO: to optimize the runtime, apply this scaling in inference (and loss compute) only on FG pixels?
-                if self._version == "v1":
+                if self._version == 'v1':
                     box_reg = self.scales_reg[l](box_reg)
                 else:
                     box_reg = self.scales_box2d_reg[l](box_reg)
@@ -163,12 +197,13 @@ class FCOS2DHead(nn.Module):
 
 
 class FCOS2DLoss(nn.Module):
-    def __init__(self,
-                 num_classes,
-                 focal_loss_alpha=0.25,
-                 focal_loss_gamma=2.0,
-                 loc_loss_type='giou',
-                 ):
+    def __init__(
+        self,
+        num_classes,
+        focal_loss_alpha=0.25,
+        focal_loss_gamma=2.0,
+        loc_loss_type='giou',
+    ):
         super().__init__()
         self.focal_loss_alpha = focal_loss_alpha
         self.focal_loss_gamma = focal_loss_gamma
@@ -180,7 +215,7 @@ class FCOS2DLoss(nn.Module):
     def forward(self, logits, box2d_reg, centerness, targets):
         labels = targets['labels']
         box2d_reg_targets = targets['box2d_reg_targets']
-        pos_inds = targets["pos_inds"]
+        pos_inds = targets['pos_inds']
 
         if len(labels) != box2d_reg_targets.shape[0]:
             raise ValueError(
@@ -188,7 +223,9 @@ class FCOS2DLoss(nn.Module):
             )
 
         # Flatten predictions
-        logits = cat([x.permute(0, 2, 3, 1).reshape(-1, self.num_classes) for x in logits])
+        logits = cat(
+            [x.permute(0, 2, 3, 1).reshape(-1, self.num_classes) for x in logits]
+        )
         box2d_reg_pred = cat([x.permute(0, 2, 3, 1).reshape(-1, 4) for x in box2d_reg])
         centerness_pred = cat([x.permute(0, 2, 3, 1).reshape(-1) for x in centerness])
 
@@ -204,13 +241,16 @@ class FCOS2DLoss(nn.Module):
         cls_target = torch.zeros_like(logits)
         cls_target[pos_inds, labels[pos_inds]] = 1
 
-        loss_cls = sigmoid_focal_loss(
-            logits,
-            cls_target,
-            alpha=self.focal_loss_alpha,
-            gamma=self.focal_loss_gamma,
-            reduction="sum",
-        ) / num_pos_avg
+        loss_cls = (
+            sigmoid_focal_loss(
+                logits,
+                cls_target,
+                alpha=self.focal_loss_alpha,
+                gamma=self.focal_loss_gamma,
+                reduction='sum',
+            )
+            / num_pos_avg
+        )
 
         # NOTE: The rest of losses only consider foreground pixels.
         box2d_reg_pred = box2d_reg_pred[pos_inds]
@@ -228,31 +268,46 @@ class FCOS2DLoss(nn.Module):
         # NOTE: change the return after reduce_sum
         if pos_inds.numel() == 0:
             losses = {
-                "loss_cls": loss_cls,
-                "loss_box2d_reg": box2d_reg_pred.sum() * 0.,
-                "loss_centerness": centerness_pred.sum() * 0.,
+                'loss_cls': loss_cls,
+                'loss_box2d_reg': box2d_reg_pred.sum() * 0.0,
+                'loss_centerness': centerness_pred.sum() * 0.0,
             }
             return losses, {}
 
         # ----------------------
         # 2D box regression loss
         # ----------------------
-        loss_box2d_reg = self.box2d_reg_loss_fn(box2d_reg_pred, box2d_reg_targets, centerness_targets) / loss_denom
+        loss_box2d_reg = (
+            self.box2d_reg_loss_fn(
+                box2d_reg_pred, box2d_reg_targets, centerness_targets
+            )
+            / loss_denom
+        )
 
         # ---------------
         # Centerness loss
         # ---------------
-        loss_centerness = F.binary_cross_entropy_with_logits(
-            centerness_pred, centerness_targets, reduction="sum"
-        ) / num_pos_avg
+        loss_centerness = (
+            F.binary_cross_entropy_with_logits(
+                centerness_pred, centerness_targets, reduction='sum'
+            )
+            / num_pos_avg
+        )
 
-        loss_dict = {"loss_cls": loss_cls, "loss_box2d_reg": loss_box2d_reg, "loss_centerness": loss_centerness}
-        extra_info = {"loss_denom": loss_denom, "centerness_targets": centerness_targets}
+        loss_dict = {
+            'loss_cls': loss_cls,
+            'loss_box2d_reg': loss_box2d_reg,
+            'loss_centerness': loss_centerness,
+        }
+        extra_info = {
+            'loss_denom': loss_denom,
+            'centerness_targets': centerness_targets,
+        }
 
         return loss_dict, extra_info
 
 
-class FCOS2DInference():
+class FCOS2DInference:
     def __init__(self, cfg):
         self.thresh_with_ctr = cfg.DD3D.FCOS2D.INFERENCE.THRESH_WITH_CTR
         self.pre_nms_thresh = cfg.DD3D.FCOS2D.INFERENCE.PRE_NMS_THRESH
@@ -262,25 +317,32 @@ class FCOS2DInference():
         self.num_classes = cfg.DD3D.NUM_CLASSES
 
     def __call__(self, logits, box2d_reg, centerness, locations, image_sizes):
-
         pred_instances = []  # List[List[Instances]], shape = (L, B)
         extra_info = []
-        for lvl, (logits_lvl, box2d_reg_lvl, centerness_lvl, locations_lvl) in \
-            enumerate(zip(logits, box2d_reg, centerness, locations)):
-
+        for lvl, (
+            logits_lvl,
+            box2d_reg_lvl,
+            centerness_lvl,
+            locations_lvl,
+        ) in enumerate(zip(logits, box2d_reg, centerness, locations)):
             instances_per_lvl, extra_info_per_lvl = self.forward_for_single_feature_map(
                 logits_lvl, box2d_reg_lvl, centerness_lvl, locations_lvl, image_sizes
             )  # List of Instances; one for each image.
 
             for instances_per_im in instances_per_lvl:
-                instances_per_im.fpn_levels = locations_lvl.new_ones(len(instances_per_im), dtype=torch.long) * lvl
+                instances_per_im.fpn_levels = (
+                    locations_lvl.new_ones(len(instances_per_im), dtype=torch.long)
+                    * lvl
+                )
 
             pred_instances.append(instances_per_lvl)
             extra_info.append(extra_info_per_lvl)
 
         return pred_instances, extra_info
 
-    def forward_for_single_feature_map(self, logits, box2d_reg, centerness, locations, image_sizes):
+    def forward_for_single_feature_map(
+        self, logits, box2d_reg, centerness, locations, image_sizes
+    ):
         N, C, _, __ = logits.shape
 
         # put in the same format as locations
@@ -322,8 +384,9 @@ class FCOS2DInference():
             pre_nms_topk_per_im = pre_nms_topk[i]
 
             if candidate_mask_per_im.sum().item() > pre_nms_topk_per_im.item():
-                scores_per_im, topk_indices = \
-                    scores_per_im.topk(pre_nms_topk_per_im, sorted=False)
+                scores_per_im, topk_indices = scores_per_im.topk(
+                    pre_nms_topk_per_im, sorted=False
+                )
 
                 class_inds_per_im = class_inds_per_im[topk_indices]
                 box2d_reg_per_im = box2d_reg_per_im[topk_indices]
@@ -333,13 +396,15 @@ class FCOS2DInference():
 
             all_topk_indices.append(topk_indices)
 
-            detections = torch.stack([
-                locations_per_im[:, 0] - box2d_reg_per_im[:, 0],
-                locations_per_im[:, 1] - box2d_reg_per_im[:, 1],
-                locations_per_im[:, 0] + box2d_reg_per_im[:, 2],
-                locations_per_im[:, 1] + box2d_reg_per_im[:, 3],
-            ],
-                                     dim=1)
+            detections = torch.stack(
+                [
+                    locations_per_im[:, 0] - box2d_reg_per_im[:, 0],
+                    locations_per_im[:, 1] - box2d_reg_per_im[:, 1],
+                    locations_per_im[:, 0] + box2d_reg_per_im[:, 2],
+                    locations_per_im[:, 1] + box2d_reg_per_im[:, 3],
+                ],
+                dim=1,
+            )
 
             instances = Instances(image_sizes[i])
             instances.pred_boxes = Boxes(detections)
@@ -350,20 +415,22 @@ class FCOS2DInference():
             results.append(instances)
 
         extra_info = {
-            "fg_inds_per_im": all_fg_inds_per_im,
-            "class_inds_per_im": all_class_inds_per_im,
-            "topk_indices": all_topk_indices
+            'fg_inds_per_im': all_fg_inds_per_im,
+            'class_inds_per_im': all_class_inds_per_im,
+            'topk_indices': all_topk_indices,
         }
         return results, extra_info
 
-    def nms_and_top_k(self, instances_per_im, score_key_for_nms="scores"):
+    def nms_and_top_k(self, instances_per_im, score_key_for_nms='scores'):
         results = []
         for instances in instances_per_im:
             if self.nms_thresh > 0:
                 # Multiclass NMS.
                 keep = batched_nms(
-                    instances.pred_boxes.tensor, instances.get(score_key_for_nms), instances.pred_classes,
-                    self.nms_thresh
+                    instances.pred_boxes.tensor,
+                    instances.get(score_key_for_nms),
+                    instances.pred_classes,
+                    self.nms_thresh,
                 )
                 instances = instances[keep]
             num_detections = len(instances)
@@ -372,7 +439,9 @@ class FCOS2DInference():
             if num_detections > self.post_nms_topk > 0:
                 scores = instances.scores
                 # image_thresh, _ = torch.kthvalue(scores.cpu(), num_detections - self.post_nms_topk + 1)
-                image_thresh, _ = torch.kthvalue(scores, num_detections - self.post_nms_topk + 1)
+                image_thresh, _ = torch.kthvalue(
+                    scores, num_detections - self.post_nms_topk + 1
+                )
                 keep = scores >= image_thresh.item()
                 keep = torch.nonzero(keep).squeeze(1)
                 instances = instances[keep]

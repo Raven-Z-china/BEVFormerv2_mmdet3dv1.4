@@ -21,12 +21,12 @@ class AnchorFreeBBoxCoder(PartialBinBasedBBoxCoder):
 
     def __init__(self, num_dir_bins: int, with_rot: bool = True) -> None:
         super(AnchorFreeBBoxCoder, self).__init__(
-            num_dir_bins, 0, [], with_rot=with_rot)
+            num_dir_bins, 0, [], with_rot=with_rot
+        )
         self.num_dir_bins = num_dir_bins
         self.with_rot = with_rot
 
-    def encode(self, gt_bboxes_3d: BaseInstance3DBoxes,
-               gt_labels_3d: Tensor) -> tuple:
+    def encode(self, gt_bboxes_3d: BaseInstance3DBoxes, gt_labels_3d: Tensor) -> tuple:
         """Encode ground truth to prediction targets.
 
         Args:
@@ -46,15 +46,13 @@ class AnchorFreeBBoxCoder(PartialBinBasedBBoxCoder):
         # generate dir target
         box_num = gt_labels_3d.shape[0]
         if self.with_rot:
-            (dir_class_target,
-             dir_res_target) = self.angle2class(gt_bboxes_3d.yaw)
-            dir_res_target /= (2 * np.pi / self.num_dir_bins)
+            (dir_class_target, dir_res_target) = self.angle2class(gt_bboxes_3d.yaw)
+            dir_res_target /= 2 * np.pi / self.num_dir_bins
         else:
             dir_class_target = gt_labels_3d.new_zeros(box_num)
             dir_res_target = gt_bboxes_3d.tensor.new_zeros(box_num)
 
-        return (center_target, size_res_target, dir_class_target,
-                dir_res_target)
+        return (center_target, size_res_target, dir_class_target, dir_res_target)
 
     def decode(self, bbox_out: dict) -> Tensor:
         """Decode predicted parts to bbox3d.
@@ -76,11 +74,11 @@ class AnchorFreeBBoxCoder(PartialBinBasedBBoxCoder):
         # decode heading angle
         if self.with_rot:
             dir_class = torch.argmax(bbox_out['dir_class'], -1)
-            dir_res = torch.gather(bbox_out['dir_res'], 2,
-                                   dir_class.unsqueeze(-1))
+            dir_res = torch.gather(bbox_out['dir_res'], 2, dir_class.unsqueeze(-1))
             dir_res.squeeze_(2)
             dir_angle = self.class2angle(dir_class, dir_res).reshape(
-                batch_size, num_proposal, 1)
+                batch_size, num_proposal, 1
+            )
         else:
             dir_angle = center.new_zeros(batch_size, num_proposal, 1)
 
@@ -90,8 +88,9 @@ class AnchorFreeBBoxCoder(PartialBinBasedBBoxCoder):
         bbox3d = torch.cat([center, bbox_size, dir_angle], dim=-1)
         return bbox3d
 
-    def split_pred(self, cls_preds: Tensor, reg_preds: Tensor,
-                   base_xyz: Tensor) -> Dict[str, Tensor]:
+    def split_pred(
+        self, cls_preds: Tensor, reg_preds: Tensor, base_xyz: Tensor
+    ) -> Dict[str, Tensor]:
         """Split predicted features to specific parts.
 
         Args:

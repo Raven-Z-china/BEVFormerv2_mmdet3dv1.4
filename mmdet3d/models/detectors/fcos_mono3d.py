@@ -32,14 +32,16 @@ class FCOSMono3D(SingleStageMono3DDetector):
             Defaults to None.
     """  # noqa: E501
 
-    def __init__(self,
-                 backbone: ConfigType,
-                 neck: ConfigType,
-                 bbox_head: ConfigType,
-                 train_cfg: OptConfigType = None,
-                 test_cfg: OptConfigType = None,
-                 data_preprocessor: OptConfigType = None,
-                 init_cfg: OptMultiConfig = None) -> None:
+    def __init__(
+        self,
+        backbone: ConfigType,
+        neck: ConfigType,
+        bbox_head: ConfigType,
+        train_cfg: OptConfigType = None,
+        test_cfg: OptConfigType = None,
+        data_preprocessor: OptConfigType = None,
+        init_cfg: OptMultiConfig = None,
+    ) -> None:
         super().__init__(
             backbone=backbone,
             neck=neck,
@@ -47,12 +49,15 @@ class FCOSMono3D(SingleStageMono3DDetector):
             train_cfg=train_cfg,
             test_cfg=test_cfg,
             data_preprocessor=data_preprocessor,
-            init_cfg=init_cfg)
+            init_cfg=init_cfg,
+        )
 
-    def predict(self,
-                batch_inputs_dict: Dict[str, Tensor],
-                batch_data_samples: SampleList,
-                rescale: bool = True) -> SampleList:
+    def predict(
+        self,
+        batch_inputs_dict: Dict[str, Tensor],
+        batch_data_samples: SampleList,
+        rescale: bool = True,
+    ) -> SampleList:
         """Predict results from a batch of inputs and data samples with post-
         processing.
 
@@ -94,8 +99,9 @@ class FCOSMono3D(SingleStageMono3DDetector):
         """
         x = self.extract_feat(batch_inputs_dict)
         results_list, results_list_2d = self.bbox_head.predict(
-            x, batch_data_samples, rescale=rescale)
-        predictions = self.add_pred_to_datasample(batch_data_samples,
-                                                  results_list,
-                                                  results_list_2d)
+            x, batch_data_samples, rescale=rescale
+        )
+        predictions = self.add_pred_to_datasample(
+            batch_data_samples, results_list, results_list_2d
+        )
         return predictions

@@ -31,7 +31,6 @@ def test_paconv_regularization_loss():
     from mmdet3d.models.losses import PAConvRegularizationLoss
 
     class ToyModel(nn.Module):
-
         def __init__(self):
             super(ToyModel, self).__init__()
 
@@ -57,7 +56,6 @@ def test_paconv_regularization_loss():
     sum_corr_loss = paconv_corr_loss(model.modules(), reduction_override='sum')
     assert torch.allclose(sum_corr_loss, mean_corr_loss * 3)
 
-    none_corr_loss = paconv_corr_loss(
-        model.modules(), reduction_override='none')
+    none_corr_loss = paconv_corr_loss(model.modules(), reduction_override='none')
     assert none_corr_loss.shape[0] == 3
     assert torch.allclose(none_corr_loss.mean(), mean_corr_loss)

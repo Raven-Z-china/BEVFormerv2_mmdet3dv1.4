@@ -5,12 +5,10 @@ import torch
 from mmengine import DefaultScope
 
 from mmdet3d.registry import MODELS
-from mmdet3d.testing import (create_detector_inputs, get_detector_cfg,
-                             setup_seed)
+from mmdet3d.testing import create_detector_inputs, get_detector_cfg, setup_seed
 
 
 class TestCylinder3D(unittest.TestCase):
-
     def test_cylinder3d(self):
         import mmdet3d.models
 
@@ -18,14 +16,14 @@ class TestCylinder3D(unittest.TestCase):
         DefaultScope.get_instance('test_cylinder3d', scope_name='mmdet3d')
         setup_seed(0)
         cylinder3d_cfg = get_detector_cfg(
-            'cylinder3d/cylinder3d_4xb4-3x_semantickitti.py')
+            'cylinder3d/cylinder3d_4xb4-3x_semantickitti.py'
+        )
         cylinder3d_cfg.decode_head['ignore_index'] = 1
         model = MODELS.build(cylinder3d_cfg)
         num_gt_instance = 3
         packed_inputs = create_detector_inputs(
-            num_gt_instance=num_gt_instance,
-            num_classes=1,
-            with_pts_semantic_mask=True)
+            num_gt_instance=num_gt_instance, num_classes=1, with_pts_semantic_mask=True
+        )
 
         if torch.cuda.is_available():
             model = model.cuda()

@@ -12,9 +12,13 @@ from mmengine.logging import MMLogger, print_log
 
 from mmdet3d.models.layers import box3d_multiclass_nms
 from mmdet3d.registry import METRICS
-from mmdet3d.structures import (Box3DMode, CameraInstance3DBoxes,
-                                LiDARInstance3DBoxes, points_cam2img,
-                                xywhr2xyxyr)
+from mmdet3d.structures import (
+    Box3DMode,
+    CameraInstance3DBoxes,
+    LiDARInstance3DBoxes,
+    points_cam2img,
+    xywhr2xyxyr,
+)
 
 
 @METRICS.register_module()
@@ -44,17 +48,20 @@ class WaymoMetric(BaseMetric):
             the mergence of multi-image predicted bboxes, only use when
             load_type == 'mv_image_based'. Defaults to None.
     """
+
     num_cams = 5
     default_prefix = 'Waymo metric'
 
-    def __init__(self,
-                 waymo_bin_file: str,
-                 metric: Union[str, List[str]] = 'mAP',
-                 load_type: str = 'frame_based',
-                 result_prefix: Optional[str] = None,
-                 format_only: bool = False,
-                 nms_cfg=None,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        waymo_bin_file: str,
+        metric: Union[str, List[str]] = 'mAP',
+        load_type: str = 'frame_based',
+        result_prefix: Optional[str] = None,
+        format_only: bool = False,
+        nms_cfg=None,
+        **kwargs,
+    ) -> None:
         super().__init__(**kwargs)
         self.waymo_bin_file = waymo_bin_file
         self.metrics = metric if isinstance(metric, list) else [metric]
@@ -67,7 +74,7 @@ class WaymoMetric(BaseMetric):
             'be saved to a temp directory which will be cleaned up at the end.'
         if nms_cfg is not None:
             assert load_type == 'mv_image_based', 'nms_cfg in WaymoMetric '
-            'only use when load_type == \'mv_image_based\'.'
+            "only use when load_type == 'mv_image_based'."
             self.nms_cfg = Config(nms_cfg)
 
     def process(self, data_batch: dict, data_samples: Sequence[dict]) -> None:
@@ -90,8 +97,7 @@ class WaymoMetric(BaseMetric):
             # TODO: check lidar post-processing
             if isinstance(bboxes_3d, CameraInstance3DBoxes):
                 box_corners = bboxes_3d.corners
-                cam2img = box_corners.new_tensor(
-                    np.array(data_sample['cam2img']))
+                cam2img = box_corners.new_tensor(np.array(data_sample['cam2img']))
                 box_corners_in_image = points_cam2img(box_corners, cam2img)
                 # box_corners_in_image: [N, 8, 2]
                 minxy = torch.min(box_corners_in_image, dim=1)[0]
@@ -100,16 +106,18 @@ class WaymoMetric(BaseMetric):
                 # if the projected 2d bbox has intersection
                 # with the image, we keep it, otherwise, we omit it.
                 img_shape = data_sample['img_shape']
-                valid_inds = ((minxy[:, 0] < img_shape[1]) &
-                              (minxy[:, 1] < img_shape[0]) & (maxxy[:, 0] > 0)
-                              & (maxxy[:, 1] > 0))
+                valid_inds = (
+                    (minxy[:, 0] < img_shape[1])
+                    & (minxy[:, 1] < img_shape[0])
+                    & (maxxy[:, 0] > 0)
+                    & (maxxy[:, 1] > 0)
+                )
 
                 if valid_inds.sum() > 0:
                     lidar2cam = data_sample['lidar2cam']
                     bboxes_3d = bboxes_3d.convert_to(
-                        Box3DMode.LIDAR,
-                        np.linalg.inv(lidar2cam),
-                        correct_yaw=True)
+                        Box3DMode.LIDAR, np.linalg.inv(lidar2cam), correct_yaw=True
+                    )
                     bboxes_3d = bboxes_3d[valid_inds]
                     scores_3d = scores_3d[valid_inds]
                     labels_3d = labels_3d[valid_inds]
@@ -143,9 +151,7 @@ class WaymoMetric(BaseMetric):
         if self.load_type == 'mv_image_based':
             assert len(results) % 5 == 0, 'The multi-view image-based results'
             ' must be 5 times as large as the original frame-based results.'
-            frame_results = [
-                results[i:i + 5] for i in range(0, len(results), 5)
-            ]
+            frame_results = [results[i : i + 5] for i in range(0, len(results), 5)]
             results = self.merge_multi_view_boxes(frame_results)
 
         if self.result_prefix is None:
@@ -160,23 +166,23 @@ class WaymoMetric(BaseMetric):
         metric_dict = {}
 
         if self.format_only:
-            logger.info('results are saved in '
-                        f'{osp.dirname(self.result_prefix)}')
+            logger.info('results are saved in ' f'{osp.dirname(self.result_prefix)}')
             return metric_dict
 
         for metric in self.metrics:
-            ap_dict = self.waymo_evaluate(
-                result_prefix, metric=metric, logger=logger)
+            ap_dict = self.waymo_evaluate(result_prefix, metric=metric, logger=logger)
             metric_dict.update(ap_dict)
         if eval_tmp_dir is not None:
             eval_tmp_dir.cleanup()
 
         return metric_dict
 
-    def waymo_evaluate(self,
-                       result_prefix: str,
-                       metric: Optional[str] = None,
-                       logger: Optional[MMLogger] = None) -> Dict[str, float]:
+    def waymo_evaluate(
+        self,
+        result_prefix: str,
+        metric: Optional[str] = None,
+        logger: Optional[MMLogger] = None,
+    ) -> Dict[str, float]:
         """Evaluation in Waymo protocol.
 
         Args:
@@ -193,9 +199,11 @@ class WaymoMetric(BaseMetric):
         import subprocess
 
         if metric == 'mAP':
-            eval_str = 'mmdet3d/evaluation/functional/waymo_utils/' + \
-                f'compute_detection_metrics_main {result_prefix}.bin ' + \
-                f'{self.waymo_bin_file}'
+            eval_str = (
+                'mmdet3d/evaluation/functional/waymo_utils/'
+                + f'compute_detection_metrics_main {result_prefix}.bin '
+                + f'{self.waymo_bin_file}'
+            )
             print(eval_str)
             ret_bytes = subprocess.check_output(eval_str, shell=True)
             ret_texts = ret_bytes.decode('utf-8')
@@ -221,7 +229,7 @@ class WaymoMetric(BaseMetric):
                 'Overall/L1 mAP': 0,
                 'Overall/L1 mAPH': 0,
                 'Overall/L2 mAP': 0,
-                'Overall/L2 mAPH': 0
+                'Overall/L2 mAPH': 0,
             }
             mAP_splits = ret_texts.split('mAP ')
             mAPH_splits = ret_texts.split('mAPH ')
@@ -231,22 +239,32 @@ class WaymoMetric(BaseMetric):
                     ap_dict[key] = float(mAP_splits[split_idx].split(']')[0])
                 else:  # mAPH
                     ap_dict[key] = float(mAPH_splits[split_idx].split(']')[0])
-            ap_dict['Overall/L1 mAP'] = \
-                (ap_dict['Vehicle/L1 mAP'] + ap_dict['Pedestrian/L1 mAP'] +
-                    ap_dict['Cyclist/L1 mAP']) / 3
-            ap_dict['Overall/L1 mAPH'] = \
-                (ap_dict['Vehicle/L1 mAPH'] + ap_dict['Pedestrian/L1 mAPH'] +
-                    ap_dict['Cyclist/L1 mAPH']) / 3
-            ap_dict['Overall/L2 mAP'] = \
-                (ap_dict['Vehicle/L2 mAP'] + ap_dict['Pedestrian/L2 mAP'] +
-                    ap_dict['Cyclist/L2 mAP']) / 3
-            ap_dict['Overall/L2 mAPH'] = \
-                (ap_dict['Vehicle/L2 mAPH'] + ap_dict['Pedestrian/L2 mAPH'] +
-                    ap_dict['Cyclist/L2 mAPH']) / 3
+            ap_dict['Overall/L1 mAP'] = (
+                ap_dict['Vehicle/L1 mAP']
+                + ap_dict['Pedestrian/L1 mAP']
+                + ap_dict['Cyclist/L1 mAP']
+            ) / 3
+            ap_dict['Overall/L1 mAPH'] = (
+                ap_dict['Vehicle/L1 mAPH']
+                + ap_dict['Pedestrian/L1 mAPH']
+                + ap_dict['Cyclist/L1 mAPH']
+            ) / 3
+            ap_dict['Overall/L2 mAP'] = (
+                ap_dict['Vehicle/L2 mAP']
+                + ap_dict['Pedestrian/L2 mAP']
+                + ap_dict['Cyclist/L2 mAP']
+            ) / 3
+            ap_dict['Overall/L2 mAPH'] = (
+                ap_dict['Vehicle/L2 mAPH']
+                + ap_dict['Pedestrian/L2 mAPH']
+                + ap_dict['Cyclist/L2 mAPH']
+            ) / 3
         elif metric == 'LET_mAP':
-            eval_str = 'mmdet3d/evaluation/functional/waymo_utils/' + \
-                f'compute_detection_let_metrics_main {result_prefix}.bin ' + \
-                f'{self.waymo_bin_file}'
+            eval_str = (
+                'mmdet3d/evaluation/functional/waymo_utils/'
+                + f'compute_detection_let_metrics_main {result_prefix}.bin '
+                + f'{self.waymo_bin_file}'
+            )
 
             print(eval_str)
             ret_bytes = subprocess.check_output(eval_str, shell=True)
@@ -268,7 +286,7 @@ class WaymoMetric(BaseMetric):
                 'Cyclist mAPH': 0,
                 'Overall mAPL': 0,
                 'Overall mAP': 0,
-                'Overall mAPH': 0
+                'Overall mAPH': 0,
             }
             mAPL_splits = ret_texts.split('mAPL ')
             mAP_splits = ret_texts.split('mAP ')
@@ -281,21 +299,25 @@ class WaymoMetric(BaseMetric):
                     ap_dict[key] = float(mAP_splits[split_idx].split(']')[0])
                 else:  # mAPH
                     ap_dict[key] = float(mAPH_splits[split_idx].split(']')[0])
-            ap_dict['Overall mAPL'] = \
-                (ap_dict['Vehicle mAPL'] + ap_dict['Pedestrian mAPL'] +
-                    ap_dict['Cyclist mAPL']) / 3
-            ap_dict['Overall mAP'] = \
-                (ap_dict['Vehicle mAP'] + ap_dict['Pedestrian mAP'] +
-                    ap_dict['Cyclist mAP']) / 3
-            ap_dict['Overall mAPH'] = \
-                (ap_dict['Vehicle mAPH'] + ap_dict['Pedestrian mAPH'] +
-                    ap_dict['Cyclist mAPH']) / 3
+            ap_dict['Overall mAPL'] = (
+                ap_dict['Vehicle mAPL']
+                + ap_dict['Pedestrian mAPL']
+                + ap_dict['Cyclist mAPL']
+            ) / 3
+            ap_dict['Overall mAP'] = (
+                ap_dict['Vehicle mAP']
+                + ap_dict['Pedestrian mAP']
+                + ap_dict['Cyclist mAP']
+            ) / 3
+            ap_dict['Overall mAPH'] = (
+                ap_dict['Vehicle mAPH']
+                + ap_dict['Pedestrian mAPH']
+                + ap_dict['Cyclist mAPH']
+            ) / 3
         return ap_dict
 
     def format_results(
-        self,
-        results: List[dict],
-        result_prefix: Optional[str] = None
+        self, results: List[dict], result_prefix: Optional[str] = None
     ) -> Tuple[dict, Union[tempfile.TemporaryDirectory, None]]:
         """Format the results to bin file.
 
@@ -308,10 +330,9 @@ class WaymoMetric(BaseMetric):
         """
         waymo_results_final_path = f'{result_prefix}.bin'
 
-        from ..functional.waymo_utils.prediction_to_waymo import \
-            Prediction2Waymo
-        converter = Prediction2Waymo(results, waymo_results_final_path,
-                                     self.classes)
+        from ..functional.waymo_utils.prediction_to_waymo import Prediction2Waymo
+
+        converter = Prediction2Waymo(results, waymo_results_final_path, self.classes)
         converter.convert()
 
     def merge_multi_view_boxes(self, frame_results: List[dict]) -> dict:
@@ -343,20 +364,22 @@ class WaymoMetric(BaseMetric):
             labels_3d = np.concatenate(labels_3d)
 
             device = get_device()
-            lidar_boxes3d = LiDARInstance3DBoxes(
-                torch.from_numpy(bboxes_3d).to(device))
+            lidar_boxes3d = LiDARInstance3DBoxes(torch.from_numpy(bboxes_3d).to(device))
             scores = torch.from_numpy(scores_3d).to(device)
             labels = torch.from_numpy(labels_3d).long().to(device)
-            nms_scores = scores.new_zeros(scores.shape[0],
-                                          len(self.classes) + 1)
+            nms_scores = scores.new_zeros(scores.shape[0], len(self.classes) + 1)
             indices = labels.new_tensor(list(range(scores.shape[0])))
             nms_scores[indices, labels] = scores
             lidar_boxes3d_for_nms = xywhr2xyxyr(lidar_boxes3d.bev)
             boxes3d = lidar_boxes3d.tensor
             bboxes_3d, scores_3d, labels_3d = box3d_multiclass_nms(
-                boxes3d, lidar_boxes3d_for_nms, nms_scores,
-                self.nms_cfg.score_thr, self.nms_cfg.max_per_frame,
-                self.nms_cfg)
+                boxes3d,
+                lidar_boxes3d_for_nms,
+                nms_scores,
+                self.nms_cfg.score_thr,
+                self.nms_cfg.max_per_frame,
+                self.nms_cfg,
+            )
 
             merged_result['bboxes_3d'] = bboxes_3d.cpu().numpy()
             merged_result['scores_3d'] = scores_3d.cpu().numpy()

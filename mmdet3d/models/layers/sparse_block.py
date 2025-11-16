@@ -14,8 +14,9 @@ else:
     from mmcv.ops import SparseConvTensor, SparseModule, SparseSequential
 
 
-def replace_feature(out: SparseConvTensor,
-                    new_features: SparseConvTensor) -> SparseConvTensor:
+def replace_feature(
+    out: SparseConvTensor, new_features: SparseConvTensor
+) -> SparseConvTensor:
     if 'replace_feature' in out.__dir__():
         # spconv 2.x behaviour
         return out.replace_feature(new_features)
@@ -44,15 +45,16 @@ class SparseBottleneck(Bottleneck, SparseModule):
 
     expansion = 4
 
-    def __init__(self,
-                 inplanes: int,
-                 planes: int,
-                 stride: Union[int, Tuple[int]] = 1,
-                 downsample: nn.Module = None,
-                 indice_key=None,
-                 conv_cfg: OptConfigType = None,
-                 norm_cfg: OptConfigType = None) -> None:
-
+    def __init__(
+        self,
+        inplanes: int,
+        planes: int,
+        stride: Union[int, Tuple[int]] = 1,
+        downsample: nn.Module = None,
+        indice_key=None,
+        conv_cfg: OptConfigType = None,
+        norm_cfg: OptConfigType = None,
+    ) -> None:
         SparseModule.__init__(self)
         if conv_cfg is None:
             conv_cfg = dict(type='SubMConv3d')
@@ -66,7 +68,8 @@ class SparseBottleneck(Bottleneck, SparseModule):
             stride=stride,
             downsample=downsample,
             conv_cfg=conv_cfg,
-            norm_cfg=norm_cfg)
+            norm_cfg=norm_cfg,
+        )
 
     def forward(self, x: SparseConvTensor) -> SparseConvTensor:
         identity = x.features
@@ -111,14 +114,16 @@ class SparseBasicBlock(BasicBlock, SparseModule):
 
     expansion = 1
 
-    def __init__(self,
-                 inplanes: int,
-                 planes: int,
-                 stride: Union[int, Tuple[int]] = 1,
-                 downsample: nn.Module = None,
-                 indice_key: Optional[str] = None,
-                 conv_cfg: OptConfigType = None,
-                 norm_cfg: OptConfigType = None) -> None:
+    def __init__(
+        self,
+        inplanes: int,
+        planes: int,
+        stride: Union[int, Tuple[int]] = 1,
+        downsample: nn.Module = None,
+        indice_key: Optional[str] = None,
+        conv_cfg: OptConfigType = None,
+        norm_cfg: OptConfigType = None,
+    ) -> None:
         SparseModule.__init__(self)
         if conv_cfg is None:
             conv_cfg = dict(type='SubMConv3d')
@@ -132,7 +137,8 @@ class SparseBasicBlock(BasicBlock, SparseModule):
             stride=stride,
             downsample=downsample,
             conv_cfg=conv_cfg,
-            norm_cfg=norm_cfg)
+            norm_cfg=norm_cfg,
+        )
 
     def forward(self, x: SparseConvTensor) -> SparseConvTensor:
         identity = x.features
@@ -154,16 +160,18 @@ class SparseBasicBlock(BasicBlock, SparseModule):
         return out
 
 
-def make_sparse_convmodule(in_channels: int,
-                           out_channels: int,
-                           kernel_size: Union[int, Tuple[int]],
-                           indice_key: Optional[str] = None,
-                           stride: Union[int, Tuple[int]] = 1,
-                           padding: Union[int, Tuple[int]] = 0,
-                           conv_type: str = 'SubMConv3d',
-                           norm_cfg: OptConfigType = None,
-                           order: Tuple[str] = ('conv', 'norm', 'act'),
-                           **kwargs) -> SparseSequential:
+def make_sparse_convmodule(
+    in_channels: int,
+    out_channels: int,
+    kernel_size: Union[int, Tuple[int]],
+    indice_key: Optional[str] = None,
+    stride: Union[int, Tuple[int]] = 1,
+    padding: Union[int, Tuple[int]] = 0,
+    conv_type: str = 'SubMConv3d',
+    norm_cfg: OptConfigType = None,
+    order: Tuple[str] = ('conv', 'norm', 'act'),
+    **kwargs,
+) -> SparseSequential:
     """Make sparse convolution module.
 
     Args:
@@ -195,8 +203,9 @@ def make_sparse_convmodule(in_channels: int,
     for layer in order:
         if layer == 'conv':
             if conv_type not in [
-                    'SparseInverseConv3d', 'SparseInverseConv2d',
-                    'SparseInverseConv1d'
+                'SparseInverseConv3d',
+                'SparseInverseConv2d',
+                'SparseInverseConv1d',
             ]:
                 layers.append(
                     build_conv_layer(
@@ -206,15 +215,15 @@ def make_sparse_convmodule(in_channels: int,
                         kernel_size,
                         stride=stride,
                         padding=padding,
-                        bias=False))
+                        bias=False,
+                    )
+                )
             else:
                 layers.append(
                     build_conv_layer(
-                        conv_cfg,
-                        in_channels,
-                        out_channels,
-                        kernel_size,
-                        bias=False))
+                        conv_cfg, in_channels, out_channels, kernel_size, bias=False
+                    )
+                )
         elif layer == 'norm':
             layers.append(build_norm_layer(norm_cfg, out_channels)[1])
         elif layer == 'act':

@@ -17,9 +17,10 @@ def test_dgcnn_gf():
         num_samples=(20, 20, 20),
         knn_modes=['D-KNN', 'F-KNN', 'F-KNN'],
         radius=(None, None, None),
-        gf_channels=((64, 64), (64, 64), (64, )),
-        fa_channels=(1024, ),
-        act_cfg=dict(type='ReLU'))
+        gf_channels=((64, 64), (64, 64), (64,)),
+        fa_channels=(1024,),
+        act_cfg=dict(type='ReLU'),
+    )
 
     self = MODELS.build(cfg)
     self.cuda()

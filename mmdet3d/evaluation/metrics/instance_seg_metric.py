@@ -22,11 +22,10 @@ class InstanceSegMetric(BaseMetric):
             be used instead. Defaults to None.
     """
 
-    def __init__(self,
-                 collect_device: str = 'cpu',
-                 prefix: Optional[str] = None):
+    def __init__(self, collect_device: str = 'cpu', prefix: Optional[str] = None):
         super(InstanceSegMetric, self).__init__(
-            prefix=prefix, collect_device=collect_device)
+            prefix=prefix, collect_device=collect_device
+        )
 
     def process(self, data_batch: dict, data_samples: Sequence[dict]) -> None:
         """Process one batch of data samples and predictions.
@@ -73,8 +72,7 @@ class InstanceSegMetric(BaseMetric):
         for eval_ann, sinlge_pred_results in results:
             gt_semantic_masks.append(eval_ann['pts_semantic_mask'])
             gt_instance_masks.append(eval_ann['pts_instance_mask'])
-            pred_instance_masks.append(
-                sinlge_pred_results['pts_instance_mask'])
+            pred_instance_masks.append(sinlge_pred_results['pts_instance_mask'])
             pred_instance_labels.append(sinlge_pred_results['instance_labels'])
             pred_instance_scores.append(sinlge_pred_results['instance_scores'])
 
@@ -86,6 +84,7 @@ class InstanceSegMetric(BaseMetric):
             pred_instance_scores,
             valid_class_ids=self.valid_class_ids,
             class_labels=self.classes,
-            logger=logger)
+            logger=logger,
+        )
 
         return ret_dict

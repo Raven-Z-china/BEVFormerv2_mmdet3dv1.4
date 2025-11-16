@@ -17,7 +17,8 @@ def test_paconv():
 
     paconv = PAConv(in_channels, out_channels, num_kernels)
     assert paconv.weight_bank.shape == torch.Size(
-        [in_channels * 2, out_channels * num_kernels])
+        [in_channels * 2, out_channels * num_kernels]
+    )
 
     with torch.no_grad():
         new_features, _ = paconv((features, points_xyz))
@@ -41,7 +42,8 @@ def test_paconv_cuda():
 
     paconv = PAConvCUDA(in_channels, out_channels, num_kernels).cuda()
     assert paconv.weight_bank.shape == torch.Size(
-        [in_channels * 2, out_channels * num_kernels])
+        [in_channels * 2, out_channels * num_kernels]
+    )
 
     with torch.no_grad():
         new_features, _, _ = paconv((features, points_xyz, points_idx))

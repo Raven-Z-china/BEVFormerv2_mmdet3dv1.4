@@ -52,6 +52,7 @@ class Seg3DDataset(BaseDataset):
         backend_args (dict, optional): Arguments to instantiate the
             corresponding backend. Defaults to None.
     """
+
     METAINFO = {
         'classes': None,  # names of all classes data used for the task
         'palette': None,  # official color for visualization
@@ -59,38 +60,42 @@ class Seg3DDataset(BaseDataset):
         'seg_all_class_ids': None,  # all possible class_ids in loaded seg mask
     }
 
-    def __init__(self,
-                 data_root: Optional[str] = None,
-                 ann_file: str = '',
-                 metainfo: Optional[dict] = None,
-                 data_prefix: dict = dict(
-                     pts='points',
-                     img='',
-                     pts_instance_mask='',
-                     pts_semantic_mask=''),
-                 pipeline: List[Union[dict, Callable]] = [],
-                 modality: dict = dict(use_lidar=True, use_camera=False),
-                 ignore_index: Optional[int] = None,
-                 scene_idxs: Optional[Union[str, np.ndarray]] = None,
-                 test_mode: bool = False,
-                 serialize_data: bool = False,
-                 load_eval_anns: bool = True,
-                 backend_args: Optional[dict] = None,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        data_root: Optional[str] = None,
+        ann_file: str = '',
+        metainfo: Optional[dict] = None,
+        data_prefix: dict = dict(
+            pts='points', img='', pts_instance_mask='', pts_semantic_mask=''
+        ),
+        pipeline: List[Union[dict, Callable]] = [],
+        modality: dict = dict(use_lidar=True, use_camera=False),
+        ignore_index: Optional[int] = None,
+        scene_idxs: Optional[Union[str, np.ndarray]] = None,
+        test_mode: bool = False,
+        serialize_data: bool = False,
+        load_eval_anns: bool = True,
+        backend_args: Optional[dict] = None,
+        **kwargs,
+    ) -> None:
         self.backend_args = backend_args
         self.modality = modality
         self.load_eval_anns = load_eval_anns
 
         # TODO: We maintain the ignore_index attributes,
         # but we may consider to remove it in the future.
-        self.ignore_index = len(self.METAINFO['classes']) if \
-            ignore_index is None else ignore_index
+        self.ignore_index = (
+            len(self.METAINFO['classes']) if ignore_index is None else ignore_index
+        )
 
         # Get label mapping for custom classes
         new_classes = metainfo.get('classes', None)
 
-        self.label_mapping, self.label2cat, seg_valid_class_ids = \
-            self.get_label_mapping(new_classes)
+        (
+            self.label_mapping,
+            self.label2cat,
+            seg_valid_class_ids,
+        ) = self.get_label_mapping(new_classes)
 
         metainfo['label_mapping'] = self.label_mapping
         metainfo['label2cat'] = self.label2cat
@@ -116,7 +121,8 @@ class Seg3DDataset(BaseDataset):
             pipeline=pipeline,
             test_mode=test_mode,
             serialize_data=serialize_data,
-            **kwargs)
+            **kwargs,
+        )
 
         self.metainfo['seg_label_mapping'] = self.seg_label_mapping
         if not kwargs.get('lazy_init', False):
@@ -127,8 +133,7 @@ class Seg3DDataset(BaseDataset):
             if not self.test_mode:
                 self._set_group_flag()
 
-    def get_label_mapping(self,
-                          new_classes: Optional[Sequence] = None) -> tuple:
+    def get_label_mapping(self, new_classes: Optional[Sequence] = None) -> tuple:
         """Get label mapping.
 
         The ``label_mapping`` is a dictionary, its keys are the old label ids
@@ -146,40 +151,44 @@ class Seg3DDataset(BaseDataset):
             new classes in metainfo
         """
         old_classes = self.METAINFO.get('classes', None)
-        if (new_classes is not None and old_classes is not None
-                and list(new_classes) != list(old_classes)):
+        if (
+            new_classes is not None
+            and old_classes is not None
+            and list(new_classes) != list(old_classes)
+        ):
             if not set(new_classes).issubset(old_classes):
                 raise ValueError(
                     f'new classes {new_classes} is not a '
-                    f'subset of classes {old_classes} in METAINFO.')
+                    f'subset of classes {old_classes} in METAINFO.'
+                )
 
             # obtain true id from valid_class_ids
             valid_class_ids = [
-                self.METAINFO['seg_valid_class_ids'][old_classes.index(
-                    cls_name)] for cls_name in new_classes
+                self.METAINFO['seg_valid_class_ids'][old_classes.index(cls_name)]
+                for cls_name in new_classes
             ]
             label_mapping = {
                 cls_id: self.ignore_index
                 for cls_id in self.METAINFO['seg_all_class_ids']
             }
             label_mapping.update(
-                {cls_id: i
-                 for i, cls_id in enumerate(valid_class_ids)})
+                {cls_id: i for i, cls_id in enumerate(valid_class_ids)}
+            )
             label2cat = {i: cat_name for i, cat_name in enumerate(new_classes)}
         else:
             label_mapping = {
                 cls_id: self.ignore_index
                 for cls_id in self.METAINFO['seg_all_class_ids']
             }
-            label_mapping.update({
-                cls_id: i
-                for i, cls_id in enumerate(
-                    self.METAINFO['seg_valid_class_ids'])
-            })
+            label_mapping.update(
+                {
+                    cls_id: i
+                    for i, cls_id in enumerate(self.METAINFO['seg_valid_class_ids'])
+                }
+            )
             # map label to category name
             label2cat = {
-                i: cat_name
-                for i, cat_name in enumerate(self.METAINFO['classes'])
+                i: cat_name for i, cat_name in enumerate(self.METAINFO['classes'])
             }
             valid_class_ids = self.METAINFO['seg_valid_class_ids']
 
@@ -202,14 +211,12 @@ class Seg3DDataset(BaseDataset):
         seg_max_cat_id = len(self.METAINFO['seg_all_class_ids'])
         seg_valid_cat_ids = self.METAINFO['seg_valid_class_ids']
         neg_label = len(seg_valid_cat_ids)
-        seg_label_mapping = np.ones(
-            seg_max_cat_id + 1, dtype=np.int64) * neg_label
+        seg_label_mapping = np.ones(seg_max_cat_id + 1, dtype=np.int64) * neg_label
         for cls_idx, cat_id in enumerate(seg_valid_cat_ids):
             seg_label_mapping[cat_id] = cls_idx
         return seg_label_mapping
 
-    def _update_palette(self, new_classes: list, palette: Union[None,
-                                                                list]) -> list:
+    def _update_palette(self, new_classes: list, palette: Union[None, list]) -> list:
         """Update palette according to metainfo.
 
         If length of palette is equal to classes, just return the palette.
@@ -234,8 +241,9 @@ class Seg3DDataset(BaseDataset):
         if len(palette) == len(new_classes):
             return palette
         else:
-            raise ValueError('Once palette in set in metainfo, it should'
-                             'match classes in metainfo')
+            raise ValueError(
+                'Once palette in set in metainfo, it should' 'match classes in metainfo'
+            )
 
     def parse_data_info(self, info: dict) -> dict:
         """Process the raw data info.
@@ -252,10 +260,9 @@ class Seg3DDataset(BaseDataset):
             all path has been converted to absolute path.
         """
         if self.modality['use_lidar']:
-            info['lidar_points']['lidar_path'] = \
-                osp.join(
-                    self.data_prefix.get('pts', ''),
-                    info['lidar_points']['lidar_path'])
+            info['lidar_points']['lidar_path'] = osp.join(
+                self.data_prefix.get('pts', ''), info['lidar_points']['lidar_path']
+            )
             if 'num_pts_feats' in info['lidar_points']:
                 info['num_pts_feats'] = info['lidar_points']['num_pts_feats']
             info['lidar_path'] = info['lidar_points']['lidar_path']
@@ -264,17 +271,20 @@ class Seg3DDataset(BaseDataset):
             for cam_id, img_info in info['images'].items():
                 if 'img_path' in img_info:
                     img_info['img_path'] = osp.join(
-                        self.data_prefix.get('img', ''), img_info['img_path'])
+                        self.data_prefix.get('img', ''), img_info['img_path']
+                    )
 
         if 'pts_instance_mask_path' in info:
-            info['pts_instance_mask_path'] = \
-                osp.join(self.data_prefix.get('pts_instance_mask', ''),
-                         info['pts_instance_mask_path'])
+            info['pts_instance_mask_path'] = osp.join(
+                self.data_prefix.get('pts_instance_mask', ''),
+                info['pts_instance_mask_path'],
+            )
 
         if 'pts_semantic_mask_path' in info:
-            info['pts_semantic_mask_path'] = \
-                osp.join(self.data_prefix.get('pts_semantic_mask', ''),
-                         info['pts_semantic_mask_path'])
+            info['pts_semantic_mask_path'] = osp.join(
+                self.data_prefix.get('pts_semantic_mask', ''),
+                info['pts_semantic_mask_path'],
+            )
 
         # only be used in `PointSegClassMapping` in pipeline
         # to map original semantic class to valid category ids.
@@ -304,8 +314,7 @@ class Seg3DDataset(BaseDataset):
         else:
             return super().prepare_data(idx)
 
-    def get_scene_idxs(self, scene_idxs: Union[None, str,
-                                               np.ndarray]) -> np.ndarray:
+    def get_scene_idxs(self, scene_idxs: Union[None, str, np.ndarray]) -> np.ndarray:
         """Compute scene_idxs for data sampling.
 
         We sample more times for scenes with more points.
@@ -321,7 +330,8 @@ class Seg3DDataset(BaseDataset):
         if isinstance(scene_idxs, str):
             scene_idxs = osp.join(self.data_root, scene_idxs)
             with get_local_path(
-                    scene_idxs, backend_args=self.backend_args) as local_path:
+                scene_idxs, backend_args=self.backend_args
+            ) as local_path:
                 scene_idxs = np.load(local_path)
         else:
             scene_idxs = np.array(scene_idxs)

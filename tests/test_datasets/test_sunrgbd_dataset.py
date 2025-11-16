@@ -13,8 +13,18 @@ def _generate_scannet_dataset_config():
     data_root = 'tests/data/sunrgbd'
     ann_file = 'sunrgbd_infos.pkl'
 
-    classes = ('bed', 'table', 'sofa', 'chair', 'toilet', 'desk', 'dresser',
-               'night_stand', 'bookshelf', 'bathtub')
+    classes = (
+        'bed',
+        'table',
+        'sofa',
+        'chair',
+        'toilet',
+        'desk',
+        'dresser',
+        'night_stand',
+        'bookshelf',
+        'bathtub',
+    )
 
     from mmcv.transforms.base import BaseTransform
     from mmengine.registry import TRANSFORMS
@@ -23,7 +33,6 @@ def _generate_scannet_dataset_config():
 
         @TRANSFORMS.register_module()
         class Identity(BaseTransform):
-
             def transform(self, info):
                 if 'ann_info' in info:
                     info['gt_labels_3d'] = info['ann_info']['gt_labels_3d']
@@ -38,18 +47,24 @@ def _generate_scannet_dataset_config():
 
 
 class TestScanNetDataset(unittest.TestCase):
-
     def test_sunrgbd_ataset(self):
         np.random.seed(0)
-        data_root, ann_file, classes, data_prefix, \
-            pipeline, modality, = _generate_scannet_dataset_config()
+        (
+            data_root,
+            ann_file,
+            classes,
+            data_prefix,
+            pipeline,
+            modality,
+        ) = _generate_scannet_dataset_config()
         scannet_dataset = SUNRGBDDataset(
             data_root,
             ann_file,
             data_prefix=data_prefix,
             pipeline=pipeline,
             metainfo=dict(classes=classes),
-            modality=modality)
+            modality=modality,
+        )
 
         scannet_dataset.prepare_data(0)
         input_dict = scannet_dataset.get_data_info(0)
@@ -72,8 +87,7 @@ class TestScanNetDataset(unittest.TestCase):
         self.assertIsInstance(ann_info['gt_bboxes_3d'], DepthInstance3DBoxes)
 
         self.assertEqual(len(ann_info['gt_bboxes_3d']), 3)
-        assert_allclose(ann_info['gt_bboxes_3d'].tensor.sum(),
-                        torch.tensor(19.2575))
+        assert_allclose(ann_info['gt_bboxes_3d'].tensor.sum(), torch.tensor(19.2575))
 
         classes = ['bed']
         bed_scannet_dataset = SUNRGBDDataset(
@@ -82,7 +96,8 @@ class TestScanNetDataset(unittest.TestCase):
             data_prefix=data_prefix,
             pipeline=pipeline,
             metainfo=dict(classes=classes),
-            modality=modality)
+            modality=modality,
+        )
 
         input_dict = bed_scannet_dataset.get_data_info(0)
         ann_info = bed_scannet_dataset.parse_ann_info(input_dict)

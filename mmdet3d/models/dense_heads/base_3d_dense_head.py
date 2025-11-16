@@ -65,8 +65,7 @@ class Base3DDenseHead(BaseModule, metaclass=ABCMeta):
             if hasattr(m, 'conv_offset'):
                 constant_init(m.conv_offset, 0)
 
-    def loss(self, x: Tuple[Tensor], batch_data_samples: SampleList,
-             **kwargs) -> dict:
+    def loss(self, x: Tuple[Tensor], batch_data_samples: SampleList, **kwargs) -> dict:
         """Perform forward propagation and loss calculation of the detection
         head on the features of the upstream network.
 
@@ -88,11 +87,13 @@ class Base3DDenseHead(BaseModule, metaclass=ABCMeta):
         for data_sample in batch_data_samples:
             batch_input_metas.append(data_sample.metainfo)
             batch_gt_instances_3d.append(data_sample.gt_instances_3d)
-            batch_gt_instances_ignore.append(
-                data_sample.get('ignored_instances', None))
+            batch_gt_instances_ignore.append(data_sample.get('ignored_instances', None))
 
-        loss_inputs = outs + (batch_gt_instances_3d, batch_input_metas,
-                              batch_gt_instances_ignore)
+        loss_inputs = outs + (
+            batch_gt_instances_3d,
+            batch_input_metas,
+            batch_gt_instances_ignore,
+        )
         losses = self.loss_by_feat(*loss_inputs)
         return losses
 
@@ -102,11 +103,13 @@ class Base3DDenseHead(BaseModule, metaclass=ABCMeta):
         head."""
         pass
 
-    def loss_and_predict(self,
-                         x: Tuple[Tensor],
-                         batch_data_samples: SampleList,
-                         proposal_cfg: Optional[ConfigDict] = None,
-                         **kwargs) -> Tuple[dict, InstanceList]:
+    def loss_and_predict(
+        self,
+        x: Tuple[Tensor],
+        batch_data_samples: SampleList,
+        proposal_cfg: Optional[ConfigDict] = None,
+        **kwargs
+    ) -> Tuple[dict, InstanceList]:
         """Perform forward propagation of the head, then calculate loss and
         predictions from the features and data samples.
 
@@ -132,23 +135,25 @@ class Base3DDenseHead(BaseModule, metaclass=ABCMeta):
         for data_sample in batch_data_samples:
             batch_input_metas.append(data_sample.metainfo)
             batch_gt_instances.append(data_sample.gt_instances_3d)
-            batch_gt_instances_ignore.append(
-                data_sample.get('ignored_instances', None))
+            batch_gt_instances_ignore.append(data_sample.get('ignored_instances', None))
 
         outs = self(x)
 
-        loss_inputs = outs + (batch_gt_instances, batch_input_metas,
-                              batch_gt_instances_ignore)
+        loss_inputs = outs + (
+            batch_gt_instances,
+            batch_input_metas,
+            batch_gt_instances_ignore,
+        )
         losses = self.loss_by_feat(*loss_inputs)
 
         predictions = self.predict_by_feat(
-            *outs, batch_input_metas=batch_input_metas, cfg=proposal_cfg)
+            *outs, batch_input_metas=batch_input_metas, cfg=proposal_cfg
+        )
         return losses, predictions
 
-    def predict(self,
-                x: Tuple[Tensor],
-                batch_data_samples: SampleList,
-                rescale: bool = False) -> InstanceList:
+    def predict(
+        self, x: Tuple[Tensor], batch_data_samples: SampleList, rescale: bool = False
+    ) -> InstanceList:
         """Perform forward propagation of the 3D detection head and predict
         detection results on the features of the upstream network.
 
@@ -180,17 +185,20 @@ class Base3DDenseHead(BaseModule, metaclass=ABCMeta):
         ]
         outs = self(x)
         predictions = self.predict_by_feat(
-            *outs, batch_input_metas=batch_input_metas, rescale=rescale)
+            *outs, batch_input_metas=batch_input_metas, rescale=rescale
+        )
         return predictions
 
-    def predict_by_feat(self,
-                        cls_scores: List[Tensor],
-                        bbox_preds: List[Tensor],
-                        dir_cls_preds: List[Tensor],
-                        batch_input_metas: Optional[List[dict]] = None,
-                        cfg: Optional[ConfigDict] = None,
-                        rescale: bool = False,
-                        **kwargs) -> InstanceList:
+    def predict_by_feat(
+        self,
+        cls_scores: List[Tensor],
+        bbox_preds: List[Tensor],
+        dir_cls_preds: List[Tensor],
+        batch_input_metas: Optional[List[dict]] = None,
+        cfg: Optional[ConfigDict] = None,
+        rescale: bool = False,
+        **kwargs
+    ) -> InstanceList:
         """Transform a batch of output features extracted from the head into
         bbox results.
 
@@ -230,15 +238,13 @@ class Base3DDenseHead(BaseModule, metaclass=ABCMeta):
         num_levels = len(cls_scores)
         featmap_sizes = [cls_scores[i].shape[-2:] for i in range(num_levels)]
         mlvl_priors = self.prior_generator.grid_anchors(
-            featmap_sizes, device=cls_scores[0].device)
-        mlvl_priors = [
-            prior.reshape(-1, self.box_code_size) for prior in mlvl_priors
-        ]
+            featmap_sizes, device=cls_scores[0].device
+        )
+        mlvl_priors = [prior.reshape(-1, self.box_code_size) for prior in mlvl_priors]
 
         result_list = []
 
         for input_id in range(len(batch_input_metas)):
-
             input_meta = batch_input_metas[input_id]
             cls_score_list = select_single_mlvl(cls_scores, input_id)
             bbox_pred_list = select_single_mlvl(bbox_preds, input_id)
@@ -252,19 +258,22 @@ class Base3DDenseHead(BaseModule, metaclass=ABCMeta):
                 input_meta=input_meta,
                 cfg=cfg,
                 rescale=rescale,
-                **kwargs)
+                **kwargs
+            )
             result_list.append(results)
         return result_list
 
-    def _predict_by_feat_single(self,
-                                cls_score_list: List[Tensor],
-                                bbox_pred_list: List[Tensor],
-                                dir_cls_pred_list: List[Tensor],
-                                mlvl_priors: List[Tensor],
-                                input_meta: dict,
-                                cfg: ConfigDict,
-                                rescale: bool = False,
-                                **kwargs) -> InstanceData:
+    def _predict_by_feat_single(
+        self,
+        cls_score_list: List[Tensor],
+        bbox_pred_list: List[Tensor],
+        dir_cls_pred_list: List[Tensor],
+        mlvl_priors: List[Tensor],
+        input_meta: dict,
+        cfg: ConfigDict,
+        rescale: bool = False,
+        **kwargs
+    ) -> InstanceData:
         """Transform a single points sample's features extracted from the head
         into bbox results.
 
@@ -308,21 +317,19 @@ class Base3DDenseHead(BaseModule, metaclass=ABCMeta):
         mlvl_scores = []
         mlvl_dir_scores = []
         for cls_score, bbox_pred, dir_cls_pred, priors in zip(
-                cls_score_list, bbox_pred_list, dir_cls_pred_list,
-                mlvl_priors):
+            cls_score_list, bbox_pred_list, dir_cls_pred_list, mlvl_priors
+        ):
             assert cls_score.size()[-2:] == bbox_pred.size()[-2:]
             assert cls_score.size()[-2:] == dir_cls_pred.size()[-2:]
             dir_cls_pred = dir_cls_pred.permute(1, 2, 0).reshape(-1, 2)
             dir_cls_score = torch.max(dir_cls_pred, dim=-1)[1]
 
-            cls_score = cls_score.permute(1, 2,
-                                          0).reshape(-1, self.num_classes)
+            cls_score = cls_score.permute(1, 2, 0).reshape(-1, self.num_classes)
             if self.use_sigmoid_cls:
                 scores = cls_score.sigmoid()
             else:
                 scores = cls_score.softmax(-1)
-            bbox_pred = bbox_pred.permute(1, 2,
-                                          0).reshape(-1, self.box_code_size)
+            bbox_pred = bbox_pred.permute(1, 2, 0).reshape(-1, self.box_code_size)
 
             nms_pre = cfg.get('nms_pre', -1)
             if nms_pre > 0 and scores.shape[0] > nms_pre:
@@ -342,8 +349,9 @@ class Base3DDenseHead(BaseModule, metaclass=ABCMeta):
             mlvl_dir_scores.append(dir_cls_score)
 
         mlvl_bboxes = torch.cat(mlvl_bboxes)
-        mlvl_bboxes_for_nms = xywhr2xyxyr(input_meta['box_type_3d'](
-            mlvl_bboxes, box_dim=self.box_code_size).bev)
+        mlvl_bboxes_for_nms = xywhr2xyxyr(
+            input_meta['box_type_3d'](mlvl_bboxes, box_dim=self.box_code_size).bev
+        )
         mlvl_scores = torch.cat(mlvl_scores)
         mlvl_dir_scores = torch.cat(mlvl_dir_scores)
 
@@ -353,16 +361,23 @@ class Base3DDenseHead(BaseModule, metaclass=ABCMeta):
             mlvl_scores = torch.cat([mlvl_scores, padding], dim=1)
 
         score_thr = cfg.get('score_thr', 0)
-        results = box3d_multiclass_nms(mlvl_bboxes, mlvl_bboxes_for_nms,
-                                       mlvl_scores, score_thr, cfg.max_num,
-                                       cfg, mlvl_dir_scores)
+        results = box3d_multiclass_nms(
+            mlvl_bboxes,
+            mlvl_bboxes_for_nms,
+            mlvl_scores,
+            score_thr,
+            cfg.max_num,
+            cfg,
+            mlvl_dir_scores,
+        )
         bboxes, scores, labels, dir_scores = results
         if bboxes.shape[0] > 0:
-            dir_rot = limit_period(bboxes[..., 6] - self.dir_offset,
-                                   self.dir_limit_offset, np.pi)
+            dir_rot = limit_period(
+                bboxes[..., 6] - self.dir_offset, self.dir_limit_offset, np.pi
+            )
             bboxes[..., 6] = (
-                dir_rot + self.dir_offset +
-                np.pi * dir_scores.to(bboxes.dtype))
+                dir_rot + self.dir_offset + np.pi * dir_scores.to(bboxes.dtype)
+            )
         bboxes = input_meta['box_type_3d'](bboxes, box_dim=self.box_code_size)
         results = InstanceData()
         results.bboxes_3d = bboxes
@@ -372,10 +387,12 @@ class Base3DDenseHead(BaseModule, metaclass=ABCMeta):
         return results
 
     # TODO: Support augmentation test
-    def aug_test(self,
-                 aug_batch_feats,
-                 aug_batch_input_metas,
-                 rescale=False,
-                 with_ori_nms=False,
-                 **kwargs):
+    def aug_test(
+        self,
+        aug_batch_feats,
+        aug_batch_input_metas,
+        rescale=False,
+        with_ori_nms=False,
+        **kwargs
+    ):
         pass

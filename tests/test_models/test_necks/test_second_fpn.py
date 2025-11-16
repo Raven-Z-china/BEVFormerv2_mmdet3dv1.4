@@ -41,7 +41,6 @@ def test_secfpn():
 
 
 def test_centerpoint_fpn():
-
     second_cfg = dict(
         type='SECOND',
         in_channels=2,
@@ -49,7 +48,8 @@ def test_centerpoint_fpn():
         layer_nums=[3, 5, 5],
         layer_strides=[2, 2, 2],
         norm_cfg=dict(type='BN', eps=1e-3, momentum=0.01),
-        conv_cfg=dict(type='Conv2d', bias=False))
+        conv_cfg=dict(type='Conv2d', bias=False),
+    )
 
     second = MODELS.build(second_cfg)
 
@@ -61,14 +61,16 @@ def test_centerpoint_fpn():
         upsample_strides=[0.5, 1, 2],
         norm_cfg=dict(type='BN', eps=1e-3, momentum=0.01),
         upsample_cfg=dict(type='deconv', bias=False),
-        use_conv_for_no_stride=True)
+        use_conv_for_no_stride=True,
+    )
 
     # original usage of fpn
     fpn_cfg = dict(
         type='SECONDFPN',
         in_channels=[2, 2, 2],
         upsample_strides=[1, 2, 4],
-        out_channels=[2, 2, 2])
+        out_channels=[2, 2, 2],
+    )
 
     second_fpn = MODELS.build(fpn_cfg)
 

@@ -41,9 +41,11 @@ class PointwiseSemanticHead(BaseModule):
             reduction='sum',
             gamma=2.0,
             alpha=0.25,
-            loss_weight=1.0),
+            loss_weight=1.0,
+        ),
         loss_part: dict = dict(
-            type='CrossEntropyLoss', use_sigmoid=True, loss_weight=1.0)
+            type='CrossEntropyLoss', use_sigmoid=True, loss_weight=1.0
+        ),
     ) -> None:
         super(PointwiseSemanticHead, self).__init__(init_cfg=init_cfg)
         self.extra_width = extra_width
@@ -72,19 +74,20 @@ class PointwiseSemanticHead(BaseModule):
         part_preds = self.seg_reg_layer(x)  # (N, 3)
 
         seg_scores = torch.sigmoid(seg_preds).detach()
-        seg_mask = (seg_scores > self.seg_score_thr)
+        seg_mask = seg_scores > self.seg_score_thr
 
         part_offsets = torch.sigmoid(part_preds).clone().detach()
         part_offsets[seg_mask.view(-1) == 0] = 0
-        part_feats = torch.cat((part_offsets, seg_scores),
-                               dim=-1)  # shape (npoints, 4)
-        return dict(
-            seg_preds=seg_preds, part_preds=part_preds, part_feats=part_feats)
+        part_feats = torch.cat((part_offsets, seg_scores), dim=-1)  # shape (npoints, 4)
+        return dict(seg_preds=seg_preds, part_preds=part_preds, part_feats=part_feats)
 
-    def get_targets_single(self, voxel_centers: Tensor,
-                           gt_bboxes_3d: BaseInstance3DBoxes,
-                           gt_labels_3d: Tensor) -> Tuple[Tensor]:
-        """generate segmentation and part prediction targets for a single
+    def get_targets_single(
+        self,
+        voxel_centers: Tensor,
+        gt_bboxes_3d: BaseInstance3DBoxes,
+        gt_labels_3d: Tensor,
+    ) -> Tuple[Tensor]:
+        """Generate segmentation and part prediction targets for a single
         sample.
 
         Args:
@@ -102,14 +105,15 @@ class PointwiseSemanticHead(BaseModule):
         gt_bboxes_3d = gt_bboxes_3d.to(voxel_centers.device)
         enlarged_gt_boxes = gt_bboxes_3d.enlarged_box(self.extra_width)
 
-        part_targets = voxel_centers.new_zeros((voxel_centers.shape[0], 3),
-                                               dtype=torch.float32)
+        part_targets = voxel_centers.new_zeros(
+            (voxel_centers.shape[0], 3), dtype=torch.float32
+        )
         box_idx = gt_bboxes_3d.points_in_boxes_part(voxel_centers)
-        enlarge_box_idx = enlarged_gt_boxes.points_in_boxes_part(
-            voxel_centers).long()
+        enlarge_box_idx = enlarged_gt_boxes.points_in_boxes_part(voxel_centers).long()
 
         gt_labels_pad = F.pad(
-            gt_labels_3d, (1, 0), mode='constant', value=self.num_classes)
+            gt_labels_3d, (1, 0), mode='constant', value=self.num_classes
+        )
         seg_targets = gt_labels_pad[(box_idx.long() + 1)]
         fg_pt_flag = box_idx > -1
         ignore_flag = fg_pt_flag ^ (enlarge_box_idx > -1)
@@ -123,18 +127,19 @@ class PointwiseSemanticHead(BaseModule):
             fg_voxels = voxel_centers[k_box_flag]
             transformed_voxels = fg_voxels - gt_bboxes_3d.bottom_center[k]
             transformed_voxels = rotation_3d_in_axis(
-                transformed_voxels.unsqueeze(0),
-                -gt_bboxes_3d.yaw[k].view(1),
-                axis=2)
+                transformed_voxels.unsqueeze(0), -gt_bboxes_3d.yaw[k].view(1), axis=2
+            )
             part_targets[k_box_flag] = transformed_voxels / gt_bboxes_3d.dims[
-                k] + voxel_centers.new_tensor([0.5, 0.5, 0])
+                k
+            ] + voxel_centers.new_tensor([0.5, 0.5, 0])
 
         part_targets = torch.clamp(part_targets, min=0)
         return seg_targets, part_targets
 
-    def get_targets(self, voxel_dict: dict,
-                    batch_gt_instances_3d: InstanceList) -> dict:
-        """generate segmentation and part prediction targets.
+    def get_targets(
+        self, voxel_dict: dict, batch_gt_instances_3d: InstanceList
+    ) -> dict:
+        """Generate segmentation and part prediction targets.
 
         Args:
             voxel_dict (dict): Contains information of voxels.
@@ -159,15 +164,14 @@ class PointwiseSemanticHead(BaseModule):
             voxel_center_list.append(voxel_dict['voxel_centers'][coords_idx])
             gt_bboxes_3d.append(batch_gt_instances_3d[idx].bboxes_3d)
             gt_labels_3d.append(batch_gt_instances_3d[idx].labels_3d)
-        seg_targets, part_targets = multi_apply(self.get_targets_single,
-                                                voxel_center_list,
-                                                gt_bboxes_3d, gt_labels_3d)
+        seg_targets, part_targets = multi_apply(
+            self.get_targets_single, voxel_center_list, gt_bboxes_3d, gt_labels_3d
+        )
         seg_targets = torch.cat(seg_targets, dim=0)
         part_targets = torch.cat(part_targets, dim=0)
         return dict(seg_targets=seg_targets, part_targets=part_targets)
 
-    def loss(self, semantic_results: dict,
-             semantic_targets: dict) -> Dict[str, Tensor]:
+    def loss(self, semantic_results: dict, semantic_targets: dict) -> Dict[str, Tensor]:
         """Calculate point-wise segmentation and part prediction losses.
 
         Args:
@@ -202,8 +206,7 @@ class PointwiseSemanticHead(BaseModule):
         loss_seg = self.loss_seg(seg_preds, binary_seg_target, seg_weights)
 
         if pos_normalizer > 0:
-            loss_part = self.loss_part(part_preds[pos_mask],
-                                       part_targets[pos_mask])
+            loss_part = self.loss_part(part_preds[pos_mask], part_targets[pos_mask])
         else:
             # fake a part loss
             loss_part = loss_seg.new_tensor(0)

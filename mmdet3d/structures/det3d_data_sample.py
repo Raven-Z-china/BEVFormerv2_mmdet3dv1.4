@@ -209,5 +209,6 @@ class Det3DDataSample(DetDataSample):
 
 SampleList = List[Det3DDataSample]
 OptSampleList = Optional[SampleList]
-ForwardResults = Union[Dict[str, torch.Tensor], List[Det3DDataSample],
-                       Tuple[torch.Tensor], torch.Tensor]
+ForwardResults = Union[
+    Dict[str, torch.Tensor], List[Det3DDataSample], Tuple[torch.Tensor], torch.Tensor
+]

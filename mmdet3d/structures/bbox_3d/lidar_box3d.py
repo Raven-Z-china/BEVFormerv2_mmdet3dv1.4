@@ -35,6 +35,7 @@ class LiDARInstance3DBoxes(BaseInstance3DBoxes):
         with_yaw (bool): If True, the value of yaw will be set to 0 as minmax
             boxes.
     """
+
     YAW_AXIS = 2
 
     @property
@@ -65,8 +66,8 @@ class LiDARInstance3DBoxes(BaseInstance3DBoxes):
 
         dims = self.dims
         corners_norm = torch.from_numpy(
-            np.stack(np.unravel_index(np.arange(8), [2] * 3), axis=1)).to(
-                device=dims.device, dtype=dims.dtype)
+            np.stack(np.unravel_index(np.arange(8), [2] * 3), axis=1)
+        ).to(device=dims.device, dtype=dims.dtype)
 
         corners_norm = corners_norm[[0, 1, 3, 2, 4, 5, 7, 6]]
         # use relative origin (0.5, 0.5, 0)
@@ -74,17 +75,20 @@ class LiDARInstance3DBoxes(BaseInstance3DBoxes):
         corners = dims.view([-1, 1, 3]) * corners_norm.reshape([1, 8, 3])
 
         # rotate around z axis
-        corners = rotation_3d_in_axis(
-            corners, self.tensor[:, 6], axis=self.YAW_AXIS)
+        corners = rotation_3d_in_axis(corners, self.tensor[:, 6], axis=self.YAW_AXIS)
         corners += self.tensor[:, :3].view(-1, 1, 3)
         return corners
 
     def rotate(
         self,
         angle: Union[Tensor, np.ndarray, float],
-        points: Optional[Union[Tensor, np.ndarray, BasePoints]] = None
-    ) -> Union[Tuple[Tensor, Tensor], Tuple[np.ndarray, np.ndarray], Tuple[
-            BasePoints, Tensor], None]:
+        points: Optional[Union[Tensor, np.ndarray, BasePoints]] = None,
+    ) -> Union[
+        Tuple[Tensor, Tensor],
+        Tuple[np.ndarray, np.ndarray],
+        Tuple[BasePoints, Tensor],
+        None,
+    ]:
         """Rotate boxes with points (optional) with the given angle or rotation
         matrix.
 
@@ -102,15 +106,14 @@ class LiDARInstance3DBoxes(BaseInstance3DBoxes):
         if not isinstance(angle, Tensor):
             angle = self.tensor.new_tensor(angle)
 
-        assert angle.shape == torch.Size([3, 3]) or angle.numel() == 1, \
-            f'invalid rotation angle shape {angle.shape}'
+        assert (
+            angle.shape == torch.Size([3, 3]) or angle.numel() == 1
+        ), f'invalid rotation angle shape {angle.shape}'
 
         if angle.numel() == 1:
             self.tensor[:, 0:3], rot_mat_T = rotation_3d_in_axis(
-                self.tensor[:, 0:3],
-                angle,
-                axis=self.YAW_AXIS,
-                return_mat=True)
+                self.tensor[:, 0:3], angle, axis=self.YAW_AXIS, return_mat=True
+            )
         else:
             rot_mat_T = angle
             rot_sin = rot_mat_T[0, 1]
@@ -139,7 +142,7 @@ class LiDARInstance3DBoxes(BaseInstance3DBoxes):
     def flip(
         self,
         bev_direction: str = 'horizontal',
-        points: Optional[Union[Tensor, np.ndarray, BasePoints]] = None
+        points: Optional[Union[Tensor, np.ndarray, BasePoints]] = None,
     ) -> Union[Tensor, np.ndarray, BasePoints, None]:
         """Flip the boxes in BEV along given BEV direction.
 
@@ -177,10 +180,12 @@ class LiDARInstance3DBoxes(BaseInstance3DBoxes):
                 points.flip(bev_direction)
             return points
 
-    def convert_to(self,
-                   dst: int,
-                   rt_mat: Optional[Union[Tensor, np.ndarray]] = None,
-                   correct_yaw: bool = False) -> 'BaseInstance3DBoxes':
+    def convert_to(
+        self,
+        dst: int,
+        rt_mat: Optional[Union[Tensor, np.ndarray]] = None,
+        correct_yaw: bool = False,
+    ) -> 'BaseInstance3DBoxes':
         """Convert self to ``dst`` mode.
 
         Args:
@@ -199,15 +204,16 @@ class LiDARInstance3DBoxes(BaseInstance3DBoxes):
             the ``dst`` mode.
         """
         from .box_3d_mode import Box3DMode
+
         return Box3DMode.convert(
             box=self,
             src=Box3DMode.LIDAR,
             dst=dst,
             rt_mat=rt_mat,
-            correct_yaw=correct_yaw)
+            correct_yaw=correct_yaw,
+        )
 
-    def enlarged_box(
-            self, extra_width: Union[float, Tensor]) -> 'LiDARInstance3DBoxes':
+    def enlarged_box(self, extra_width: Union[float, Tensor]) -> 'LiDARInstance3DBoxes':
         """Enlarge the length, width and height of boxes.
 
         Args:

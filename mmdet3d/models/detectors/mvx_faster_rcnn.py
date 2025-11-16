@@ -23,11 +23,11 @@ class DynamicMVXFasterRCNN(MVXTwoStageDetector):
         super(DynamicMVXFasterRCNN, self).__init__(**kwargs)
 
     def extract_pts_feat(
-            self,
-            voxel_dict: Dict[str, Tensor],
-            points: Optional[List[Tensor]] = None,
-            img_feats: Optional[Sequence[Tensor]] = None,
-            batch_input_metas: Optional[List[dict]] = None
+        self,
+        voxel_dict: Dict[str, Tensor],
+        points: Optional[List[Tensor]] = None,
+        img_feats: Optional[Sequence[Tensor]] = None,
+        batch_input_metas: Optional[List[dict]] = None,
     ) -> Sequence[Tensor]:
         """Extract features of points.
 
@@ -46,8 +46,12 @@ class DynamicMVXFasterRCNN(MVXTwoStageDetector):
         if not self.with_pts_bbox:
             return None
         voxel_features, feature_coors = self.pts_voxel_encoder(
-            voxel_dict['voxels'], voxel_dict['coors'], points, img_feats,
-            batch_input_metas)
+            voxel_dict['voxels'],
+            voxel_dict['coors'],
+            points,
+            img_feats,
+            batch_input_metas,
+        )
         batch_size = voxel_dict['coors'][-1, 0] + 1
         x = self.pts_middle_encoder(voxel_features, feature_coors, batch_size)
         x = self.pts_backbone(x)

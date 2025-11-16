@@ -27,7 +27,8 @@ def evaluate_matches(matches, class_labels, options):
     # results: class x overlap
     ap = np.zeros((len(dist_threshes), len(class_labels), len(overlaps)))
     for di, (min_region_size, distance_thresh, distance_conf) in enumerate(
-            zip(min_region_sizes, dist_threshes, dist_confs)):
+        zip(min_region_sizes, dist_threshes, dist_confs)
+    ):
         for oi, overlap_th in enumerate(overlaps):
             pred_visited = {}
             for m in matches:
@@ -46,9 +47,11 @@ def evaluate_matches(matches, class_labels, options):
                     gt_instances = matches[m]['gt'][label_name]
                     # filter groups in ground truth
                     gt_instances = [
-                        gt for gt in gt_instances
-                        if gt['instance_id'] >= 1000 and gt['vert_count'] >=
-                        min_region_size and gt['med_dist'] <= distance_thresh
+                        gt
+                        for gt in gt_instances
+                        if gt['instance_id'] >= 1000
+                        and gt['vert_count'] >= min_region_size
+                        and gt['med_dist'] <= distance_thresh
                         and gt['dist_conf'] >= distance_conf
                     ]
                     if gt_instances:
@@ -60,15 +63,17 @@ def evaluate_matches(matches, class_labels, options):
                     cur_score = np.ones(len(gt_instances)) * (-float('inf'))
                     cur_match = np.zeros(len(gt_instances), dtype=bool)
                     # collect matches
-                    for (gti, gt) in enumerate(gt_instances):
+                    for gti, gt in enumerate(gt_instances):
                         found_match = False
                         for pred in gt['matched_pred']:
                             # greedy assignments
                             if pred_visited[pred['filename']]:
                                 continue
                             overlap = float(pred['intersection']) / (
-                                gt['vert_count'] + pred['vert_count'] -
-                                pred['intersection'])
+                                gt['vert_count']
+                                + pred['vert_count']
+                                - pred['intersection']
+                            )
                             if overlap > overlap_th:
                                 confidence = pred['confidence']
                                 # if already have a prediction for this gt,
@@ -98,8 +103,10 @@ def evaluate_matches(matches, class_labels, options):
                         found_gt = False
                         for gt in pred['matched_gt']:
                             overlap = float(gt['intersection']) / (
-                                gt['vert_count'] + pred['vert_count'] -
-                                gt['intersection'])
+                                gt['vert_count']
+                                + pred['vert_count']
+                                - gt['intersection']
+                            )
                             if overlap > overlap_th:
                                 found_gt = True
                                 break
@@ -110,12 +117,13 @@ def evaluate_matches(matches, class_labels, options):
                                 if gt['instance_id'] < 1000:
                                     num_ignore += gt['intersection']
                                 # small ground truth instances
-                                if gt['vert_count'] < min_region_size or gt[
-                                        'med_dist'] > distance_thresh or gt[
-                                            'dist_conf'] < distance_conf:
+                                if (
+                                    gt['vert_count'] < min_region_size
+                                    or gt['med_dist'] > distance_thresh
+                                    or gt['dist_conf'] < distance_conf
+                                ):
                                     num_ignore += gt['intersection']
-                            proportion_ignore = float(
-                                num_ignore) / pred['vert_count']
+                            proportion_ignore = float(num_ignore) / pred['vert_count']
                             # if not ignored append false positive
                             if proportion_ignore <= overlap_th:
                                 cur_true = np.append(cur_true, 0)
@@ -138,14 +146,16 @@ def evaluate_matches(matches, class_labels, options):
 
                     # unique thresholds
                     (thresholds, unique_indices) = np.unique(
-                        y_score_sorted, return_index=True)
+                        y_score_sorted, return_index=True
+                    )
                     num_prec_recall = len(unique_indices) + 1
 
                     # prepare precision recall
                     num_examples = len(y_score_sorted)
                     # follow https://github.com/ScanNet/ScanNet/pull/26 ? # noqa
-                    num_true_examples = y_true_sorted_cumsum[-1] if len(
-                        y_true_sorted_cumsum) > 0 else 0
+                    num_true_examples = (
+                        y_true_sorted_cumsum[-1] if len(y_true_sorted_cumsum) > 0 else 0
+                    )
                     precision = np.zeros(num_prec_recall)
                     recall = np.zeros(num_prec_recall)
 
@@ -163,17 +173,15 @@ def evaluate_matches(matches, class_labels, options):
                         recall[idx_res] = r
 
                     # first point in curve is artificial
-                    precision[-1] = 1.
-                    recall[-1] = 0.
+                    precision[-1] = 1.0
+                    recall[-1] = 0.0
 
                     # compute average of precision-recall curve
                     recall_for_conv = np.copy(recall)
-                    recall_for_conv = np.append(recall_for_conv[0],
-                                                recall_for_conv)
-                    recall_for_conv = np.append(recall_for_conv, 0.)
+                    recall_for_conv = np.append(recall_for_conv[0], recall_for_conv)
+                    recall_for_conv = np.append(recall_for_conv, 0.0)
 
-                    stepWidths = np.convolve(recall_for_conv, [-0.5, 0, 0.5],
-                                             'valid')
+                    stepWidths = np.convolve(recall_for_conv, [-0.5, 0, 0.5], 'valid')
                     # integrate is now simply a dot product
                     ap_current = np.dot(precision, stepWidths)
 
@@ -199,26 +207,23 @@ def compute_averages(aps, options, class_labels):
     d_inf = 0
     o50 = np.where(np.isclose(options['overlaps'], 0.5))
     o25 = np.where(np.isclose(options['overlaps'], 0.25))
-    o_all_but25 = np.where(
-        np.logical_not(np.isclose(options['overlaps'], 0.25)))
+    o_all_but25 = np.where(np.logical_not(np.isclose(options['overlaps'], 0.25)))
     avg_dict = {}
     avg_dict['all_ap'] = np.nanmean(aps[d_inf, :, o_all_but25])
     avg_dict['all_ap_50%'] = np.nanmean(aps[d_inf, :, o50])
     avg_dict['all_ap_25%'] = np.nanmean(aps[d_inf, :, o25])
     avg_dict['classes'] = {}
-    for (li, label_name) in enumerate(class_labels):
+    for li, label_name in enumerate(class_labels):
         avg_dict['classes'][label_name] = {}
-        avg_dict['classes'][label_name]['ap'] = np.average(aps[d_inf, li,
-                                                               o_all_but25])
-        avg_dict['classes'][label_name]['ap50%'] = np.average(aps[d_inf, li,
-                                                                  o50])
-        avg_dict['classes'][label_name]['ap25%'] = np.average(aps[d_inf, li,
-                                                                  o25])
+        avg_dict['classes'][label_name]['ap'] = np.average(aps[d_inf, li, o_all_but25])
+        avg_dict['classes'][label_name]['ap50%'] = np.average(aps[d_inf, li, o50])
+        avg_dict['classes'][label_name]['ap25%'] = np.average(aps[d_inf, li, o25])
     return avg_dict
 
 
-def assign_instances_for_scan(pred_info, gt_ids, options, valid_class_ids,
-                              class_labels, id_to_label):
+def assign_instances_for_scan(
+    pred_info, gt_ids, options, valid_class_ids, class_labels, id_to_label
+):
     """Assign gt and predicted instances for a single scene.
 
     Args:
@@ -234,8 +239,9 @@ def assign_instances_for_scan(pred_info, gt_ids, options, valid_class_ids,
         dict: Per class assigned predicted to gt instances.
     """
     # get gt instances
-    gt_instances = util_3d.get_instances(gt_ids, valid_class_ids, class_labels,
-                                         id_to_label)
+    gt_instances = util_3d.get_instances(
+        gt_ids, valid_class_ids, class_labels, id_to_label
+    )
     # associate
     gt2pred = deepcopy(gt_instances)
     for label in gt2pred:
@@ -271,14 +277,16 @@ def assign_instances_for_scan(pred_info, gt_ids, options, valid_class_ids,
         pred_instance['vert_count'] = num
         pred_instance['confidence'] = conf
         pred_instance['void_intersection'] = np.count_nonzero(
-            np.logical_and(bool_void, pred_mask))
+            np.logical_and(bool_void, pred_mask)
+        )
 
         # matched gt instances
         matched_gt = []
         # go through all gt instances with matching label
-        for (gt_num, gt_inst) in enumerate(gt2pred[label_name]):
+        for gt_num, gt_inst in enumerate(gt2pred[label_name]):
             intersection = np.count_nonzero(
-                np.logical_and(gt_ids == gt_inst['instance_id'], pred_mask))
+                np.logical_and(gt_ids == gt_inst['instance_id'], pred_mask)
+            )
             if intersection > 0:
                 gt_copy = gt_inst.copy()
                 pred_copy = pred_instance.copy()
@@ -293,8 +301,7 @@ def assign_instances_for_scan(pred_info, gt_ids, options, valid_class_ids,
     return gt2pred, pred2gt
 
 
-def scannet_eval(preds, gts, options, valid_class_ids, class_labels,
-                 id_to_label):
+def scannet_eval(preds, gts, options, valid_class_ids, class_labels, id_to_label):
     """Evaluate instance segmentation in ScanNet protocol.
 
     Args:
@@ -314,9 +321,9 @@ def scannet_eval(preds, gts, options, valid_class_ids, class_labels,
     for i, (pred, gt) in enumerate(zip(preds, gts)):
         matches_key = i
         # assign gt to predictions
-        gt2pred, pred2gt = assign_instances_for_scan(pred, gt, options,
-                                                     valid_class_ids,
-                                                     class_labels, id_to_label)
+        gt2pred, pred2gt = assign_instances_for_scan(
+            pred, gt, options, valid_class_ids, class_labels, id_to_label
+        )
         matches[matches_key] = {}
         matches[matches_key]['gt'] = gt2pred
         matches[matches_key]['pred'] = pred2gt
@@ -340,7 +347,8 @@ def get_options(options=None):
         overlaps=np.append(np.arange(0.5, 0.95, 0.05), 0.25),
         min_region_sizes=np.array([100]),
         distance_threshes=np.array([float('inf')]),
-        distance_confs=np.array([-float('inf')]))
+        distance_confs=np.array([-float('inf')]),
+    )
     if options is not None:
         _options.update(options)
     return _options

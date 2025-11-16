@@ -6,8 +6,7 @@ import torch
 from mmengine.structures import InstanceData
 from torch import Tensor
 
-from mmdet3d.models.layers.fusion_layers.point_fusion import (point_sample,
-                                                              voxel_sample)
+from mmdet3d.models.layers.fusion_layers.point_fusion import point_sample, voxel_sample
 from mmdet3d.registry import MODELS, TASK_UTILS
 from mmdet3d.structures.bbox_3d.utils import get_lidar2img
 from mmdet3d.structures.det3d_data_sample import SampleList
@@ -56,26 +55,28 @@ class MultiViewDfM(DfM):
             config. Defaults to None.
     """
 
-    def __init__(self,
-                 backbone: ConfigType,
-                 neck: ConfigType,
-                 backbone_stereo: ConfigType,
-                 backbone_3d: ConfigType,
-                 neck_3d: ConfigType,
-                 bbox_head_3d: ConfigType,
-                 voxel_size: ConfigType,
-                 anchor_generator: ConfigType,
-                 neck_2d: ConfigType = None,
-                 bbox_head_2d: ConfigType = None,
-                 depth_head_2d: ConfigType = None,
-                 depth_head: ConfigType = None,
-                 train_cfg: OptConfigType = None,
-                 test_cfg: OptConfigType = None,
-                 data_preprocessor: OptConfigType = None,
-                 valid_sample: bool = True,
-                 temporal_aggregate: str = 'mean',
-                 transform_depth: bool = True,
-                 init_cfg: OptConfigType = None):
+    def __init__(
+        self,
+        backbone: ConfigType,
+        neck: ConfigType,
+        backbone_stereo: ConfigType,
+        backbone_3d: ConfigType,
+        neck_3d: ConfigType,
+        bbox_head_3d: ConfigType,
+        voxel_size: ConfigType,
+        anchor_generator: ConfigType,
+        neck_2d: ConfigType = None,
+        bbox_head_2d: ConfigType = None,
+        depth_head_2d: ConfigType = None,
+        depth_head: ConfigType = None,
+        train_cfg: OptConfigType = None,
+        test_cfg: OptConfigType = None,
+        data_preprocessor: OptConfigType = None,
+        valid_sample: bool = True,
+        temporal_aggregate: str = 'mean',
+        transform_depth: bool = True,
+        init_cfg: OptConfigType = None,
+    ):
         super().__init__(
             data_preprocessor=data_preprocessor,
             backbone=backbone,
@@ -90,24 +91,21 @@ class MultiViewDfM(DfM):
             depth_head=depth_head,
             train_cfg=train_cfg,
             test_cfg=test_cfg,
-            init_cfg=init_cfg)
+            init_cfg=init_cfg,
+        )
         self.voxel_size = voxel_size
         self.voxel_range = anchor_generator['ranges'][0]
         self.n_voxels = [
-            round((self.voxel_range[3] - self.voxel_range[0]) /
-                  self.voxel_size[0]),
-            round((self.voxel_range[4] - self.voxel_range[1]) /
-                  self.voxel_size[1]),
-            round((self.voxel_range[5] - self.voxel_range[2]) /
-                  self.voxel_size[2])
+            round((self.voxel_range[3] - self.voxel_range[0]) / self.voxel_size[0]),
+            round((self.voxel_range[4] - self.voxel_range[1]) / self.voxel_size[1]),
+            round((self.voxel_range[5] - self.voxel_range[2]) / self.voxel_size[2]),
         ]
         self.anchor_generator = TASK_UTILS.build(anchor_generator)
         self.valid_sample = valid_sample
         self.temporal_aggregate = temporal_aggregate
         self.transform_depth = transform_depth
 
-    def extract_feat(self, batch_inputs_dict: dict,
-                     batch_data_samples: SampleList):
+    def extract_feat(self, batch_inputs_dict: dict, batch_data_samples: SampleList):
         """Extract 3d features from the backbone -> fpn -> 3d projection.
 
         Args:
@@ -125,9 +123,7 @@ class MultiViewDfM(DfM):
         # TODO: Nt means the number of frames temporally
         # num_views means the number of views of a frame
         img = batch_inputs_dict['imgs']
-        batch_img_metas = [
-            data_samples.metainfo for data_samples in batch_data_samples
-        ]
+        batch_img_metas = [data_samples.metainfo for data_samples in batch_data_samples]
         batch_size, _, C_in, H, W = img.shape
         num_views = batch_img_metas[0]['num_views']
         num_ref_frames = batch_img_metas[0]['num_ref_frames']
@@ -149,8 +145,7 @@ class MultiViewDfM(DfM):
                 prev_feats = self.neck(prev_feats)[0]
             _, C_feat, H_feat, W_feat = cur_feats.shape
             cur_feats = cur_feats.view(batch_size, -1, C_feat, H_feat, W_feat)
-            prev_feats = prev_feats.view(batch_size, -1, C_feat, H_feat,
-                                         W_feat)
+            prev_feats = prev_feats.view(batch_size, -1, C_feat, H_feat, W_feat)
             batch_feats = torch.cat([cur_feats, prev_feats], dim=1)
         else:
             batch_imgs = img.view(-1, C_in, H, W)
@@ -158,18 +153,18 @@ class MultiViewDfM(DfM):
             # TODO: support SPP module neck
             batch_feats = self.neck(batch_feats)[0]
             _, C_feat, H_feat, W_feat = batch_feats.shape
-            batch_feats = batch_feats.view(batch_size, -1, C_feat, H_feat,
-                                           W_feat)
+            batch_feats = batch_feats.view(batch_size, -1, C_feat, H_feat, W_feat)
         # transform the feature to voxel & stereo space
-        transform_feats = self.feature_transformation(batch_feats,
-                                                      batch_img_metas,
-                                                      num_views, num_frames)
+        transform_feats = self.feature_transformation(
+            batch_feats, batch_img_metas, num_views, num_frames
+        )
         if self.with_depth_head_2d:
-            transform_feats += (batch_feats[:, :num_views], )
+            transform_feats += (batch_feats[:, :num_views],)
         return transform_feats
 
-    def feature_transformation(self, batch_feats, batch_img_metas, num_views,
-                               num_frames):
+    def feature_transformation(
+        self, batch_feats, batch_img_metas, num_views, num_frames
+    ):
         """Feature transformation from perspective view to BEV.
 
         Args:
@@ -186,13 +181,13 @@ class MultiViewDfM(DfM):
         """
         # TODO: support more complicated 2D feature sampling
         points = self.anchor_generator.grid_anchors(
-            [self.n_voxels[::-1]], device=batch_feats.device)[0][:, :3]
+            [self.n_voxels[::-1]], device=batch_feats.device
+        )[0][:, :3]
         volumes = []
         img_scale_factors = []
         img_flips = []
         img_crop_offsets = []
         for feature, img_meta in zip(batch_feats, batch_img_metas):
-
             # TODO: remove feature sampling from back
             # TODO: support different scale_factors/flip/crop_offset for
             # different views
@@ -207,33 +202,33 @@ class MultiViewDfM(DfM):
                     img_shape = img_meta['img_shape'][:2]
 
                 for view_idx in range(num_views):
-
                     sample_idx = frame_idx * num_views + view_idx
 
                     if 'scale_factor' in img_meta:
                         img_scale_factor = img_meta['scale_factor'][sample_idx]
-                        if isinstance(img_scale_factor, np.ndarray) and \
-                                len(img_meta['scale_factor']) >= 2:
-                            img_scale_factor = (
-                                points.new_tensor(img_scale_factor[:2]))
+                        if (
+                            isinstance(img_scale_factor, np.ndarray)
+                            and len(img_meta['scale_factor']) >= 2
+                        ):
+                            img_scale_factor = points.new_tensor(img_scale_factor[:2])
                         else:
-                            img_scale_factor = (
-                                points.new_tensor(img_scale_factor))
+                            img_scale_factor = points.new_tensor(img_scale_factor)
                     else:
-                        img_scale_factor = (1)
-                    img_flip = img_meta['flip'][sample_idx] \
-                        if 'flip' in img_meta.keys() else False
+                        img_scale_factor = 1
+                    img_flip = (
+                        img_meta['flip'][sample_idx]
+                        if 'flip' in img_meta.keys()
+                        else False
+                    )
                     img_crop_offset = (
-                        points.new_tensor(
-                            img_meta['img_crop_offset'][sample_idx])
-                        if 'img_crop_offset' in img_meta.keys() else 0)
-                    lidar2cam = points.new_tensor(
-                        img_meta['lidar2cam'][sample_idx])
-                    cam2img = points.new_tensor(
-                        img_meta['ori_cam2img'][sample_idx])
+                        points.new_tensor(img_meta['img_crop_offset'][sample_idx])
+                        if 'img_crop_offset' in img_meta.keys()
+                        else 0
+                    )
+                    lidar2cam = points.new_tensor(img_meta['lidar2cam'][sample_idx])
+                    cam2img = points.new_tensor(img_meta['ori_cam2img'][sample_idx])
                     # align the precision, the tensor is converted to float32
-                    lidar2img = get_lidar2img(cam2img.double(),
-                                              lidar2cam.double())
+                    lidar2img = get_lidar2img(cam2img.double(), lidar2cam.double())
                     lidar2img = lidar2img.float()
 
                     sample_results = point_sample(
@@ -248,7 +243,8 @@ class MultiViewDfM(DfM):
                         img_pad_shape=img_meta['input_shape'],
                         img_shape=img_shape,
                         aligned=False,
-                        valid_flag=self.valid_sample)
+                        valid_flag=self.valid_sample,
+                    )
                     if self.valid_sample:
                         volume.append(sample_results[0])
                         valid_flags.append(sample_results[1])
@@ -256,8 +252,7 @@ class MultiViewDfM(DfM):
                         volume.append(sample_results)
                     # TODO: save valid flags, more reasonable feat fusion
                 if self.valid_sample:
-                    valid_nums = torch.stack(
-                        valid_flags, dim=0).sum(0)  # (N, )
+                    valid_nums = torch.stack(valid_flags, dim=0).sum(0)  # (N, )
                     volume = torch.stack(volume, dim=0).sum(0)
                     valid_mask = valid_nums > 0
                     volume[~valid_mask] = 0
@@ -273,25 +268,25 @@ class MultiViewDfM(DfM):
             if self.valid_sample:
                 if self.temporal_aggregate == 'mean':
                     frame_volume = torch.stack(frame_volume, dim=0).sum(0)
-                    frame_valid_nums = torch.stack(
-                        frame_valid_nums, dim=0).sum(0)
+                    frame_valid_nums = torch.stack(frame_valid_nums, dim=0).sum(0)
                     frame_valid_mask = frame_valid_nums > 0
                     frame_volume[~frame_valid_mask] = 0
                     frame_volume = frame_volume / torch.clamp(
-                        frame_valid_nums[:, None], min=1)
+                        frame_valid_nums[:, None], min=1
+                    )
                 elif self.temporal_aggregate == 'concat':
                     frame_valid_nums = torch.stack(frame_valid_nums, dim=1)
                     frame_volume = torch.stack(frame_volume, dim=1)
                     frame_valid_mask = frame_valid_nums > 0
                     frame_volume[~frame_valid_mask] = 0
-                    frame_volume = (frame_volume / torch.clamp(
-                        frame_valid_nums[:, :, None], min=1)).flatten(
-                            start_dim=1, end_dim=2)
+                    frame_volume = (
+                        frame_volume / torch.clamp(frame_valid_nums[:, :, None], min=1)
+                    ).flatten(start_dim=1, end_dim=2)
             else:
                 frame_volume = torch.stack(frame_volume, dim=0).mean(0)
             volumes.append(
-                frame_volume.reshape(self.n_voxels[::-1] + [-1]).permute(
-                    3, 2, 1, 0))
+                frame_volume.reshape(self.n_voxels[::-1] + [-1]).permute(3, 2, 1, 0)
+            )
         volume_feat = torch.stack(volumes)  # (B, C, N_x, N_y, N_z)
         if self.with_backbone_3d:
             outputs = self.backbone_3d(volume_feat)
@@ -308,38 +303,47 @@ class MultiViewDfM(DfM):
             for batch_idx in range(volume_feat.shape[0]):
                 stereo_feat = []
                 for view_idx in range(num_views):
-                    img_scale_factor = img_scale_factors[batch_idx] \
-                        if self.transform_depth else points.new_tensor(
-                            [1., 1.])
-                    img_crop_offset = img_crop_offsets[batch_idx] \
-                        if self.transform_depth else points.new_tensor(
-                            [0., 0.])
-                    img_flip = img_flips[batch_idx] if self.transform_depth \
-                        else False
-                    img_pad_shape = img_meta['input_shape'] \
-                        if self.transform_depth else img_meta['ori_shape'][:2]
+                    img_scale_factor = (
+                        img_scale_factors[batch_idx]
+                        if self.transform_depth
+                        else points.new_tensor([1.0, 1.0])
+                    )
+                    img_crop_offset = (
+                        img_crop_offsets[batch_idx]
+                        if self.transform_depth
+                        else points.new_tensor([0.0, 0.0])
+                    )
+                    img_flip = img_flips[batch_idx] if self.transform_depth else False
+                    img_pad_shape = (
+                        img_meta['input_shape']
+                        if self.transform_depth
+                        else img_meta['ori_shape'][:2]
+                    )
                     lidar2cam = points.new_tensor(
-                        batch_img_metas[batch_idx]['lidar2cam'][view_idx])
+                        batch_img_metas[batch_idx]['lidar2cam'][view_idx]
+                    )
                     cam2img = points.new_tensor(
-                        img_meta[batch_idx]['lidar2cam'][view_idx])
+                        img_meta[batch_idx]['lidar2cam'][view_idx]
+                    )
                     proj_mat = torch.matmul(cam2img, lidar2cam)
                     stereo_feat.append(
                         voxel_sample(
                             volume_feat[batch_idx][None],
                             voxel_range=self.voxel_range,
                             voxel_size=self.voxel_size,
-                            depth_samples=volume_feat.new_tensor(
-                                self.depth_samples),
+                            depth_samples=volume_feat.new_tensor(self.depth_samples),
                             proj_mat=proj_mat,
-                            downsample_factor=self.depth_head.
-                            downsample_factor,
+                            downsample_factor=self.depth_head.downsample_factor,
                             img_scale_factor=img_scale_factor,
                             img_crop_offset=img_crop_offset,
                             img_flip=img_flip,
                             img_pad_shape=img_pad_shape,
-                            img_shape=batch_img_metas[batch_idx]['img_shape']
-                            [view_idx][:2],
-                            aligned=True))  # TODO: study the aligned setting
+                            img_shape=batch_img_metas[batch_idx]['img_shape'][view_idx][
+                                :2
+                            ],
+                            aligned=True,
+                        )
+                    )  # TODO: study the aligned setting
                 batch_stereo_feats.append(torch.cat(stereo_feat))
             # cat (N, C, D, H, W) -> (B*N, C, D, H, W)
             batch_stereo_feats = torch.cat(batch_stereo_feats)
@@ -351,13 +355,14 @@ class MultiViewDfM(DfM):
             else:
                 volume_feat = self.neck_3d(volume_feat)[0]
         # TODO: unify the output format of neck_3d
-        transform_feats = (volume_feat, )
+        transform_feats = (volume_feat,)
         if self.with_depth_head:
-            transform_feats += (batch_stereo_feats, )
+            transform_feats += (batch_stereo_feats,)
         return transform_feats
 
-    def loss(self, batch_inputs: Tensor,
-             batch_data_samples: SampleList) -> Union[dict, tuple]:
+    def loss(
+        self, batch_inputs: Tensor, batch_data_samples: SampleList
+    ) -> Union[dict, tuple]:
         """Calculate losses from a batch of inputs dict and data samples.
 
         Args:
@@ -379,8 +384,9 @@ class MultiViewDfM(DfM):
         losses = self.bbox_head_3d.loss([bev_feat], batch_data_samples)
         return losses
 
-    def predict(self, batch_inputs: Tensor,
-                batch_data_samples: SampleList) -> SampleList:
+    def predict(
+        self, batch_inputs: Tensor, batch_data_samples: SampleList
+    ) -> SampleList:
         """Predict results from a batch of inputs and data samples with post-
         processing.
 
@@ -410,15 +416,11 @@ class MultiViewDfM(DfM):
         """
         feats = self.extract_feat(batch_inputs, batch_data_samples)
         bev_feat = feats[0]
-        results_list = self.bbox_head_3d.predict([bev_feat],
-                                                 batch_data_samples)
-        predictions = self.add_pred_to_datasample(batch_data_samples,
-                                                  results_list)
+        results_list = self.bbox_head_3d.predict([bev_feat], batch_data_samples)
+        predictions = self.add_pred_to_datasample(batch_data_samples, results_list)
         return predictions
 
-    def _forward(self,
-                 batch_inputs: Tensor,
-                 batch_data_samples: SampleList = None):
+    def _forward(self, batch_inputs: Tensor, batch_data_samples: SampleList = None):
         """Network forward process.
 
         Usually includes backbone, neck and head forward without any post-
@@ -471,18 +473,14 @@ class MultiViewDfM(DfM):
               (num_instances, 4).
         """
 
-        assert (data_instances_2d is not None) or \
-               (data_instances_3d is not None),\
-               'please pass at least one type of data_samples'
+        assert (data_instances_2d is not None) or (
+            data_instances_3d is not None
+        ), 'please pass at least one type of data_samples'
 
         if data_instances_2d is None:
-            data_instances_2d = [
-                InstanceData() for _ in range(len(data_instances_3d))
-            ]
+            data_instances_2d = [InstanceData() for _ in range(len(data_instances_3d))]
         if data_instances_3d is None:
-            data_instances_3d = [
-                InstanceData() for _ in range(len(data_instances_2d))
-            ]
+            data_instances_3d = [InstanceData() for _ in range(len(data_instances_2d))]
 
         for i, data_sample in enumerate(data_samples):
             data_sample.pred_instances_3d = data_instances_3d[i]

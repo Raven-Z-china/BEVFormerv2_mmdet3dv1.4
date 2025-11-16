@@ -8,8 +8,7 @@ from os import path as osp
 from setuptools import find_packages, setup
 
 import torch
-from torch.utils.cpp_extension import (BuildExtension, CppExtension,
-                                       CUDAExtension)
+from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtension
 
 
 def readme():
@@ -27,13 +26,9 @@ def get_version():
     return locals()['__version__']
 
 
-def make_cuda_ext(name,
-                  module,
-                  sources,
-                  sources_cuda=[],
-                  extra_args=[],
-                  extra_include_path=[]):
-
+def make_cuda_ext(
+    name, module, sources, sources_cuda=[], extra_args=[], extra_include_path=[]
+):
     define_macros = []
     extra_compile_args = {'cxx': [] + extra_args}
 
@@ -56,7 +51,8 @@ def make_cuda_ext(name,
         sources=[os.path.join(*module.split('.'), p) for p in sources],
         include_dirs=extra_include_path,
         define_macros=define_macros,
-        extra_compile_args=extra_compile_args)
+        extra_compile_args=extra_compile_args,
+    )
 
 
 def parse_requirements(fname='requirements.txt', with_version=True):
@@ -76,6 +72,7 @@ def parse_requirements(fname='requirements.txt', with_version=True):
     import re
     import sys
     from os.path import exists
+
     require_fpath = fname
 
     def parse_line(line):
@@ -101,8 +98,7 @@ def parse_requirements(fname='requirements.txt', with_version=True):
                     if ';' in rest:
                         # Handle platform specific dependencies
                         # http://setuptools.readthedocs.io/en/latest/setuptools.html#declaring-platform-specific-dependencies
-                        version, platform_deps = map(str.strip,
-                                                     rest.split(';'))
+                        version, platform_deps = map(str.strip, rest.split(';'))
                         info['platform_deps'] = platform_deps
                     else:
                         version = rest  # NOQA
@@ -158,9 +154,7 @@ def add_mim_extention():
     else:
         return
 
-    filenames = [
-        'tools', 'configs', 'demo', 'model-index.yml', 'dataset-index.yml'
-    ]
+    filenames = ['tools', 'configs', 'demo', 'model-index.yml', 'dataset-index.yml']
     repo_path = osp.dirname(__file__)
     mim_path = osp.join(repo_path, 'mmdet3d', '.mim')
     os.makedirs(mim_path, exist_ok=True)
@@ -194,8 +188,9 @@ if __name__ == '__main__':
     setup(
         name='mmdet3d',
         version=get_version(),
-        description=("OpenMMLab's next-generation platform"
-                     'for general 3D object detection.'),
+        description=(
+            "OpenMMLab's next-generation platform" 'for general 3D object detection.'
+        ),
         long_description=readme(),
         long_description_content_type='text/markdown',
         author='MMDetection3D Contributors',
@@ -224,4 +219,5 @@ if __name__ == '__main__':
         },
         ext_modules=[],
         cmdclass={'build_ext': BuildExtension},
-        zip_safe=False)
+        zip_safe=False,
+    )

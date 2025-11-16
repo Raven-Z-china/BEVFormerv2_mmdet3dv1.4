@@ -10,20 +10,18 @@ from mmdet3d.structures import Det3DDataSample, PointData
 
 
 class TestSegMetric(unittest.TestCase):
-
     def _demo_mm_model_output(self):
         """Create a superset of inputs needed to run test or train batches."""
-        pred_pts_semantic_mask = torch.Tensor([
-            0, 0, 1, 0, 0, 2, 1, 3, 1, 2, 1, 0, 2, 2, 2, 2, 1, 3, 0, 3, 3, 3, 3
-        ])
+        pred_pts_semantic_mask = torch.Tensor(
+            [0, 0, 1, 0, 0, 2, 1, 3, 1, 2, 1, 0, 2, 2, 2, 2, 1, 3, 0, 3, 3, 3, 3]
+        )
         pred_pts_seg_data = dict(pts_semantic_mask=pred_pts_semantic_mask)
         data_sample = Det3DDataSample()
         data_sample.pred_pts_seg = PointData(**pred_pts_seg_data)
 
-        gt_pts_semantic_mask = np.array([
-            0, 0, 0, 255, 0, 0, 1, 1, 1, 255, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3,
-            3, 255
-        ])
+        gt_pts_semantic_mask = np.array(
+            [0, 0, 0, 255, 0, 0, 1, 1, 1, 255, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 255]
+        )
         ann_info_data = dict(pts_semantic_mask=gt_pts_semantic_mask)
         data_sample.eval_ann_info = ann_info_data
 

@@ -6,8 +6,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from mmdet3d.structures.points import (BasePoints, CameraPoints, DepthPoints,
-                                       LiDARPoints)
+from mmdet3d.structures.points import BasePoints, CameraPoints, DepthPoints, LiDARPoints
 from .base_box3d import BaseInstance3DBoxes
 from .box_3d_mode import Box3DMode
 
@@ -64,14 +63,17 @@ class Coord3DMode(IntEnum):
     DEPTH = 2
 
     @staticmethod
-    def convert(input: Union[Sequence[float], np.ndarray, Tensor,
-                             BaseInstance3DBoxes, BasePoints],
-                src: Union[Box3DMode, 'Coord3DMode'],
-                dst: Union[Box3DMode, 'Coord3DMode'],
-                rt_mat: Optional[Union[np.ndarray, Tensor]] = None,
-                with_yaw: bool = True,
-                correct_yaw: bool = False,
-                is_point: bool = True):
+    def convert(
+        input: Union[
+            Sequence[float], np.ndarray, Tensor, BaseInstance3DBoxes, BasePoints
+        ],
+        src: Union[Box3DMode, 'Coord3DMode'],
+        dst: Union[Box3DMode, 'Coord3DMode'],
+        rt_mat: Optional[Union[np.ndarray, Tensor]] = None,
+        with_yaw: bool = True,
+        correct_yaw: bool = False,
+        is_point: bool = True,
+    ):
         """Convert boxes or points from ``src`` mode to ``dst`` mode.
 
         Args:
@@ -108,13 +110,13 @@ class Coord3DMode(IntEnum):
                 dst,
                 rt_mat=rt_mat,
                 with_yaw=with_yaw,
-                correct_yaw=correct_yaw)
+                correct_yaw=correct_yaw,
+            )
         elif isinstance(input, BasePoints):
             return Coord3DMode.convert_point(input, src, dst, rt_mat=rt_mat)
         elif isinstance(input, (tuple, list, np.ndarray, Tensor)):
             if is_point:
-                return Coord3DMode.convert_point(
-                    input, src, dst, rt_mat=rt_mat)
+                return Coord3DMode.convert_point(input, src, dst, rt_mat=rt_mat)
             else:
                 return Coord3DMode.convert_box(
                     input,
@@ -122,7 +124,8 @@ class Coord3DMode(IntEnum):
                     dst,
                     rt_mat=rt_mat,
                     with_yaw=with_yaw,
-                    correct_yaw=correct_yaw)
+                    correct_yaw=correct_yaw,
+                )
         else:
             raise NotImplementedError
 
@@ -133,7 +136,7 @@ class Coord3DMode(IntEnum):
         dst: Box3DMode,
         rt_mat: Optional[Union[np.ndarray, Tensor]] = None,
         with_yaw: bool = True,
-        correct_yaw: bool = False
+        correct_yaw: bool = False,
     ) -> Union[Sequence[float], np.ndarray, Tensor, BaseInstance3DBoxes]:
         """Convert boxes from ``src`` mode to ``dst`` mode.
 
@@ -160,12 +163,8 @@ class Coord3DMode(IntEnum):
             :obj:`BaseInstance3DBoxes`: The converted box of the same type.
         """
         return Box3DMode.convert(
-            box,
-            src,
-            dst,
-            rt_mat=rt_mat,
-            with_yaw=with_yaw,
-            correct_yaw=correct_yaw)
+            box, src, dst, rt_mat=rt_mat, with_yaw=with_yaw, correct_yaw=correct_yaw
+        )
 
     @staticmethod
     def convert_point(
@@ -201,7 +200,8 @@ class Coord3DMode(IntEnum):
         if single_point:
             assert len(point) >= 3, (
                 'Coord3DMode.convert takes either a k-tuple/list or '
-                'an Nxk array/tensor, where k >= 3')
+                'an Nxk array/tensor, where k >= 3'
+            )
             arr = torch.tensor(point)[None, :]
         else:
             # avoid modifying the input point
@@ -233,14 +233,15 @@ class Coord3DMode(IntEnum):
                 rt_mat = arr.new_tensor([[0, 1, 0], [-1, 0, 0], [0, 0, 1]])
         else:
             raise NotImplementedError(
-                f'Conversion from Coord3DMode {src} to {dst} '
-                'is not supported yet')
+                f'Conversion from Coord3DMode {src} to {dst} ' 'is not supported yet'
+            )
 
         if not isinstance(rt_mat, Tensor):
             rt_mat = arr.new_tensor(rt_mat)
         if rt_mat.size(1) == 4:
             extended_xyz = torch.cat(
-                [arr[..., :3], arr.new_ones(arr.size(0), 1)], dim=-1)
+                [arr[..., :3], arr.new_ones(arr.size(0), 1)], dim=-1
+            )
             xyz = extended_xyz @ rt_mat.t()
         else:
             xyz = arr[..., :3] @ rt_mat.t()
@@ -264,10 +265,10 @@ class Coord3DMode(IntEnum):
             else:
                 raise NotImplementedError(
                     f'Conversion to {dst} through {original_type} '
-                    'is not supported yet')
+                    'is not supported yet'
+                )
             return target_type(
-                arr,
-                points_dim=arr.size(-1),
-                attribute_dims=point.attribute_dims)
+                arr, points_dim=arr.size(-1), attribute_dims=point.attribute_dims
+            )
         else:
             return arr

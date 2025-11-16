@@ -4,12 +4,10 @@ import torch
 from mmengine import DefaultScope
 
 from mmdet3d.registry import MODELS
-from mmdet3d.testing import (create_detector_inputs, get_detector_cfg,
-                             setup_seed)
+from mmdet3d.testing import create_detector_inputs, get_detector_cfg, setup_seed
 
 
 class Test3DSSD(unittest.TestCase):
-
     def test_3dssd(self):
         import mmdet3d.models
 
@@ -20,7 +18,8 @@ class Test3DSSD(unittest.TestCase):
         model = MODELS.build(voxel_net_cfg)
         num_gt_instance = 3
         packed_inputs = create_detector_inputs(
-            num_gt_instance=num_gt_instance, num_classes=1)
+            num_gt_instance=num_gt_instance, num_classes=1
+        )
 
         if torch.cuda.is_available():
             model = model.cuda()

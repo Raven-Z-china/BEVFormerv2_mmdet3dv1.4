@@ -6,19 +6,20 @@ from typing import Sequence
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-from mmcv.cnn import (Linear, build_activation_layer, build_conv_layer, build_norm_layer)
-from mmengine.model.base_module import BaseModule, ModuleList, Sequential
-from mmengine.config import ConfigDict
-from mmengine.utils import to_2tuple, deprecated_api_warning
-from mmengine.registry import build_from_cfg
+from mmcv.cnn import Linear, build_activation_layer, build_conv_layer, build_norm_layer
 from mmcv.cnn.bricks.drop import build_dropout
+from mmengine.config import ConfigDict
+from mmengine.model.base_module import BaseModule, ModuleList, Sequential
+from mmengine.registry import build_from_cfg
+from mmengine.utils import deprecated_api_warning, to_2tuple
+
 from mmdet3d.registry import MODELS
 
 
 @MODELS.register_module()
 class GroupMultiheadAttention(BaseModule):
     """A wrapper for ``torch.nn.MultiheadAttention``.
+
     This module implements MultiheadAttention with identity connection,
     and positional encoding  is also passed as input.
     Args:
@@ -37,23 +38,27 @@ class GroupMultiheadAttention(BaseModule):
              Default to False.
     """
 
-    def __init__(self,
-                 embed_dims,
-                 num_heads,
-                 attn_drop=0.,
-                 proj_drop=0.,
-                 group=1,
-                 dropout_layer=dict(type='Dropout', drop_prob=0.),
-                 init_cfg=None,
-                 batch_first=False,
-                 **kwargs):
+    def __init__(
+        self,
+        embed_dims,
+        num_heads,
+        attn_drop=0.0,
+        proj_drop=0.0,
+        group=1,
+        dropout_layer=dict(type='Dropout', drop_prob=0.0),
+        init_cfg=None,
+        batch_first=False,
+        **kwargs,
+    ):
         super().__init__(init_cfg)
         if 'dropout' in kwargs:
             warnings.warn(
                 'The arguments `dropout` in MultiheadAttention '
                 'has been deprecated, now you can separately '
                 'set `attn_drop`(float), proj_drop(float), '
-                'and `dropout_layer`(dict) ', DeprecationWarning)
+                'and `dropout_layer`(dict) ',
+                DeprecationWarning,
+            )
             attn_drop = kwargs['dropout']
             dropout_layer['drop_prob'] = kwargs.pop('dropout')
 
@@ -65,20 +70,25 @@ class GroupMultiheadAttention(BaseModule):
         self.attn = nn.MultiheadAttention(embed_dims, num_heads, attn_drop, **kwargs)
 
         self.proj_drop = nn.Dropout(proj_drop)
-        self.dropout_layer = build_dropout(dropout_layer) if dropout_layer else nn.Identity()
+        self.dropout_layer = (
+            build_dropout(dropout_layer) if dropout_layer else nn.Identity()
+        )
 
     @deprecated_api_warning({'residual': 'identity'}, cls_name='MultiheadAttention')
-    def forward(self,
-                query,
-                key=None,
-                value=None,
-                identity=None,
-                query_pos=None,
-                key_pos=None,
-                attn_mask=None,
-                key_padding_mask=None,
-                **kwargs):
+    def forward(
+        self,
+        query,
+        key=None,
+        value=None,
+        identity=None,
+        query_pos=None,
+        key_pos=None,
+        attn_mask=None,
+        key_padding_mask=None,
+        **kwargs,
+    ):
         """Forward function for `MultiheadAttention`.
+
         **kwargs allow passing a more general data flow when combining
         with other operations in `transformerlayer`.
         Args:
@@ -127,8 +137,10 @@ class GroupMultiheadAttention(BaseModule):
                 if query_pos.shape == key.shape:
                     key_pos = query_pos
                 else:
-                    warnings.warn(f'position encoding of key is'
-                                  f'missing in {self.__class__.__name__}.')
+                    warnings.warn(
+                        f'position encoding of key is'
+                        f'missing in {self.__class__.__name__}.'
+                    )
         if query_pos is not None:
             query = query + query_pos
         if key_pos is not None:
@@ -152,7 +164,13 @@ class GroupMultiheadAttention(BaseModule):
             key = torch.cat(key.split(num_queries // self.group, dim=0), dim=1)
             value = torch.cat(value.split(num_queries // self.group, dim=0), dim=1)
 
-        out = self.attn(query=query, key=key, value=value, attn_mask=attn_mask, key_padding_mask=key_padding_mask)[0]
+        out = self.attn(
+            query=query,
+            key=key,
+            value=value,
+            attn_mask=attn_mask,
+            key_padding_mask=key_padding_mask,
+        )[0]
 
         if self.training:
             out = torch.cat(out.split(bs, dim=1), dim=0)  # shape

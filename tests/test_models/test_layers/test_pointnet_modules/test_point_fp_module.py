@@ -13,8 +13,9 @@ def test_pointnet_fp_module():
     assert self.mlps.layer0.conv.in_channels == 24
     assert self.mlps.layer0.conv.out_channels == 16
 
-    xyz = np.fromfile('tests/data/sunrgbd/points/000001.bin',
-                      np.float32).reshape((-1, 6))
+    xyz = np.fromfile('tests/data/sunrgbd/points/000001.bin', np.float32).reshape(
+        (-1, 6)
+    )
 
     # (B, N, 3)
     xyz1 = torch.from_numpy(xyz[0::2, :3]).view(1, -1, 3).cuda()

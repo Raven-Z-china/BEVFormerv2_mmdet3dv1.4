@@ -35,10 +35,8 @@ class DeltaXYZWLHRBBoxCoder(BaseBBoxCoder):
         box_ndim = src_boxes.shape[-1]
         cas, cgs, cts = [], [], []
         if box_ndim > 7:
-            xa, ya, za, wa, la, ha, ra, *cas = torch.split(
-                src_boxes, 1, dim=-1)
-            xg, yg, zg, wg, lg, hg, rg, *cgs = torch.split(
-                dst_boxes, 1, dim=-1)
+            xa, ya, za, wa, la, ha, ra, *cas = torch.split(src_boxes, 1, dim=-1)
+            xg, yg, zg, wg, lg, hg, rg, *cgs = torch.split(dst_boxes, 1, dim=-1)
             cts = [g - a for g, a in zip(cgs, cas)]
         else:
             xa, ya, za, wa, la, ha, ra = torch.split(src_boxes, 1, dim=-1)

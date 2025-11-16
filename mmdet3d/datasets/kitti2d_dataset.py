@@ -88,10 +88,7 @@ class Kitti2DDataset(Det3DDataset):
             list[dict]: List of annotations.
         """
         self.data_infos = mmengine.load(ann_file)
-        self.cat2label = {
-            cat_name: i
-            for i, cat_name in enumerate(self.classes)
-        }
+        self.cat2label = {cat_name: i for i, cat_name in enumerate(self.classes)}
         return self.data_infos
 
     def _filter_imgs(self, min_size=32):
@@ -214,9 +211,9 @@ class Kitti2DDataset(Det3DDataset):
             list[dict]: A list of dictionaries with the kitti 2D format.
         """
         from mmdet3d.structures.ops.transforms import bbox2result_kitti2d
+
         sample_idx = [info['image']['image_idx'] for info in self.data_infos]
-        result_files = bbox2result_kitti2d(outputs, self.classes, sample_idx,
-                                           out)
+        result_files = bbox2result_kitti2d(outputs, self.classes, sample_idx, out)
         return result_files
 
     def evaluate(self, result_files, eval_types=None):
@@ -232,10 +229,11 @@ class Kitti2DDataset(Det3DDataset):
                 and average precision results in dict format.
         """
         from mmdet3d.evaluation import kitti_eval
+
         eval_types = ['bbox'] if not eval_types else eval_types
-        assert eval_types in ('bbox', ['bbox'
-                                       ]), 'KITTI data set only evaluate bbox'
+        assert eval_types in ('bbox', ['bbox']), 'KITTI data set only evaluate bbox'
         gt_annos = [info['annos'] for info in self.data_infos]
         ap_result_str, ap_dict = kitti_eval(
-            gt_annos, result_files, self.classes, eval_types=['bbox'])
+            gt_annos, result_files, self.classes, eval_types=['bbox']
+        )
         return ap_result_str, ap_dict

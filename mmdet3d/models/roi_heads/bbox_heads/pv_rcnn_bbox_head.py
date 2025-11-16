@@ -12,8 +12,11 @@ from torch import nn as nn
 
 from mmdet3d.models.layers import nms_bev, nms_normal_bev
 from mmdet3d.registry import MODELS, TASK_UTILS
-from mmdet3d.structures.bbox_3d import (LiDARInstance3DBoxes,
-                                        rotation_3d_in_axis, xywhr2xyxyr)
+from mmdet3d.structures.bbox_3d import (
+    LiDARInstance3DBoxes,
+    rotation_3d_in_axis,
+    xywhr2xyxyr,
+)
 from mmdet3d.utils import InstanceList
 
 
@@ -60,14 +63,17 @@ class PVRCNNBBoxHead(BaseModule):
         bbox_coder: dict = dict(type='DeltaXYZWLHRBBoxCoder'),
         norm_cfg: dict = dict(type='BN2d', eps=1e-5, momentum=0.1),
         loss_bbox: dict = dict(
-            type='mmdet.SmoothL1Loss', beta=1.0 / 9.0, loss_weight=2.0),
+            type='mmdet.SmoothL1Loss', beta=1.0 / 9.0, loss_weight=2.0
+        ),
         loss_cls: dict = dict(
             type='mmdet.CrossEntropyLoss',
             use_sigmoid=True,
             reduction='none',
-            loss_weight=1.0),
+            loss_weight=1.0,
+        ),
         init_cfg: Optional[dict] = dict(
-            type='Xavier', layer=['Conv2d', 'Conv1d'], distribution='uniform')
+            type='Xavier', layer=['Conv2d', 'Conv1d'], distribution='uniform'
+        ),
     ) -> None:
         super(PVRCNNBBoxHead, self).__init__(init_cfg=init_cfg)
         self.init_cfg = init_cfg
@@ -90,32 +96,39 @@ class PVRCNNBBoxHead(BaseModule):
         self.grid_size = grid_size
 
         # PVRCNNBBoxHead model in_channels is num of grid points in roi box.
-        in_channels *= (self.grid_size**3)
+        in_channels *= self.grid_size**3
 
         self.in_channels = in_channels
 
         self.shared_fc_layer = self._make_fc_layers(
-            in_channels, shared_fc_channels,
-            range(len(shared_fc_channels) - 1), norm_cfg)
+            in_channels,
+            shared_fc_channels,
+            range(len(shared_fc_channels) - 1),
+            norm_cfg,
+        )
         self.cls_layer = self._make_fc_layers(
             shared_fc_channels[-1],
             cls_channels,
             range(1),
             norm_cfg,
-            out_channels=self.cls_out_channels)
+            out_channels=self.cls_out_channels,
+        )
         self.reg_layer = self._make_fc_layers(
             shared_fc_channels[-1],
             reg_channels,
             range(1),
             norm_cfg,
-            out_channels=self.reg_out_channels)
+            out_channels=self.reg_out_channels,
+        )
 
-    def _make_fc_layers(self,
-                        in_channels: int,
-                        fc_channels: list,
-                        dropout_indices: list,
-                        norm_cfg: dict,
-                        out_channels: Optional[int] = None) -> torch.nn.Module:
+    def _make_fc_layers(
+        self,
+        in_channels: int,
+        fc_channels: list,
+        dropout_indices: list,
+        norm_cfg: dict,
+        out_channels: Optional[int] = None,
+    ) -> torch.nn.Module:
         """Initial a full connection layer.
 
         Args:
@@ -137,13 +150,14 @@ class PVRCNNBBoxHead(BaseModule):
                     norm_cfg=norm_cfg,
                     conv_cfg=dict(type='Conv2d'),
                     bias=False,
-                    inplace=True))
+                    inplace=True,
+                )
+            )
             pre_channel = fc_channels[k]
             if self.dropout_ratio >= 0 and k in dropout_indices:
                 fc_layers.append(nn.Dropout(self.dropout_ratio))
         if out_channels is not None:
-            fc_layers.append(
-                nn.Conv2d(fc_channels[-1], out_channels, 1, bias=True))
+            fc_layers.append(nn.Conv2d(fc_channels[-1], out_channels, 1, bias=True))
         fc_layers = nn.Sequential(*fc_layers)
         return fc_layers
 
@@ -158,21 +172,37 @@ class PVRCNNBBoxHead(BaseModule):
         """
         # (B * N, 6, 6, 6, C)
         rcnn_batch_size = feats.shape[0]
-        feats = feats.permute(0, 4, 1, 2,
-                              3).contiguous().view(rcnn_batch_size, -1, 1, 1)
+        feats = (
+            feats.permute(0, 4, 1, 2, 3).contiguous().view(rcnn_batch_size, -1, 1, 1)
+        )
         # (BxN, C*6*6*6)
         shared_feats = self.shared_fc_layer(feats)
-        cls_score = self.cls_layer(shared_feats).transpose(
-            1, 2).contiguous().view(-1, self.cls_out_channels)  # (B, 1)
-        bbox_pred = self.reg_layer(shared_feats).transpose(
-            1, 2).contiguous().view(-1, self.reg_out_channels)  # (B, C)
+        cls_score = (
+            self.cls_layer(shared_feats)
+            .transpose(1, 2)
+            .contiguous()
+            .view(-1, self.cls_out_channels)
+        )  # (B, 1)
+        bbox_pred = (
+            self.reg_layer(shared_feats)
+            .transpose(1, 2)
+            .contiguous()
+            .view(-1, self.reg_out_channels)
+        )  # (B, C)
         return cls_score, bbox_pred
 
-    def loss(self, cls_score: torch.Tensor, bbox_pred: torch.Tensor,
-             rois: torch.Tensor, labels: torch.Tensor,
-             bbox_targets: torch.Tensor, pos_gt_bboxes: torch.Tensor,
-             reg_mask: torch.Tensor, label_weights: torch.Tensor,
-             bbox_weights: torch.Tensor) -> Dict:
+    def loss(
+        self,
+        cls_score: torch.Tensor,
+        bbox_pred: torch.Tensor,
+        rois: torch.Tensor,
+        labels: torch.Tensor,
+        bbox_targets: torch.Tensor,
+        pos_gt_bboxes: torch.Tensor,
+        reg_mask: torch.Tensor,
+        label_weights: torch.Tensor,
+        bbox_weights: torch.Tensor,
+    ) -> Dict:
         """Coumputing losses.
 
         Args:
@@ -203,7 +233,7 @@ class PVRCNNBBoxHead(BaseModule):
 
         # calculate regression loss
         code_size = self.bbox_coder.code_size
-        pos_inds = (reg_mask > 0)
+        pos_inds = reg_mask > 0
         if pos_inds.any() == 0:
             # fake a part loss
             losses['loss_bbox'] = 0 * bbox_pred.sum()
@@ -211,11 +241,14 @@ class PVRCNNBBoxHead(BaseModule):
                 losses['loss_corner'] = 0 * bbox_pred.sum()
         else:
             pos_bbox_pred = bbox_pred.view(rcnn_batch_size, -1)[pos_inds]
-            bbox_weights_flat = bbox_weights[pos_inds].view(-1, 1).repeat(
-                1, pos_bbox_pred.shape[-1])
+            bbox_weights_flat = (
+                bbox_weights[pos_inds].view(-1, 1).repeat(1, pos_bbox_pred.shape[-1])
+            )
             loss_bbox = self.loss_bbox(
-                pos_bbox_pred.unsqueeze(dim=0), bbox_targets.unsqueeze(dim=0),
-                bbox_weights_flat.unsqueeze(dim=0))
+                pos_bbox_pred.unsqueeze(dim=0),
+                bbox_targets.unsqueeze(dim=0),
+                bbox_weights_flat.unsqueeze(dim=0),
+            )
             losses['loss_bbox'] = loss_bbox
 
             if self.with_corner_loss:
@@ -227,27 +260,27 @@ class PVRCNNBBoxHead(BaseModule):
                 batch_anchors[..., 0:3] = 0
                 # decode boxes
                 pred_boxes3d = self.bbox_coder.decode(
-                    batch_anchors,
-                    pos_bbox_pred.view(-1, code_size)).view(-1, code_size)
+                    batch_anchors, pos_bbox_pred.view(-1, code_size)
+                ).view(-1, code_size)
 
                 pred_boxes3d[..., 0:3] = rotation_3d_in_axis(
-                    pred_boxes3d[..., 0:3].unsqueeze(1),
-                    pos_rois_rotation,
-                    axis=2).squeeze(1)
+                    pred_boxes3d[..., 0:3].unsqueeze(1), pos_rois_rotation, axis=2
+                ).squeeze(1)
 
                 pred_boxes3d[:, 0:3] += roi_xyz
 
                 # calculate corner loss
-                loss_corner = self.get_corner_loss_lidar(
-                    pred_boxes3d, pos_gt_bboxes)
+                loss_corner = self.get_corner_loss_lidar(pred_boxes3d, pos_gt_bboxes)
                 losses['loss_corner'] = loss_corner.mean()
 
         return losses
 
-    def get_targets(self,
-                    sampling_results: SamplingResult,
-                    rcnn_train_cfg: dict,
-                    concat: bool = True) -> Tuple[torch.Tensor]:
+    def get_targets(
+        self,
+        sampling_results: SamplingResult,
+        rcnn_train_cfg: dict,
+        concat: bool = True,
+    ) -> Tuple[torch.Tensor]:
         """Generate targets.
 
         Args:
@@ -267,10 +300,17 @@ class PVRCNNBBoxHead(BaseModule):
             pos_bboxes_list,
             pos_gt_bboxes_list,
             iou_list,
-            cfg=rcnn_train_cfg)
+            cfg=rcnn_train_cfg,
+        )
 
-        (label, bbox_targets, pos_gt_bboxes, reg_mask, label_weights,
-         bbox_weights) = targets
+        (
+            label,
+            bbox_targets,
+            pos_gt_bboxes,
+            reg_mask,
+            label_weights,
+            bbox_weights,
+        ) = targets
 
         if concat:
             label = torch.cat(label, 0)
@@ -284,12 +324,22 @@ class PVRCNNBBoxHead(BaseModule):
             bbox_weights = torch.cat(bbox_weights, 0)
             bbox_weights /= torch.clamp(bbox_weights.sum(), min=1.0)
 
-        return (label, bbox_targets, pos_gt_bboxes, reg_mask, label_weights,
-                bbox_weights)
+        return (
+            label,
+            bbox_targets,
+            pos_gt_bboxes,
+            reg_mask,
+            label_weights,
+            bbox_weights,
+        )
 
-    def _get_target_single(self, pos_bboxes: torch.Tensor,
-                           pos_gt_bboxes: torch.Tensor, ious: torch.Tensor,
-                           cfg: dict) -> Tuple[torch.Tensor]:
+    def _get_target_single(
+        self,
+        pos_bboxes: torch.Tensor,
+        pos_gt_bboxes: torch.Tensor,
+        ious: torch.Tensor,
+        cfg: dict,
+    ) -> Tuple[torch.Tensor]:
         """Generate training targets for a single sample.
 
         Args:
@@ -318,7 +368,7 @@ class PVRCNNBBoxHead(BaseModule):
 
         # box regression target
         reg_mask = pos_bboxes.new_zeros(ious.size(0)).long()
-        reg_mask[0:pos_gt_bboxes.size(0)] = 1
+        reg_mask[0 : pos_gt_bboxes.size(0)] = 1
         bbox_weights = (reg_mask > 0).float()
         if reg_mask.bool().any():
             pos_gt_bboxes_ct = pos_gt_bboxes.clone().detach()
@@ -329,14 +379,15 @@ class PVRCNNBBoxHead(BaseModule):
             pos_gt_bboxes_ct[..., 0:3] -= roi_center
             pos_gt_bboxes_ct[..., 6] -= roi_ry
             pos_gt_bboxes_ct[..., 0:3] = rotation_3d_in_axis(
-                pos_gt_bboxes_ct[..., 0:3].unsqueeze(1), -roi_ry,
-                axis=2).squeeze(1)
+                pos_gt_bboxes_ct[..., 0:3].unsqueeze(1), -roi_ry, axis=2
+            ).squeeze(1)
 
             # flip orientation if rois have opposite orientation
             ry_label = pos_gt_bboxes_ct[..., 6] % (2 * np.pi)  # 0 ~ 2pi
             opposite_flag = (ry_label > np.pi * 0.5) & (ry_label < np.pi * 1.5)
             ry_label[opposite_flag] = (ry_label[opposite_flag] + np.pi) % (
-                2 * np.pi)  # (0 ~ pi/2, 3pi/2 ~ 2pi)
+                2 * np.pi
+            )  # (0 ~ pi/2, 3pi/2 ~ 2pi)
             flag = ry_label > np.pi
             ry_label[flag] = ry_label[flag] - np.pi * 2  # (-pi/2, pi/2)
             ry_label = torch.clamp(ry_label, min=-np.pi / 2, max=np.pi / 2)
@@ -345,19 +396,23 @@ class PVRCNNBBoxHead(BaseModule):
             rois_anchor = pos_bboxes.clone().detach()
             rois_anchor[:, 0:3] = 0
             rois_anchor[:, 6] = 0
-            bbox_targets = self.bbox_coder.encode(rois_anchor,
-                                                  pos_gt_bboxes_ct)
+            bbox_targets = self.bbox_coder.encode(rois_anchor, pos_gt_bboxes_ct)
         else:
             # no fg bbox
             bbox_targets = pos_gt_bboxes.new_empty((0, 7))
 
-        return (label, bbox_targets, pos_gt_bboxes, reg_mask, label_weights,
-                bbox_weights)
+        return (
+            label,
+            bbox_targets,
+            pos_gt_bboxes,
+            reg_mask,
+            label_weights,
+            bbox_weights,
+        )
 
-    def get_corner_loss_lidar(self,
-                              pred_bbox3d: torch.Tensor,
-                              gt_bbox3d: torch.Tensor,
-                              delta: float = 1.0) -> torch.Tensor:
+    def get_corner_loss_lidar(
+        self, pred_bbox3d: torch.Tensor, gt_bbox3d: torch.Tensor, delta: float = 1.0
+    ) -> torch.Tensor:
         """Calculate corner loss of given boxes.
 
         Args:
@@ -383,22 +438,24 @@ class PVRCNNBBoxHead(BaseModule):
 
         corner_dist = torch.min(
             torch.norm(pred_box_corners - gt_box_corners, dim=2),
-            torch.norm(pred_box_corners - gt_box_corners_flip,
-                       dim=2))  # (N, 8)
+            torch.norm(pred_box_corners - gt_box_corners_flip, dim=2),
+        )  # (N, 8)
         # huber loss
         abs_error = torch.abs(corner_dist)
-        corner_loss = torch.where(abs_error < delta,
-                                  0.5 * abs_error**2 / delta,
-                                  abs_error - 0.5 * delta)
+        corner_loss = torch.where(
+            abs_error < delta, 0.5 * abs_error**2 / delta, abs_error - 0.5 * delta
+        )
         return corner_loss.mean(dim=1)
 
-    def get_results(self,
-                    rois: torch.Tensor,
-                    cls_preds: torch.Tensor,
-                    bbox_reg: torch.Tensor,
-                    class_labels: torch.Tensor,
-                    input_metas: List[dict],
-                    test_cfg: dict = None) -> InstanceList:
+    def get_results(
+        self,
+        rois: torch.Tensor,
+        cls_preds: torch.Tensor,
+        bbox_reg: torch.Tensor,
+        class_labels: torch.Tensor,
+        input_metas: List[dict],
+        test_cfg: dict = None,
+    ) -> InstanceList:
         """Generate bboxes from bbox head predictions.
 
         Args:
@@ -433,7 +490,8 @@ class PVRCNNBBoxHead(BaseModule):
         local_roi_boxes[..., 0:3] = 0
         batch_box_preds = self.bbox_coder.decode(local_roi_boxes, bbox_reg)
         batch_box_preds[..., 0:3] = rotation_3d_in_axis(
-            batch_box_preds[..., 0:3].unsqueeze(1), roi_ry, axis=2).squeeze(1)
+            batch_box_preds[..., 0:3].unsqueeze(1), roi_ry, axis=2
+        ).squeeze(1)
         batch_box_preds[:, 0:3] += roi_xyz
 
         # post processing
@@ -449,7 +507,8 @@ class PVRCNNBBoxHead(BaseModule):
                 scores=cur_cls_preds,
                 bbox_preds=box_preds,
                 input_meta=input_metas[batch_id],
-                nms_cfg=test_cfg)
+                nms_cfg=test_cfg,
+            )
 
             selected_bboxes = box_preds[selected]
             selected_label_preds = label_preds[selected]
@@ -457,16 +516,21 @@ class PVRCNNBBoxHead(BaseModule):
 
             results = InstanceData()
             results.bboxes_3d = input_metas[batch_id]['box_type_3d'](
-                selected_bboxes, self.bbox_coder.code_size)
+                selected_bboxes, self.bbox_coder.code_size
+            )
             results.scores_3d = selected_scores
             results.labels_3d = selected_label_preds
 
             result_list.append(results)
         return result_list
 
-    def class_agnostic_nms(self, scores: torch.Tensor,
-                           bbox_preds: torch.Tensor, nms_cfg: dict,
-                           input_meta: dict) -> Tuple[torch.Tensor]:
+    def class_agnostic_nms(
+        self,
+        scores: torch.Tensor,
+        bbox_preds: torch.Tensor,
+        nms_cfg: dict,
+        input_meta: dict,
+    ) -> Tuple[torch.Tensor]:
         """Class agnostic NMS for box head.
 
         Args:
@@ -488,16 +552,18 @@ class PVRCNNBBoxHead(BaseModule):
             bbox_preds.clone(),
             box_dim=bbox_preds.shape[-1],
             with_yaw=True,
-            origin=(0.5, 0.5, 0.5))
+            origin=(0.5, 0.5, 0.5),
+        )
 
         if nms_cfg.score_thr is not None:
-            scores_mask = (obj_scores >= nms_cfg.score_thr)
+            scores_mask = obj_scores >= nms_cfg.score_thr
             obj_scores = obj_scores[scores_mask]
             bbox = bbox[scores_mask]
         selected = []
         if obj_scores.shape[0] > 0:
             box_scores_nms, indices = torch.topk(
-                obj_scores, k=min(4096, obj_scores.shape[0]))
+                obj_scores, k=min(4096, obj_scores.shape[0])
+            )
             bbox_bev = bbox.bev[indices]
             bbox_for_nms = xywhr2xyxyr(bbox_bev)
 

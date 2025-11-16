@@ -24,15 +24,16 @@ class CenterPointBBoxCoder(BaseBBoxCoder):
         code_size (int, optional): Code size of bboxes. Default: 9
     """
 
-    def __init__(self,
-                 pc_range: List[float],
-                 out_size_factor: int,
-                 voxel_size: List[float],
-                 post_center_range: Optional[List[float]] = None,
-                 max_num: int = 100,
-                 score_threshold: Optional[float] = None,
-                 code_size: int = 9) -> None:
-
+    def __init__(
+        self,
+        pc_range: List[float],
+        out_size_factor: int,
+        voxel_size: List[float],
+        post_center_range: Optional[List[float]] = None,
+        max_num: int = 100,
+        score_threshold: Optional[float] = None,
+        code_size: int = 9,
+    ) -> None:
         self.pc_range = pc_range
         self.out_size_factor = out_size_factor
         self.voxel_size = voxel_size
@@ -41,10 +42,9 @@ class CenterPointBBoxCoder(BaseBBoxCoder):
         self.score_threshold = score_threshold
         self.code_size = code_size
 
-    def _gather_feat(self,
-                     feats: Tensor,
-                     inds: Tensor,
-                     feat_masks: Optional[Tensor] = None) -> Tensor:
+    def _gather_feat(
+        self, feats: Tensor, inds: Tensor, feat_masks: Optional[Tensor] = None
+    ) -> Tensor:
         """Given feats and indexes, returns the gathered feats.
 
         Args:
@@ -86,18 +86,18 @@ class CenterPointBBoxCoder(BaseBBoxCoder):
         topk_scores, topk_inds = torch.topk(scores.view(batch, cat, -1), K)
 
         topk_inds = topk_inds % (height * width)
-        topk_ys = (topk_inds.float() /
-                   torch.tensor(width, dtype=torch.float)).int().float()
+        topk_ys = (
+            (topk_inds.float() / torch.tensor(width, dtype=torch.float)).int().float()
+        )
         topk_xs = (topk_inds % width).int().float()
 
         topk_score, topk_ind = torch.topk(topk_scores.view(batch, -1), K)
         topk_clses = (topk_ind / torch.tensor(K, dtype=torch.float)).int()
-        topk_inds = self._gather_feat(topk_inds.view(batch, -1, 1),
-                                      topk_ind).view(batch, K)
-        topk_ys = self._gather_feat(topk_ys.view(batch, -1, 1),
-                                    topk_ind).view(batch, K)
-        topk_xs = self._gather_feat(topk_xs.view(batch, -1, 1),
-                                    topk_ind).view(batch, K)
+        topk_inds = self._gather_feat(topk_inds.view(batch, -1, 1), topk_ind).view(
+            batch, K
+        )
+        topk_ys = self._gather_feat(topk_ys.view(batch, -1, 1), topk_ind).view(batch, K)
+        topk_xs = self._gather_feat(topk_xs.view(batch, -1, 1), topk_ind).view(batch, K)
 
         return topk_score, topk_inds, topk_clses, topk_ys, topk_xs
 
@@ -120,15 +120,17 @@ class CenterPointBBoxCoder(BaseBBoxCoder):
     def encode(self):
         pass
 
-    def decode(self,
-               heat: Tensor,
-               rot_sine: Tensor,
-               rot_cosine: Tensor,
-               hei: Tensor,
-               dim: Tensor,
-               vel: Tensor,
-               reg: Optional[Tensor] = None,
-               task_id: int = -1) -> List[Dict[str, Tensor]]:
+    def decode(
+        self,
+        heat: Tensor,
+        rot_sine: Tensor,
+        rot_cosine: Tensor,
+        hei: Tensor,
+        dim: Tensor,
+        vel: Tensor,
+        reg: Optional[Tensor] = None,
+        task_id: int = -1,
+    ) -> List[Dict[str, Tensor]]:
         """Decode bboxes.
 
         Args:
@@ -182,12 +184,14 @@ class CenterPointBBoxCoder(BaseBBoxCoder):
         clses = clses.view(batch, self.max_num).float()
         scores = scores.view(batch, self.max_num)
 
-        xs = xs.view(
-            batch, self.max_num,
-            1) * self.out_size_factor * self.voxel_size[0] + self.pc_range[0]
-        ys = ys.view(
-            batch, self.max_num,
-            1) * self.out_size_factor * self.voxel_size[1] + self.pc_range[1]
+        xs = (
+            xs.view(batch, self.max_num, 1) * self.out_size_factor * self.voxel_size[0]
+            + self.pc_range[0]
+        )
+        ys = (
+            ys.view(batch, self.max_num, 1) * self.out_size_factor * self.voxel_size[1]
+            + self.pc_range[1]
+        )
 
         if vel is None:  # KITTI FORMAT
             final_box_preds = torch.cat([xs, ys, hei, dim, rot], dim=2)
@@ -205,11 +209,10 @@ class CenterPointBBoxCoder(BaseBBoxCoder):
 
         if self.post_center_range is not None:
             self.post_center_range = torch.tensor(
-                self.post_center_range, device=heat.device)
-            mask = (final_box_preds[..., :3] >=
-                    self.post_center_range[:3]).all(2)
-            mask &= (final_box_preds[..., :3] <=
-                     self.post_center_range[3:]).all(2)
+                self.post_center_range, device=heat.device
+            )
+            mask = (final_box_preds[..., :3] >= self.post_center_range[:3]).all(2)
+            mask &= (final_box_preds[..., :3] <= self.post_center_range[3:]).all(2)
 
             predictions_dicts = []
             for i in range(batch):
@@ -223,13 +226,14 @@ class CenterPointBBoxCoder(BaseBBoxCoder):
                 predictions_dict = {
                     'bboxes': boxes3d,
                     'scores': scores,
-                    'labels': labels
+                    'labels': labels,
                 }
 
                 predictions_dicts.append(predictions_dict)
         else:
             raise NotImplementedError(
                 'Need to reorganize output as a batch, only '
-                'support post_center_range is not None for now!')
+                'support post_center_range is not None for now!'
+            )
 
         return predictions_dicts

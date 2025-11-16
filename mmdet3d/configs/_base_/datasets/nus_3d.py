@@ -4,13 +4,20 @@ from mmengine.visualization.vis_backend import LocalVisBackend
 
 from mmdet3d.datasets.nuscenes_dataset import NuScenesDataset
 from mmdet3d.datasets.transforms.formating import Pack3DDetInputs
-from mmdet3d.datasets.transforms.loading import (LoadAnnotations3D,
-                                                 LoadPointsFromFile,
-                                                 LoadPointsFromMultiSweeps)
+from mmdet3d.datasets.transforms.loading import (
+    LoadAnnotations3D,
+    LoadPointsFromFile,
+    LoadPointsFromMultiSweeps,
+)
 from mmdet3d.datasets.transforms.test_time_aug import MultiScaleFlipAug3D
 from mmdet3d.datasets.transforms.transforms_3d import (  # noqa
-    GlobalRotScaleTrans, ObjectNameFilter, ObjectRangeFilter, PointShuffle,
-    PointsRangeFilter, RandomFlip3D)
+    GlobalRotScaleTrans,
+    ObjectNameFilter,
+    ObjectRangeFilter,
+    PointShuffle,
+    PointsRangeFilter,
+    RandomFlip3D,
+)
 from mmdet3d.evaluation.metrics.nuscenes_metric import NuScenesMetric
 from mmdet3d.visualization.local_visualizer import Det3DLocalVisualizer
 
@@ -22,8 +29,16 @@ point_cloud_range = [-50, -50, -5, 50, 50, 3]
 # point_cloud_range = [-50, -50.8, -5, 50, 49.2, 3]
 # For nuScenes we usually do 10-class detection
 class_names = [
-    'car', 'truck', 'trailer', 'bus', 'construction_vehicle', 'bicycle',
-    'motorcycle', 'pedestrian', 'traffic_cone', 'barrier'
+    'car',
+    'truck',
+    'trailer',
+    'bus',
+    'construction_vehicle',
+    'bicycle',
+    'motorcycle',
+    'pedestrian',
+    'traffic_cone',
+    'barrier',
 ]
 metainfo = dict(classes=class_names)
 dataset_type = 'NuScenesDataset'
@@ -54,24 +69,22 @@ train_pipeline = [
         coord_type='LIDAR',
         load_dim=5,
         use_dim=5,
-        backend_args=backend_args),
-    dict(
-        type=LoadPointsFromMultiSweeps,
-        sweeps_num=10,
-        backend_args=backend_args),
+        backend_args=backend_args,
+    ),
+    dict(type=LoadPointsFromMultiSweeps, sweeps_num=10, backend_args=backend_args),
     dict(type=LoadAnnotations3D, with_bbox_3d=True, with_label_3d=True),
     dict(
         type=GlobalRotScaleTrans,
         rot_range=[-0.3925, 0.3925],
         scale_ratio_range=[0.95, 1.05],
-        translation_std=[0, 0, 0]),
+        translation_std=[0, 0, 0],
+    ),
     dict(type=RandomFlip3D, flip_ratio_bev_horizontal=0.5),
     dict(type=PointsRangeFilter, point_cloud_range=point_cloud_range),
     dict(type=ObjectRangeFilter, point_cloud_range=point_cloud_range),
     dict(type=ObjectNameFilter, classes=class_names),
     dict(type=PointShuffle),
-    dict(
-        type=Pack3DDetInputs, keys=['points', 'gt_bboxes_3d', 'gt_labels_3d'])
+    dict(type=Pack3DDetInputs, keys=['points', 'gt_bboxes_3d', 'gt_labels_3d']),
 ]
 test_pipeline = [
     dict(
@@ -79,12 +92,14 @@ test_pipeline = [
         coord_type='LIDAR',
         load_dim=5,
         use_dim=5,
-        backend_args=backend_args),
+        backend_args=backend_args,
+    ),
     dict(
         type=LoadPointsFromMultiSweeps,
         sweeps_num=10,
         test_mode=True,
-        backend_args=backend_args),
+        backend_args=backend_args,
+    ),
     dict(
         type=MultiScaleFlipAug3D,
         img_scale=(1333, 800),
@@ -94,12 +109,14 @@ test_pipeline = [
             dict(
                 type=GlobalRotScaleTrans,
                 rot_range=[0, 0],
-                scale_ratio_range=[1., 1.],
-                translation_std=[0, 0, 0]),
+                scale_ratio_range=[1.0, 1.0],
+                translation_std=[0, 0, 0],
+            ),
             dict(type=RandomFlip3D),
-            dict(type=PointsRangeFilter, point_cloud_range=point_cloud_range)
-        ]),
-    dict(type=Pack3DDetInputs, keys=['points'])
+            dict(type=PointsRangeFilter, point_cloud_range=point_cloud_range),
+        ],
+    ),
+    dict(type=Pack3DDetInputs, keys=['points']),
 ]
 # construct a pipeline for data and gt loading in show function
 # please keep its loading function consistent with test_pipeline (e.g. client)
@@ -109,13 +126,15 @@ eval_pipeline = [
         coord_type='LIDAR',
         load_dim=5,
         use_dim=5,
-        backend_args=backend_args),
+        backend_args=backend_args,
+    ),
     dict(
         type=LoadPointsFromMultiSweeps,
         sweeps_num=10,
         test_mode=True,
-        backend_args=backend_args),
-    dict(type=Pack3DDetInputs, keys=['points'])
+        backend_args=backend_args,
+    ),
+    dict(type=Pack3DDetInputs, keys=['points']),
 ]
 train_dataloader = dict(
     batch_size=4,
@@ -134,7 +153,9 @@ train_dataloader = dict(
         # we use box_type_3d='LiDAR' in kitti and nuscenes dataset
         # and box_type_3d='Depth' in sunrgbd and scannet dataset.
         box_type_3d='LiDAR',
-        backend_args=backend_args))
+        backend_args=backend_args,
+    ),
+)
 test_dataloader = dict(
     batch_size=1,
     num_workers=1,
@@ -151,7 +172,9 @@ test_dataloader = dict(
         data_prefix=data_prefix,
         test_mode=True,
         box_type_3d='LiDAR',
-        backend_args=backend_args))
+        backend_args=backend_args,
+    ),
+)
 val_dataloader = dict(
     batch_size=1,
     num_workers=1,
@@ -168,16 +191,20 @@ val_dataloader = dict(
         test_mode=True,
         data_prefix=data_prefix,
         box_type_3d='LiDAR',
-        backend_args=backend_args))
+        backend_args=backend_args,
+    ),
+)
 
 val_evaluator = dict(
     type=NuScenesMetric,
     data_root=data_root,
     ann_file=data_root + 'nuscenes_infos_val.pkl',
     metric='bbox',
-    backend_args=backend_args)
+    backend_args=backend_args,
+)
 test_evaluator = val_evaluator
 
 vis_backends = [dict(type=LocalVisBackend)]
 visualizer = dict(
-    type=Det3DLocalVisualizer, vis_backends=vis_backends, name='visualizer')
+    type=Det3DLocalVisualizer, vis_backends=vis_backends, name='visualizer'
+)

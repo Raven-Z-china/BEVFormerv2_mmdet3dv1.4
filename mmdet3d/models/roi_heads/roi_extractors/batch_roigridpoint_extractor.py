@@ -19,16 +19,20 @@ class Batch3DRoIGridExtractor(BaseModule):
             model. Defaults to None.
     """
 
-    def __init__(self,
-                 grid_size: int = 6,
-                 roi_layer: dict = None,
-                 init_cfg: dict = None) -> None:
+    def __init__(
+        self, grid_size: int = 6, roi_layer: dict = None, init_cfg: dict = None
+    ) -> None:
         super(Batch3DRoIGridExtractor, self).__init__(init_cfg=init_cfg)
         self.roi_grid_pool_layer = MODELS.build(roi_layer)
         self.grid_size = grid_size
 
-    def forward(self, feats: torch.Tensor, coordinate: torch.Tensor,
-                batch_inds: torch.Tensor, rois: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        feats: torch.Tensor,
+        coordinate: torch.Tensor,
+        batch_inds: torch.Tensor,
+        rois: torch.Tensor,
+    ) -> torch.Tensor:
         """Forward roi extractor to extract grid points feature.
 
         Args:
@@ -54,18 +58,22 @@ class Batch3DRoIGridExtractor(BaseModule):
         new_xyz = roi_grid.view(-1, 3)
         new_xyz_batch_cnt = new_xyz.new_zeros(batch_size).int()
         for k in range(batch_size):
-            new_xyz_batch_cnt[k] = ((rois_batch_inds == k).sum() *
-                                    roi_grid.size(1))
+            new_xyz_batch_cnt[k] = (rois_batch_inds == k).sum() * roi_grid.size(1)
         pooled_points, pooled_features = self.roi_grid_pool_layer(
             xyz=xyz.contiguous(),
             xyz_batch_cnt=xyz_batch_cnt,
             new_xyz=new_xyz.contiguous(),
             new_xyz_batch_cnt=new_xyz_batch_cnt,
-            features=feats.contiguous())  # (M1 + M2 ..., C)
+            features=feats.contiguous(),
+        )  # (M1 + M2 ..., C)
 
-        pooled_features = pooled_features.view(-1, self.grid_size,
-                                               self.grid_size, self.grid_size,
-                                               pooled_features.shape[-1])
+        pooled_features = pooled_features.view(
+            -1,
+            self.grid_size,
+            self.grid_size,
+            self.grid_size,
+            pooled_features.shape[-1],
+        )
         # (BxN, 6, 6, 6, C)
         return pooled_features
 
@@ -81,17 +89,17 @@ class Batch3DRoIGridExtractor(BaseModule):
         rois_bbox = rois.clone()
         rois_bbox[:, 2] += rois_bbox[:, 5] / 2
         faked_features = rois_bbox.new_ones(
-            (self.grid_size, self.grid_size, self.grid_size))
+            (self.grid_size, self.grid_size, self.grid_size)
+        )
         dense_idx = faked_features.nonzero()
         dense_idx = dense_idx.repeat(rois_bbox.size(0), 1, 1).float()
-        dense_idx = ((dense_idx + 0.5) / self.grid_size)
+        dense_idx = (dense_idx + 0.5) / self.grid_size
         dense_idx[..., :3] -= 0.5
 
         roi_ctr = rois_bbox[:, :3]
         roi_dim = rois_bbox[:, 3:6]
         roi_grid_points = dense_idx * roi_dim.view(-1, 1, 3)
-        roi_grid_points = rotation_3d_in_axis(
-            roi_grid_points, rois_bbox[:, 6], axis=2)
+        roi_grid_points = rotation_3d_in_axis(roi_grid_points, rois_bbox[:, 6], axis=2)
         roi_grid_points += roi_ctr.view(-1, 1, 3)
 
         return roi_grid_points

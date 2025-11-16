@@ -81,8 +81,9 @@ class PointNetFPNeck(BaseModule):
 
         for i in range(self.num_fp):
             # consume the points in a bottom-up manner
-            fp_feature = self.FP_modules[i](sa_xyz[-(i + 2)], sa_xyz[-(i + 1)],
-                                            sa_features[-(i + 2)], fp_feature)
+            fp_feature = self.FP_modules[i](
+                sa_xyz[-(i + 2)], sa_xyz[-(i + 1)], sa_features[-(i + 2)], fp_feature
+            )
             fp_xyz = sa_xyz[-(i + 2)]
 
         ret = dict(fp_xyz=fp_xyz, fp_features=fp_feature)

@@ -10,10 +10,27 @@ from mmdet3d.utils import register_all_modules
 def _generate_semantickitti_dataset_config():
     data_root = './tests/data/semantickitti/'
     ann_file = 'semantickitti_infos.pkl'
-    classes = ('car', 'bicycle', 'motorcycle', 'truck', 'bus', 'person',
-               'bicyclist', 'motorcyclist', 'road', 'parking', 'sidewalk',
-               'other-ground', 'building', 'fence', 'vegetation', 'trunck',
-               'terrian', 'pole', 'traffic-sign')
+    classes = (
+        'car',
+        'bicycle',
+        'motorcycle',
+        'truck',
+        'bus',
+        'person',
+        'bicyclist',
+        'motorcyclist',
+        'road',
+        'parking',
+        'sidewalk',
+        'other-ground',
+        'building',
+        'fence',
+        'vegetation',
+        'trunck',
+        'terrian',
+        'pole',
+        'traffic-sign',
+    )
 
     seg_label_mapping = {
         0: 19,  # "unlabeled"
@@ -49,7 +66,7 @@ def _generate_semantickitti_dataset_config():
         256: 4,  # "moving-on-rails" mapped to "other-vehic------mapped
         257: 4,  # "moving-bus" mapped to "other-vehicle" -------mapped
         258: 3,  # "moving-truck" to "truck" --------------------mapped
-        259: 4  # "moving-other"-vehicle to "other-vehicle"-----mapped
+        259: 4,  # "moving-other"-vehicle to "other-vehicle"-----mapped
     }
     max_label = 259
     modality = dict(use_lidar=True, use_camera=False)
@@ -59,31 +76,48 @@ def _generate_semantickitti_dataset_config():
             coord_type='LIDAR',
             shift_height=True,
             load_dim=4,
-            use_dim=[0, 1, 2]),
+            use_dim=[0, 1, 2],
+        ),
         dict(
             type='LoadAnnotations3D',
             with_bbox_3d=False,
             with_label_3d=False,
             with_mask_3d=False,
             with_seg_3d=True,
-            seg_3d_dtype='np.int32'),
+            seg_3d_dtype='np.int32',
+        ),
         dict(type='PointSegClassMapping'),
-        dict(type='Pack3DDetInputs', keys=['points', 'pts_semantic_mask'])
+        dict(type='Pack3DDetInputs', keys=['points', 'pts_semantic_mask']),
     ]
 
     data_prefix = dict(
-        pts='sequences/00/velodyne', pts_semantic_mask='sequences/00/labels')
+        pts='sequences/00/velodyne', pts_semantic_mask='sequences/00/labels'
+    )
 
-    return (data_root, ann_file, classes, data_prefix, pipeline, modality,
-            seg_label_mapping, max_label)
+    return (
+        data_root,
+        ann_file,
+        classes,
+        data_prefix,
+        pipeline,
+        modality,
+        seg_label_mapping,
+        max_label,
+    )
 
 
 class TestSemanticKittiDataset(unittest.TestCase):
-
     def test_semantickitti(self):
-        (data_root, ann_file, classes, data_prefix, pipeline, modality,
-         seg_label_mapping,
-         max_label) = _generate_semantickitti_dataset_config()
+        (
+            data_root,
+            ann_file,
+            classes,
+            data_prefix,
+            pipeline,
+            modality,
+            seg_label_mapping,
+            max_label,
+        ) = _generate_semantickitti_dataset_config()
 
         register_all_modules()
         np.random.seed(0)
@@ -93,10 +127,12 @@ class TestSemanticKittiDataset(unittest.TestCase):
             metainfo=dict(
                 classes=classes,
                 seg_label_mapping=seg_label_mapping,
-                max_label=max_label),
+                max_label=max_label,
+            ),
             data_prefix=data_prefix,
             pipeline=pipeline,
-            modality=modality)
+            modality=modality,
+        )
 
         input_dict = semantickitti_dataset.prepare_data(0)
 
@@ -105,11 +141,59 @@ class TestSemanticKittiDataset(unittest.TestCase):
         pts_semantic_mask = data_sample.gt_pts_seg.pts_semantic_mask
         self.assertEqual(points.shape[0], pts_semantic_mask.shape[0])
 
-        expected_pts_semantic_mask = np.array([
-            12, 12, 12, 14, 14, 12, 19, 12, 14, 12, 12, 14, 15, 19, 14, 12, 12,
-            12, 12, 19, 12, 12, 12, 12, 12, 14, 12, 15, 12, 14, 14, 17, 12, 14,
-            14, 14, 15, 14, 12, 12, 14, 12, 17, 14, 12, 14, 12, 14, 14, 12
-        ])
+        expected_pts_semantic_mask = np.array(
+            [
+                12,
+                12,
+                12,
+                14,
+                14,
+                12,
+                19,
+                12,
+                14,
+                12,
+                12,
+                14,
+                15,
+                19,
+                14,
+                12,
+                12,
+                12,
+                12,
+                19,
+                12,
+                12,
+                12,
+                12,
+                12,
+                14,
+                12,
+                15,
+                12,
+                14,
+                14,
+                17,
+                12,
+                14,
+                14,
+                14,
+                15,
+                14,
+                12,
+                12,
+                14,
+                12,
+                17,
+                14,
+                12,
+                14,
+                12,
+                14,
+                14,
+                12,
+            ]
+        )
 
-        self.assertTrue(
-            (pts_semantic_mask.numpy() == expected_pts_semantic_mask).all())
+        self.assertTrue((pts_semantic_mask.numpy() == expected_pts_semantic_mask).all())

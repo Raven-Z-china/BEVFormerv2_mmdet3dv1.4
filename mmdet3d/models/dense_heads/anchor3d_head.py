@@ -13,8 +13,12 @@ from torch import nn as nn
 from mmdet3d.models.task_modules import PseudoSampler
 from mmdet3d.models.test_time_augs import merge_aug_bboxes_3d
 from mmdet3d.registry import MODELS, TASK_UTILS
-from mmdet3d.utils.typing_utils import (ConfigType, InstanceList,
-                                        OptConfigType, OptInstanceList)
+from mmdet3d.utils.typing_utils import (
+    ConfigType,
+    InstanceList,
+    OptConfigType,
+    OptInstanceList,
+)
 from .base_3d_dense_head import Base3DDenseHead
 from .train_mixins import AnchorTrainMixin
 
@@ -47,38 +51,38 @@ class Anchor3DHead(Base3DDenseHead, AnchorTrainMixin):
         init_cfg (dict or list[dict], optional): Initialization config dict.
     """
 
-    def __init__(self,
-                 num_classes: int,
-                 in_channels: int,
-                 feat_channels: int = 256,
-                 use_direction_classifier: bool = True,
-                 anchor_generator: ConfigType = dict(
-                     type='Anchor3DRangeGenerator',
-                     range=[0, -39.68, -1.78, 69.12, 39.68, -1.78],
-                     strides=[2],
-                     sizes=[[3.9, 1.6, 1.56]],
-                     rotations=[0, 1.57],
-                     custom_values=[],
-                     reshape_out=False),
-                 assigner_per_size: bool = False,
-                 assign_per_class: bool = False,
-                 diff_rad_by_sin: bool = True,
-                 dir_offset: float = -np.pi / 2,
-                 dir_limit_offset: int = 0,
-                 bbox_coder: ConfigType = dict(type='DeltaXYZWLHRBBoxCoder'),
-                 loss_cls: ConfigType = dict(
-                     type='mmdet.CrossEntropyLoss',
-                     use_sigmoid=True,
-                     loss_weight=1.0),
-                 loss_bbox: ConfigType = dict(
-                     type='mmdet.SmoothL1Loss',
-                     beta=1.0 / 9.0,
-                     loss_weight=2.0),
-                 loss_dir: ConfigType = dict(
-                     type='mmdet.CrossEntropyLoss', loss_weight=0.2),
-                 train_cfg: OptConfigType = None,
-                 test_cfg: OptConfigType = None,
-                 init_cfg: OptConfigType = None) -> None:
+    def __init__(
+        self,
+        num_classes: int,
+        in_channels: int,
+        feat_channels: int = 256,
+        use_direction_classifier: bool = True,
+        anchor_generator: ConfigType = dict(
+            type='Anchor3DRangeGenerator',
+            range=[0, -39.68, -1.78, 69.12, 39.68, -1.78],
+            strides=[2],
+            sizes=[[3.9, 1.6, 1.56]],
+            rotations=[0, 1.57],
+            custom_values=[],
+            reshape_out=False,
+        ),
+        assigner_per_size: bool = False,
+        assign_per_class: bool = False,
+        diff_rad_by_sin: bool = True,
+        dir_offset: float = -np.pi / 2,
+        dir_limit_offset: int = 0,
+        bbox_coder: ConfigType = dict(type='DeltaXYZWLHRBBoxCoder'),
+        loss_cls: ConfigType = dict(
+            type='mmdet.CrossEntropyLoss', use_sigmoid=True, loss_weight=1.0
+        ),
+        loss_bbox: ConfigType = dict(
+            type='mmdet.SmoothL1Loss', beta=1.0 / 9.0, loss_weight=2.0
+        ),
+        loss_dir: ConfigType = dict(type='mmdet.CrossEntropyLoss', loss_weight=0.2),
+        train_cfg: OptConfigType = None,
+        test_cfg: OptConfigType = None,
+        init_cfg: OptConfigType = None,
+    ) -> None:
         super().__init__(init_cfg=init_cfg)
         self.in_channels = in_channels
         self.num_classes = num_classes
@@ -93,7 +97,8 @@ class Anchor3DHead(Base3DDenseHead, AnchorTrainMixin):
         self.dir_limit_offset = dir_limit_offset
         warnings.warn(
             'dir_offset and dir_limit_offset will be depressed and be '
-            'incorporated into box coder in the future')
+            'incorporated into box coder in the future'
+        )
 
         # build anchor generator
         self.prior_generator = TASK_UTILS.build(anchor_generator)
@@ -105,9 +110,7 @@ class Anchor3DHead(Base3DDenseHead, AnchorTrainMixin):
 
         # build loss function
         self.use_sigmoid_cls = loss_cls.get('use_sigmoid', False)
-        self.sampling = loss_cls['type'] not in [
-            'mmdet.FocalLoss', 'mmdet.GHMC'
-        ]
+        self.sampling = loss_cls['type'] not in ['mmdet.FocalLoss', 'mmdet.GHMC']
         if not self.use_sigmoid_cls:
             self.num_classes += 1
         self.loss_cls = MODELS.build(loss_cls)
@@ -122,8 +125,8 @@ class Anchor3DHead(Base3DDenseHead, AnchorTrainMixin):
                 type='Normal',
                 layer='Conv2d',
                 std=0.01,
-                override=dict(
-                    type='Normal', name='conv_cls', std=0.01, bias_prob=0.01))
+                override=dict(type='Normal', name='conv_cls', std=0.01, bias_prob=0.01),
+            )
 
     def _init_assigner_sampler(self):
         """Initialize the target assigner and sampler of the head."""
@@ -145,11 +148,11 @@ class Anchor3DHead(Base3DDenseHead, AnchorTrainMixin):
         """Initialize neural network layers of the head."""
         self.cls_out_channels = self.num_anchors * self.num_classes
         self.conv_cls = nn.Conv2d(self.feat_channels, self.cls_out_channels, 1)
-        self.conv_reg = nn.Conv2d(self.feat_channels,
-                                  self.num_anchors * self.box_code_size, 1)
+        self.conv_reg = nn.Conv2d(
+            self.feat_channels, self.num_anchors * self.box_code_size, 1
+        )
         if self.use_direction_classifier:
-            self.conv_dir_cls = nn.Conv2d(self.feat_channels,
-                                          self.num_anchors * 2, 1)
+            self.conv_dir_cls = nn.Conv2d(self.feat_channels, self.num_anchors * 2, 1)
 
     def forward_single(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
         """Forward function on a single-scale feature map.
@@ -198,11 +201,7 @@ class Anchor3DHead(Base3DDenseHead, AnchorTrainMixin):
         return multi_apply(self.forward_single, x)
 
     # TODO: Support augmentation test
-    def aug_test(self,
-                 aug_batch_feats,
-                 aug_batch_input_metas,
-                 rescale=False,
-                 **kwargs):
+    def aug_test(self, aug_batch_feats, aug_batch_input_metas, rescale=False, **kwargs):
         aug_bboxes = []
         # only support aug_test for one sample
         for x, input_meta in zip(aug_batch_feats, aug_batch_input_metas):
@@ -211,17 +210,18 @@ class Anchor3DHead(Base3DDenseHead, AnchorTrainMixin):
             bbox_dict = dict(
                 bboxes_3d=bbox_list[0].bboxes_3d,
                 scores_3d=bbox_list[0].scores_3d,
-                labels_3d=bbox_list[0].labels_3d)
+                labels_3d=bbox_list[0].labels_3d,
+            )
             aug_bboxes.append(bbox_dict)
         # after merging, bboxes will be rescaled to the original image size
-        merged_bboxes = merge_aug_bboxes_3d(aug_bboxes, aug_batch_input_metas,
-                                            self.test_cfg)
+        merged_bboxes = merge_aug_bboxes_3d(
+            aug_bboxes, aug_batch_input_metas, self.test_cfg
+        )
         return [merged_bboxes]
 
-    def get_anchors(self,
-                    featmap_sizes: List[tuple],
-                    input_metas: List[dict],
-                    device: str = 'cuda') -> list:
+    def get_anchors(
+        self, featmap_sizes: List[tuple], input_metas: List[dict], device: str = 'cuda'
+    ) -> list:
         """Get anchors according to feature map sizes.
 
         Args:
@@ -237,15 +237,24 @@ class Anchor3DHead(Base3DDenseHead, AnchorTrainMixin):
         # since feature map sizes of all images are the same, we only compute
         # anchors for one time
         multi_level_anchors = self.prior_generator.grid_anchors(
-            featmap_sizes, device=device)
+            featmap_sizes, device=device
+        )
         anchor_list = [multi_level_anchors for _ in range(num_imgs)]
         return anchor_list
 
-    def _loss_by_feat_single(self, cls_score: Tensor, bbox_pred: Tensor,
-                             dir_cls_pred: Tensor, labels: Tensor,
-                             label_weights: Tensor, bbox_targets: Tensor,
-                             bbox_weights: Tensor, dir_targets: Tensor,
-                             dir_weights: Tensor, num_total_samples: int):
+    def _loss_by_feat_single(
+        self,
+        cls_score: Tensor,
+        bbox_pred: Tensor,
+        dir_cls_pred: Tensor,
+        labels: Tensor,
+        label_weights: Tensor,
+        bbox_targets: Tensor,
+        bbox_weights: Tensor,
+        dir_targets: Tensor,
+        dir_weights: Tensor,
+        num_total_samples: int,
+    ):
         """Calculate loss of Single-level results.
 
         Args:
@@ -273,18 +282,20 @@ class Anchor3DHead(Base3DDenseHead, AnchorTrainMixin):
         cls_score = cls_score.permute(0, 2, 3, 1).reshape(-1, self.num_classes)
         assert labels.max().item() <= self.num_classes
         loss_cls = self.loss_cls(
-            cls_score, labels, label_weights, avg_factor=num_total_samples)
+            cls_score, labels, label_weights, avg_factor=num_total_samples
+        )
 
         # regression loss
-        bbox_pred = bbox_pred.permute(0, 2, 3,
-                                      1).reshape(-1, self.box_code_size)
+        bbox_pred = bbox_pred.permute(0, 2, 3, 1).reshape(-1, self.box_code_size)
         bbox_targets = bbox_targets.reshape(-1, self.box_code_size)
         bbox_weights = bbox_weights.reshape(-1, self.box_code_size)
 
         bg_class_ind = self.num_classes
-        pos_inds = ((labels >= 0)
-                    & (labels < bg_class_ind)).nonzero(
-                        as_tuple=False).reshape(-1)
+        pos_inds = (
+            ((labels >= 0) & (labels < bg_class_ind))
+            .nonzero(as_tuple=False)
+            .reshape(-1)
+        )
         num_pos = len(pos_inds)
 
         pos_bbox_pred = bbox_pred[pos_inds]
@@ -304,15 +315,18 @@ class Anchor3DHead(Base3DDenseHead, AnchorTrainMixin):
             code_weight = self.train_cfg.get('code_weight', None)
             if code_weight:
                 pos_bbox_weights = pos_bbox_weights * bbox_weights.new_tensor(
-                    code_weight)
+                    code_weight
+                )
             if self.diff_rad_by_sin:
                 pos_bbox_pred, pos_bbox_targets = self.add_sin_difference(
-                    pos_bbox_pred, pos_bbox_targets)
+                    pos_bbox_pred, pos_bbox_targets
+                )
             loss_bbox = self.loss_bbox(
                 pos_bbox_pred,
                 pos_bbox_targets,
                 pos_bbox_weights,
-                avg_factor=num_total_samples)
+                avg_factor=num_total_samples,
+            )
 
             # direction classification loss
             loss_dir = None
@@ -321,7 +335,8 @@ class Anchor3DHead(Base3DDenseHead, AnchorTrainMixin):
                     pos_dir_cls_pred,
                     pos_dir_targets,
                     pos_dir_weights,
-                    avg_factor=num_total_samples)
+                    avg_factor=num_total_samples,
+                )
         else:
             loss_bbox = pos_bbox_pred.sum()
             if self.use_direction_classifier:
@@ -343,24 +358,23 @@ class Anchor3DHead(Base3DDenseHead, AnchorTrainMixin):
             tuple[torch.Tensor]: ``boxes1`` and ``boxes2`` whose 7th
                 dimensions are changed.
         """
-        rad_pred_encoding = torch.sin(boxes1[..., 6:7]) * torch.cos(
-            boxes2[..., 6:7])
-        rad_tg_encoding = torch.cos(boxes1[..., 6:7]) * torch.sin(boxes2[...,
-                                                                         6:7])
+        rad_pred_encoding = torch.sin(boxes1[..., 6:7]) * torch.cos(boxes2[..., 6:7])
+        rad_tg_encoding = torch.cos(boxes1[..., 6:7]) * torch.sin(boxes2[..., 6:7])
         boxes1 = torch.cat(
-            [boxes1[..., :6], rad_pred_encoding, boxes1[..., 7:]], dim=-1)
-        boxes2 = torch.cat([boxes2[..., :6], rad_tg_encoding, boxes2[..., 7:]],
-                           dim=-1)
+            [boxes1[..., :6], rad_pred_encoding, boxes1[..., 7:]], dim=-1
+        )
+        boxes2 = torch.cat([boxes2[..., :6], rad_tg_encoding, boxes2[..., 7:]], dim=-1)
         return boxes1, boxes2
 
     def loss_by_feat(
-            self,
-            cls_scores: List[Tensor],
-            bbox_preds: List[Tensor],
-            dir_cls_preds: List[Tensor],
-            batch_gt_instances_3d: InstanceList,
-            batch_input_metas: List[dict],
-            batch_gt_instances_ignore: OptInstanceList = None) -> dict:
+        self,
+        cls_scores: List[Tensor],
+        bbox_preds: List[Tensor],
+        dir_cls_preds: List[Tensor],
+        batch_gt_instances_3d: InstanceList,
+        batch_input_metas: List[dict],
+        batch_gt_instances_ignore: OptInstanceList = None,
+    ) -> dict:
         """Calculate the loss based on the features extracted by the detection
         head.
 
@@ -390,8 +404,7 @@ class Anchor3DHead(Base3DDenseHead, AnchorTrainMixin):
         featmap_sizes = [featmap.size()[-2:] for featmap in cls_scores]
         assert len(featmap_sizes) == self.prior_generator.num_levels
         device = cls_scores[0].device
-        anchor_list = self.get_anchors(
-            featmap_sizes, batch_input_metas, device=device)
+        anchor_list = self.get_anchors(featmap_sizes, batch_input_metas, device=device)
         label_channels = self.cls_out_channels if self.use_sigmoid_cls else 1
         cls_reg_targets = self.anchor_target_3d(
             anchor_list,
@@ -400,15 +413,24 @@ class Anchor3DHead(Base3DDenseHead, AnchorTrainMixin):
             batch_gt_instances_ignore=batch_gt_instances_ignore,
             num_classes=self.num_classes,
             label_channels=label_channels,
-            sampling=self.sampling)
+            sampling=self.sampling,
+        )
 
         if cls_reg_targets is None:
             return None
-        (labels_list, label_weights_list, bbox_targets_list, bbox_weights_list,
-         dir_targets_list, dir_weights_list, num_total_pos,
-         num_total_neg) = cls_reg_targets
+        (
+            labels_list,
+            label_weights_list,
+            bbox_targets_list,
+            bbox_weights_list,
+            dir_targets_list,
+            dir_weights_list,
+            num_total_pos,
+            num_total_neg,
+        ) = cls_reg_targets
         num_total_samples = (
-            num_total_pos + num_total_neg if self.sampling else num_total_pos)
+            num_total_pos + num_total_neg if self.sampling else num_total_pos
+        )
 
         # num_total_samples = None
         with amp.autocast(enabled=False):
@@ -423,6 +445,6 @@ class Anchor3DHead(Base3DDenseHead, AnchorTrainMixin):
                 bbox_weights_list,
                 dir_targets_list,
                 dir_weights_list,
-                num_total_samples=num_total_samples)
-        return dict(
-            loss_cls=losses_cls, loss_bbox=losses_bbox, loss_dir=losses_dir)
+                num_total_samples=num_total_samples,
+            )
+        return dict(loss_cls=losses_cls, loss_bbox=losses_bbox, loss_dir=losses_dir)

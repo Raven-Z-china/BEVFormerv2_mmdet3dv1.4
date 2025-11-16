@@ -6,7 +6,6 @@ from mmdet3d.registry import MODELS
 
 
 def test_dla_neck():
-
     s = 32
     in_channels = [16, 32, 64, 128, 256, 512]
     feat_sizes = [s // 2**i for i in range(6)]  # [32, 16, 8, 4, 2, 1]
@@ -18,7 +17,8 @@ def test_dla_neck():
             in_channels=[16, 32, 64, 128, 256, 512],
             start_level=2,
             end_level=5,
-            norm_cfg=dict(type='GN', num_groups=32))
+            norm_cfg=dict(type='GN', num_groups=32),
+        )
         neck = MODELS.build(neck_cfg)
         neck.init_weights()
         neck.cuda()
@@ -36,7 +36,8 @@ def test_dla_neck():
             start_level=2,
             end_level=5,
             norm_cfg=dict(type='GN', num_groups=32),
-            use_dcn=False)
+            use_dcn=False,
+        )
         neck = MODELS.build(neck_cfg)
         neck.init_weights()
         feats = [

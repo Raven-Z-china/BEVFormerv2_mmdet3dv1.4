@@ -4,11 +4,8 @@ checkpoint_config = dict(interval=1)
 # For more loggers see
 # https://mmcv.readthedocs.io/en/latest/api.html#mmcv.runner.LoggerHook
 log_config = dict(
-    interval=50,
-    hooks=[
-        dict(type='TextLoggerHook'),
-        dict(type='TensorboardLoggerHook')
-    ])
+    interval=50, hooks=[dict(type='TextLoggerHook'), dict(type='TensorboardLoggerHook')]
+)
 # yapf:enable
 dist_params = dict(backend='nccl')
 log_level = 'INFO'

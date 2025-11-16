@@ -1,21 +1,23 @@
 # Copyright 2021 Toyota Research Institute.  All rights reserved.
-#import functools
+# import functools
 import numpy as np
 import seaborn as sns
-from torch.utils.data import Dataset
-from tqdm import tqdm
 
-#from detectron2.data import MetadataCatalog
+# from detectron2.data import MetadataCatalog
 from detectron2.structures.boxes import BoxMode
 from nuscenes.eval.detection.utils import category_to_detection_name
 from nuscenes.nuscenes import NuScenes
 from nuscenes.utils.splits import create_splits_scenes
 
-#from tridet.data import collect_dataset_dicts
+# from tridet.data import collect_dataset_dicts
 from projects.BEVFormerv3.bevformerv2.dd3d.structures.boxes3d import GenericBoxes3D
 from projects.BEVFormerv3.bevformerv2.dd3d.structures.pose import Pose
 from projects.BEVFormerv3.bevformerv2.dd3d.utils.geometry import project_points3d
-from projects.BEVFormerv3.bevformerv2.dd3d.utils.visualization import float_to_uint8_color
+from projects.BEVFormerv3.bevformerv2.dd3d.utils.visualization import (
+    float_to_uint8_color,
+)
+from torch.utils.data import Dataset
+from tqdm import tqdm
 
 #  https://github.com/nutonomy/nuscenes-devkit/blob/9b209638ef3dee6d0cdc5ac700c493747f5b35fe/python-sdk/nuscenes/utils/splits.py#L189
 #     - train/val/test: The standard splits of the nuScenes dataset (700/150/150 scenes).
@@ -23,16 +25,23 @@ from projects.BEVFormerv3.bevformerv2.dd3d.utils.visualization import float_to_u
 #     - train_detect/train_track: Two halves of the train split used for separating the training sets of detector and
 #         tracker if required
 DATASET_NAME_TO_VERSION = {
-    "nusc_train": "v1.0-trainval",
-    "nusc_val": "v1.0-trainval",
-    "nusc_val-subsample-8": "v1.0-trainval",
-    "nusc_trainval": "v1.0-trainval",
-    "nusc_test": "v1.0-test",
-    "nusc_mini_train": "v1.0-mini",
-    "nusc_mini_val": "v1.0-mini",
+    'nusc_train': 'v1.0-trainval',
+    'nusc_val': 'v1.0-trainval',
+    'nusc_val-subsample-8': 'v1.0-trainval',
+    'nusc_trainval': 'v1.0-trainval',
+    'nusc_test': 'v1.0-test',
+    'nusc_mini_train': 'v1.0-mini',
+    'nusc_mini_val': 'v1.0-mini',
 }
 
-CAMERA_NAMES = ('CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT', 'CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT')
+CAMERA_NAMES = (
+    'CAM_FRONT_LEFT',
+    'CAM_FRONT',
+    'CAM_FRONT_RIGHT',
+    'CAM_BACK_LEFT',
+    'CAM_BACK',
+    'CAM_BACK_RIGHT',
+)
 
 ATTRIBUTE_IDS = {
     'vehicle.moving': 0,
@@ -45,32 +54,36 @@ ATTRIBUTE_IDS = {
     'cycle.without_rider': 1,
 }
 
-CATEGORY_IDS = dict({
-    'barrier': 0,
-    'bicycle': 1,
-    'bus': 2,
-    'car': 3,
-    'construction_vehicle': 4,
-    'motorcycle': 5,
-    'pedestrian': 6,
-    'traffic_cone': 7,
-    'trailer': 8,
-    'truck': 9,
-})
+CATEGORY_IDS = dict(
+    {
+        'barrier': 0,
+        'bicycle': 1,
+        'bus': 2,
+        'car': 3,
+        'construction_vehicle': 4,
+        'motorcycle': 5,
+        'pedestrian': 6,
+        'traffic_cone': 7,
+        'trailer': 8,
+        'truck': 9,
+    }
+)
 
-COLORS = [float_to_uint8_color(clr) for clr in sns.color_palette("bright", n_colors=10)]
-COLORMAP = dict({
-    'barrier': COLORS[8],  # yellow
-    'bicycle': COLORS[0],  # blue
-    'bus': COLORS[6],  # pink
-    'car': COLORS[2],  # green
-    'construction_vehicle': COLORS[7],  # gray
-    'motorcycle': COLORS[4],  # purple
-    'pedestrian': COLORS[1],  # orange
-    'traffic_cone': COLORS[3],  # red
-    'trailer': COLORS[9],  # skyblue
-    'truck': COLORS[5],  # brown
-})
+COLORS = [float_to_uint8_color(clr) for clr in sns.color_palette('bright', n_colors=10)]
+COLORMAP = dict(
+    {
+        'barrier': COLORS[8],  # yellow
+        'bicycle': COLORS[0],  # blue
+        'bus': COLORS[6],  # pink
+        'car': COLORS[2],  # green
+        'construction_vehicle': COLORS[7],  # gray
+        'motorcycle': COLORS[4],  # purple
+        'pedestrian': COLORS[1],  # orange
+        'traffic_cone': COLORS[3],  # red
+        'trailer': COLORS[9],  # skyblue
+        'truck': COLORS[5],  # brown
+    }
+)
 
 MAX_NUM_ATTRIBUTES = 3
 
@@ -87,7 +100,7 @@ def _compute_iou(box1, box2):
     xx2 = min(box1[2], box2[2])
     yy2 = min(box1[3], box2[3])
     if xx1 >= xx2 or yy1 >= yy2:
-        return 0.
+        return 0.0
     inter = (xx2 - xx1) * (yy2 - yy1)
     a1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
     a2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
@@ -95,7 +108,15 @@ def _compute_iou(box1, box2):
 
 
 class NuscenesDataset(Dataset):
-    def __init__(self, name, data_root, datum_names=CAMERA_NAMES, min_num_lidar_points=3, min_box_visibility=0.2, **unused):
+    def __init__(
+        self,
+        name,
+        data_root,
+        datum_names=CAMERA_NAMES,
+        min_num_lidar_points=3,
+        min_box_visibility=0.2,
+        **unused,
+    ):
         self.data_root = data_root
         assert name in DATASET_NAME_TO_VERSION
         version = DATASET_NAME_TO_VERSION[name]
@@ -111,11 +132,11 @@ class NuscenesDataset(Dataset):
         self._instance_token_to_id = self._index_instance_tokens()
 
         # Construct the mapping from datum_token (image id) to index
-        print("Generating the mapping from image id to idx...")
+        print('Generating the mapping from image id to idx...')
         self.datumtoken2idx = {}
         for idx, (datum_token, _, _, _, _) in enumerate(self.dataset_item_info):
             self.datumtoken2idx[datum_token] = idx
-        print("Done.")
+        print('Done.')
 
     def _build_dataset_item_info(self, name):
         scenes_in_split = self._get_split_scenes(name)
@@ -133,20 +154,28 @@ class NuscenesDataset(Dataset):
                 for datum_name, datum_token in sample['data'].items():
                     if datum_name not in self.datum_names:
                         continue
-                    dataset_items.append((datum_token, sample_token, scene['name'], sample_idx, datum_name))
+                    dataset_items.append(
+                        (
+                            datum_token,
+                            sample_token,
+                            scene['name'],
+                            sample_idx,
+                            datum_name,
+                        )
+                    )
                 sample_token = sample['next']
         return dataset_items
 
     def _get_split_scenes(self, name):
         scenes_in_splits = create_splits_scenes()
-        if name == "nusc_trainval":
-            scenes = scenes_in_splits["train"] + scenes_in_splits["val"]
-        elif name == "nusc_val-subsample-8":
-            scenes = scenes_in_splits["val"]
+        if name == 'nusc_trainval':
+            scenes = scenes_in_splits['train'] + scenes_in_splits['val']
+        elif name == 'nusc_val-subsample-8':
+            scenes = scenes_in_splits['val']
         else:
-            assert name.startswith('nusc_'), f"Invalid dataset name: {name}"
+            assert name.startswith('nusc_'), f'Invalid dataset name: {name}'
             split = name[5:]
-            assert split in scenes_in_splits, f"Invalid dataset: {split}"
+            assert split in scenes_in_splits, f'Invalid dataset: {split}'
             scenes = scenes_in_splits[split]
 
         # Mapping from scene name to token.
@@ -157,12 +186,13 @@ class NuscenesDataset(Dataset):
         return len(self.dataset_item_info)
 
     def _build_id(self, scene_name, sample_idx, datum_name):
-        sample_id = f"{scene_name}_{sample_idx:03d}"
-        image_id = f"{sample_id}_{datum_name}"
+        sample_id = f'{scene_name}_{sample_idx:03d}'
+        image_id = f'{sample_id}_{datum_name}'
         return image_id, sample_id
 
     def _index_instance_tokens(self):
-        """Index instance tokens for uniquely identifying instances across samples"""
+        """Index instance tokens for uniquely identifying instances across
+        samples."""
         instance_token_to_id = {}
         for record in self.nusc.sample_annotation:
             instance_token = record['instance_token']
@@ -191,7 +221,9 @@ class NuscenesDataset(Dataset):
             # 3D box
             # ------
             # NOTE: ann['rotation'], ann['translation'] is in global frame.
-            pose_SO = Pose(wxyz=_ann.orientation, tvec=_ann.center)  # pose in sensor frame
+            pose_SO = Pose(
+                wxyz=_ann.orientation, tvec=_ann.center
+            )  # pose in sensor frame
             # DEBUG:
             # pose_WO_1 = Pose(np.array(ann['rotation']), np.array(ann['translation']))
             # pose_WO_2 = pose_WS * pose_SO
@@ -248,8 +280,7 @@ class NuscenesDataset(Dataset):
         return annotations
 
     def _get_ego_velocity(self, current, max_time_diff=1.5):
-        """Velocity of ego-vehicle in m/s.
-        """
+        """Velocity of ego-vehicle in m/s."""
         has_prev = current['prev'] != ''
         has_next = current['next'] != ''
 
@@ -286,7 +317,13 @@ class NuscenesDataset(Dataset):
             return pos_diff / time_diff
 
     def __getitem__(self, idx):
-        datum_token, sample_token, scene_name, sample_idx, datum_name = self.dataset_item_info[idx]
+        (
+            datum_token,
+            sample_token,
+            scene_name,
+            sample_idx,
+            datum_name,
+        ) = self.dataset_item_info[idx]
         datum = self.nusc.get('sample_data', datum_token)
         assert datum['is_key_frame']
 
@@ -299,7 +336,7 @@ class NuscenesDataset(Dataset):
             width=width,
             image_id=image_id,
             sample_id=sample_id,
-            sample_token=sample_token
+            sample_token=sample_token,
         )
 
         # Intrinsics
@@ -307,19 +344,33 @@ class NuscenesDataset(Dataset):
 
         # Get pose of the sensor (S) from vehicle (V) frame
         _pose_VS = self.nusc.get('calibrated_sensor', datum['calibrated_sensor_token'])
-        pose_VS = Pose(wxyz=np.float64(_pose_VS['rotation']), tvec=np.float64(_pose_VS['translation']))
+        pose_VS = Pose(
+            wxyz=np.float64(_pose_VS['rotation']),
+            tvec=np.float64(_pose_VS['translation']),
+        )
 
         # Get ego-pose of the vehicle (V) from global/world (W) frame
         _pose_WV = self.nusc.get('ego_pose', datum['ego_pose_token'])
-        pose_WV = Pose(wxyz=np.float64(_pose_WV['rotation']), tvec=np.float64(_pose_WV['translation']))
+        pose_WV = Pose(
+            wxyz=np.float64(_pose_WV['rotation']),
+            tvec=np.float64(_pose_WV['translation']),
+        )
         pose_WS = pose_WV * pose_VS
 
-        d2_dict['pose'] = {'wxyz': list(pose_WS.quat.elements), 'tvec': list(pose_WS.tvec)}
-        d2_dict['extrinsics'] = {'wxyz': list(pose_VS.quat.elements), 'tvec': list(pose_VS.tvec)}
+        d2_dict['pose'] = {
+            'wxyz': list(pose_WS.quat.elements),
+            'tvec': list(pose_WS.tvec),
+        }
+        d2_dict['extrinsics'] = {
+            'wxyz': list(pose_VS.quat.elements),
+            'tvec': list(pose_VS.tvec),
+        }
 
         d2_dict['ego_speed'] = np.linalg.norm(self._get_ego_velocity(datum))
 
-        d2_dict['annotations'] = self.get_instance_annotations(_annotations, K, (height, width), pose_WS)
+        d2_dict['annotations'] = self.get_instance_annotations(
+            _annotations, K, (height, width), pose_WS
+        )
 
         return d2_dict
 
@@ -337,22 +388,36 @@ class NuscenesDataset(Dataset):
             width=width,
             image_id=0,
             sample_id=0,
-            sample_token=sample_token
+            sample_token=sample_token,
         )
         # Intrinsics
         d2_dict['intrinsics'] = list(K.flatten())
         # Get pose of the sensor (S) from vehicle (V) frame
         _pose_VS = self.nusc.get('calibrated_sensor', datum['calibrated_sensor_token'])
-        pose_VS = Pose(wxyz=np.float64(_pose_VS['rotation']), tvec=np.float64(_pose_VS['translation'])) 
+        pose_VS = Pose(
+            wxyz=np.float64(_pose_VS['rotation']),
+            tvec=np.float64(_pose_VS['translation']),
+        )
         # Get ego-pose of the vehicle (V) from global/world (W) frame
         _pose_WV = self.nusc.get('ego_pose', datum['ego_pose_token'])
-        pose_WV = Pose(wxyz=np.float64(_pose_WV['rotation']), tvec=np.float64(_pose_WV['translation']))
+        pose_WV = Pose(
+            wxyz=np.float64(_pose_WV['rotation']),
+            tvec=np.float64(_pose_WV['translation']),
+        )
         pose_WS = pose_WV * pose_VS
 
-        d2_dict['pose'] = {'wxyz': list(pose_WS.quat.elements), 'tvec': list(pose_WS.tvec)}
-        d2_dict['extrinsics'] = {'wxyz': list(pose_VS.quat.elements), 'tvec': list(pose_VS.tvec)}
+        d2_dict['pose'] = {
+            'wxyz': list(pose_WS.quat.elements),
+            'tvec': list(pose_WS.tvec),
+        }
+        d2_dict['extrinsics'] = {
+            'wxyz': list(pose_VS.quat.elements),
+            'tvec': list(pose_VS.tvec),
+        }
 
         d2_dict['ego_speed'] = np.linalg.norm(self._get_ego_velocity(datum))
 
-        d2_dict['annotations'] = self.get_instance_annotations(_annotations, K, (height, width), pose_WS)
+        d2_dict['annotations'] = self.get_instance_annotations(
+            _annotations, K, (height, width), pose_WS
+        )
         return d2_dict

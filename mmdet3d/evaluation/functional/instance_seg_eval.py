@@ -49,8 +49,7 @@ def rename_gt(gt_semantic_masks, gt_instance_masks, valid_class_ids):
         list[np.array]: Per scene instance masks.
     """
     renamed_instance_masks = []
-    for semantic_mask, instance_mask in zip(gt_semantic_masks,
-                                            gt_instance_masks):
+    for semantic_mask, instance_mask in zip(gt_semantic_masks, gt_instance_masks):
         semantic_mask = semantic_mask.clone().numpy()
         instance_mask = instance_mask.clone().numpy()
         unique = np.unique(instance_mask)
@@ -60,22 +59,24 @@ def rename_gt(gt_semantic_masks, gt_instance_masks, valid_class_ids):
             semantic_unique = np.unique(semantic_instance)
             assert len(semantic_unique) == 1
             if semantic_unique[0] < len(valid_class_ids):
-                instance_mask[
-                    instance_mask ==
-                    i] = 1000 * valid_class_ids[semantic_unique[0]] + i
+                instance_mask[instance_mask == i] = (
+                    1000 * valid_class_ids[semantic_unique[0]] + i
+                )
         renamed_instance_masks.append(instance_mask)
     return renamed_instance_masks
 
 
-def instance_seg_eval(gt_semantic_masks,
-                      gt_instance_masks,
-                      pred_instance_masks,
-                      pred_instance_labels,
-                      pred_instance_scores,
-                      valid_class_ids,
-                      class_labels,
-                      options=None,
-                      logger=None):
+def instance_seg_eval(
+    gt_semantic_masks,
+    gt_instance_masks,
+    pred_instance_masks,
+    pred_instance_labels,
+    pred_instance_scores,
+    valid_class_ids,
+    class_labels,
+    options=None,
+    logger=None,
+):
     """Instance Segmentation Evaluation.
 
     Evaluate the result of the instance segmentation.
@@ -99,14 +100,14 @@ def instance_seg_eval(gt_semantic_masks,
     """
     assert len(valid_class_ids) == len(class_labels)
     id_to_label = {
-        valid_class_ids[i]: class_labels[i]
-        for i in range(len(valid_class_ids))
+        valid_class_ids[i]: class_labels[i] for i in range(len(valid_class_ids))
     }
     preds = aggregate_predictions(
         masks=pred_instance_masks,
         labels=pred_instance_labels,
         scores=pred_instance_scores,
-        valid_class_ids=valid_class_ids)
+        valid_class_ids=valid_class_ids,
+    )
     gts = rename_gt(gt_semantic_masks, gt_instance_masks, valid_class_ids)
     metrics = scannet_eval(
         preds=preds,
@@ -114,7 +115,8 @@ def instance_seg_eval(gt_semantic_masks,
         options=options,
         valid_class_ids=valid_class_ids,
         class_labels=class_labels,
-        id_to_label=id_to_label)
+        id_to_label=id_to_label,
+    )
     header = ['classes', 'AP_0.25', 'AP_0.50', 'AP']
     rows = []
     for label, data in metrics['classes'].items():

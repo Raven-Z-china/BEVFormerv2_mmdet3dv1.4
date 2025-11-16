@@ -6,9 +6,17 @@ import numpy as np
 import torch
 from mmengine.structures import BaseDataElement
 
-IndexType = Union[str, slice, int, list, torch.LongTensor,
-                  torch.cuda.LongTensor, torch.BoolTensor,
-                  torch.cuda.BoolTensor, np.ndarray]
+IndexType = Union[
+    str,
+    slice,
+    int,
+    list,
+    torch.LongTensor,
+    torch.cuda.LongTensor,
+    torch.BoolTensor,
+    torch.cuda.BoolTensor,
+    np.ndarray,
+]
 
 
 class PointData(BaseDataElement):
@@ -46,7 +54,7 @@ class PointData(BaseDataElement):
     """
 
     def __setattr__(self, name: str, value: Sized) -> None:
-        """setattr is only used to set data.
+        """Setattr is only used to set data.
 
         The value must have the attribute of `__len__` and have the same length
         of `PointData`.
@@ -55,12 +63,13 @@ class PointData(BaseDataElement):
             if not hasattr(self, name):
                 super().__setattr__(name, value)
             else:
-                raise AttributeError(f'{name} has been used as a '
-                                     'private attribute, which is immutable.')
+                raise AttributeError(
+                    f'{name} has been used as a '
+                    'private attribute, which is immutable.'
+                )
 
         else:
-            assert isinstance(value,
-                              Sized), 'value must contain `__len__` attribute'
+            assert isinstance(value, Sized), 'value must contain `__len__` attribute'
             # TODO: make sure the input value share the same length
             super().__setattr__(name, value)
 
@@ -86,8 +95,17 @@ class PointData(BaseDataElement):
             item = item.astype(np.int64) if item.dtype == np.int32 else item
             item = torch.from_numpy(item)
         assert isinstance(
-            item, (str, slice, int, torch.LongTensor, torch.cuda.LongTensor,
-                   torch.BoolTensor, torch.cuda.BoolTensor))
+            item,
+            (
+                str,
+                slice,
+                int,
+                torch.LongTensor,
+                torch.cuda.LongTensor,
+                torch.BoolTensor,
+                torch.cuda.BoolTensor,
+            ),
+        )
 
         if isinstance(item, str):
             return getattr(self, item)
@@ -101,31 +119,32 @@ class PointData(BaseDataElement):
 
         new_data = self.__class__(metainfo=self.metainfo)
         if isinstance(item, torch.Tensor):
-            assert item.dim() == 1, 'Only support to get the' \
-                                    ' values along the first dimension.'
+            assert item.dim() == 1, (
+                'Only support to get the' ' values along the first dimension.'
+            )
             if isinstance(item, (torch.BoolTensor, torch.cuda.BoolTensor)):
-                assert len(item) == len(self), 'The shape of the ' \
-                                               'input(BoolTensor) ' \
-                                               f'{len(item)} ' \
-                                               'does not match the shape ' \
-                                               'of the indexed tensor ' \
-                                               'in results_field ' \
-                                               f'{len(self)} at ' \
-                                               'first dimension.'
+                assert len(item) == len(self), (
+                    'The shape of the '
+                    'input(BoolTensor) '
+                    f'{len(item)} '
+                    'does not match the shape '
+                    'of the indexed tensor '
+                    'in results_field '
+                    f'{len(self)} at '
+                    'first dimension.'
+                )
 
             for k, v in self.items():
                 if isinstance(v, torch.Tensor):
                     new_data[k] = v[item]
                 elif isinstance(v, np.ndarray):
                     new_data[k] = v[item.cpu().numpy()]
-                elif isinstance(
-                        v, (str, list, tuple)) or (hasattr(v, '__getitem__')
-                                                   and hasattr(v, 'cat')):
+                elif isinstance(v, (str, list, tuple)) or (
+                    hasattr(v, '__getitem__') and hasattr(v, 'cat')
+                ):
                     # convert to indexes from BoolTensor
-                    if isinstance(item,
-                                  (torch.BoolTensor, torch.cuda.BoolTensor)):
-                        indexes = torch.nonzero(item).view(
-                            -1).cpu().numpy().tolist()
+                    if isinstance(item, (torch.BoolTensor, torch.cuda.BoolTensor)):
+                        indexes = torch.nonzero(item).view(-1).cpu().numpy().tolist()
                     else:
                         indexes = item.cpu().numpy().tolist()
                     slice_list = []
@@ -146,7 +165,8 @@ class PointData(BaseDataElement):
                     raise ValueError(
                         f'The type of `{k}` is `{type(v)}`, which has no '
                         'attribute of `cat`, so it does not '
-                        'support slice with `bool`')
+                        'support slice with `bool`'
+                    )
         else:
             # item is a slice
             for k, v in self.items():

@@ -89,57 +89,63 @@ class AnchorFreeMono3DHead(BaseMono3DDenseHead):
     _version = 1
 
     def __init__(
-            self,
-            num_classes: int,
-            in_channels: int,
-            feat_channels: int = 256,
-            stacked_convs: int = 4,
-            strides: Sequence[int] = (4, 8, 16, 32, 64),
-            dcn_on_last_conv: bool = False,
-            conv_bias: Union[bool, str] = 'auto',
-            background_label: bool = None,
-            use_direction_classifier: bool = True,
-            diff_rad_by_sin: bool = True,
-            dir_offset: int = 0,
-            dir_limit_offset: int = 0,
-            loss_cls: ConfigType = dict(
-                type='mmdet.FocalLoss',
-                use_sigmoid=True,
-                gamma=2.0,
-                alpha=0.25,
-                loss_weight=1.0),
-            loss_bbox: ConfigType = dict(
-                type='mmdet.SmoothL1Loss', beta=1.0 / 9.0, loss_weight=1.0),
-            loss_dir: ConfigType = dict(
-                type='mmdet.CrossEntropyLoss',
-                use_sigmoid=False,
-                loss_weight=1.0),
-            loss_attr: ConfigType = dict(
-                type='mmdet.CrossEntropyLoss',
-                use_sigmoid=False,
-                loss_weight=1.0),
-            bbox_code_size: int = 9,  # For nuscenes
-            pred_attrs: bool = False,
-            num_attrs: int = 9,  # For nuscenes
-            pred_velo: bool = False,
-            pred_bbox2d: bool = False,
-            group_reg_dims: Sequence[int] = (
-                2, 1, 3, 1, 2),  # offset, depth, size, rot, velo,
-            cls_branch: Sequence[int] = (128, 64),
-            reg_branch: Sequence[Tuple[int, int]] = (
-                (128, 64),  # offset
-                (128, 64),  # depth
-                (64, ),  # size
-                (64, ),  # rot
-                ()  # velo
-            ),
-            dir_branch: Sequence[int] = (64, ),
-            attr_branch: Sequence[int] = (64, ),
-            conv_cfg: OptConfigType = None,
-            norm_cfg: OptConfigType = None,
-            train_cfg: OptConfigType = None,
-            test_cfg: OptConfigType = None,
-            init_cfg: OptConfigType = None) -> None:
+        self,
+        num_classes: int,
+        in_channels: int,
+        feat_channels: int = 256,
+        stacked_convs: int = 4,
+        strides: Sequence[int] = (4, 8, 16, 32, 64),
+        dcn_on_last_conv: bool = False,
+        conv_bias: Union[bool, str] = 'auto',
+        background_label: bool = None,
+        use_direction_classifier: bool = True,
+        diff_rad_by_sin: bool = True,
+        dir_offset: int = 0,
+        dir_limit_offset: int = 0,
+        loss_cls: ConfigType = dict(
+            type='mmdet.FocalLoss',
+            use_sigmoid=True,
+            gamma=2.0,
+            alpha=0.25,
+            loss_weight=1.0,
+        ),
+        loss_bbox: ConfigType = dict(
+            type='mmdet.SmoothL1Loss', beta=1.0 / 9.0, loss_weight=1.0
+        ),
+        loss_dir: ConfigType = dict(
+            type='mmdet.CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0
+        ),
+        loss_attr: ConfigType = dict(
+            type='mmdet.CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0
+        ),
+        bbox_code_size: int = 9,  # For nuscenes
+        pred_attrs: bool = False,
+        num_attrs: int = 9,  # For nuscenes
+        pred_velo: bool = False,
+        pred_bbox2d: bool = False,
+        group_reg_dims: Sequence[int] = (
+            2,
+            1,
+            3,
+            1,
+            2,
+        ),  # offset, depth, size, rot, velo,
+        cls_branch: Sequence[int] = (128, 64),
+        reg_branch: Sequence[Tuple[int, int]] = (
+            (128, 64),  # offset
+            (128, 64),  # depth
+            (64,),  # size
+            (64,),  # rot
+            (),  # velo
+        ),
+        dir_branch: Sequence[int] = (64,),
+        attr_branch: Sequence[int] = (64,),
+        conv_cfg: OptConfigType = None,
+        norm_cfg: OptConfigType = None,
+        train_cfg: OptConfigType = None,
+        test_cfg: OptConfigType = None,
+        init_cfg: OptConfigType = None,
+    ) -> None:
         super().__init__(init_cfg=init_cfg)
         self.num_classes = num_classes
         self.cls_out_channels = num_classes
@@ -161,8 +167,10 @@ class AnchorFreeMono3DHead(BaseMono3DDenseHead):
         self.group_reg_dims = list(group_reg_dims)
         self.cls_branch = cls_branch
         self.reg_branch = reg_branch
-        assert len(reg_branch) == len(group_reg_dims), 'The number of '\
+        assert len(reg_branch) == len(group_reg_dims), (
+            'The number of '
             'element in reg_branch and group_reg_dims should be the same.'
+        )
         self.pred_velo = pred_velo
         self.pred_bbox2d = pred_bbox2d
         self.out_channels = []
@@ -177,10 +185,10 @@ class AnchorFreeMono3DHead(BaseMono3DDenseHead):
         self.conv_cfg = conv_cfg
         self.norm_cfg = norm_cfg
         self.background_label = (
-            num_classes if background_label is None else background_label)
+            num_classes if background_label is None else background_label
+        )
         # background_label should be either 0 or num_classes
-        assert (self.background_label == 0
-                or self.background_label == num_classes)
+        assert self.background_label == 0 or self.background_label == num_classes
         self.pred_attrs = pred_attrs
         self.attr_background_label = -1
         self.num_attrs = num_attrs
@@ -215,7 +223,9 @@ class AnchorFreeMono3DHead(BaseMono3DDenseHead):
                     padding=1,
                     conv_cfg=conv_cfg,
                     norm_cfg=self.norm_cfg,
-                    bias=self.conv_bias))
+                    bias=self.conv_bias,
+                )
+            )
 
     def _init_reg_convs(self):
         """Initialize bbox regression conv layers of the head."""
@@ -235,7 +245,9 @@ class AnchorFreeMono3DHead(BaseMono3DDenseHead):
                     padding=1,
                     conv_cfg=conv_cfg,
                     norm_cfg=self.norm_cfg,
-                    bias=self.conv_bias))
+                    bias=self.conv_bias,
+                )
+            )
 
     def _init_branch(self, conv_channels=(64), conv_strides=(1)):
         """Initialize conv layers as a prediction branch."""
@@ -256,17 +268,18 @@ class AnchorFreeMono3DHead(BaseMono3DDenseHead):
                     padding=1,
                     conv_cfg=self.conv_cfg,
                     norm_cfg=self.norm_cfg,
-                    bias=self.conv_bias))
+                    bias=self.conv_bias,
+                )
+            )
 
         return conv_before_pred
 
     def _init_predictor(self):
         """Initialize predictor layers of the head."""
         self.conv_cls_prev = self._init_branch(
-            conv_channels=self.cls_branch,
-            conv_strides=(1, ) * len(self.cls_branch))
-        self.conv_cls = nn.Conv2d(self.cls_branch[-1], self.cls_out_channels,
-                                  1)
+            conv_channels=self.cls_branch, conv_strides=(1,) * len(self.cls_branch)
+        )
+        self.conv_cls = nn.Conv2d(self.cls_branch[-1], self.cls_out_channels, 1)
         self.conv_reg_prevs = nn.ModuleList()
         self.conv_regs = nn.ModuleList()
         for i in range(len(self.group_reg_dims)):
@@ -277,21 +290,23 @@ class AnchorFreeMono3DHead(BaseMono3DDenseHead):
                 self.conv_reg_prevs.append(
                     self._init_branch(
                         conv_channels=reg_branch_channels,
-                        conv_strides=(1, ) * len(reg_branch_channels)))
+                        conv_strides=(1,) * len(reg_branch_channels),
+                    )
+                )
                 self.conv_regs.append(nn.Conv2d(out_channel, reg_dim, 1))
             else:
                 self.conv_reg_prevs.append(None)
-                self.conv_regs.append(
-                    nn.Conv2d(self.feat_channels, reg_dim, 1))
+                self.conv_regs.append(nn.Conv2d(self.feat_channels, reg_dim, 1))
         if self.use_direction_classifier:
             self.conv_dir_cls_prev = self._init_branch(
-                conv_channels=self.dir_branch,
-                conv_strides=(1, ) * len(self.dir_branch))
+                conv_channels=self.dir_branch, conv_strides=(1,) * len(self.dir_branch)
+            )
             self.conv_dir_cls = nn.Conv2d(self.dir_branch[-1], 2, 1)
         if self.pred_attrs:
             self.conv_attr_prev = self._init_branch(
                 conv_channels=self.attr_branch,
-                conv_strides=(1, ) * len(self.attr_branch))
+                conv_strides=(1,) * len(self.attr_branch),
+            )
             self.conv_attr = nn.Conv2d(self.attr_branch[-1], self.num_attrs, 1)
 
     def init_weights(self):
@@ -404,12 +419,12 @@ class AnchorFreeMono3DHead(BaseMono3DDenseHead):
                 clone_cls_feat = conv_attr_prev_layer(clone_cls_feat)
             attr_pred = self.conv_attr(clone_cls_feat)
 
-        return cls_score, bbox_pred, dir_cls_pred, attr_pred, cls_feat, \
-            reg_feat
+        return cls_score, bbox_pred, dir_cls_pred, attr_pred, cls_feat, reg_feat
 
     @abstractmethod
-    def get_targets(self, points: List[Tensor],
-                    batch_gt_instances: InstanceList) -> Any:
+    def get_targets(
+        self, points: List[Tensor], batch_gt_instances: InstanceList
+    ) -> Any:
         """Compute regression, classification and centerss targets for points
         in multiple images.
 
@@ -424,12 +439,14 @@ class AnchorFreeMono3DHead(BaseMono3DDenseHead):
         raise NotImplementedError
 
     # TODO: Refactor using MlvlPointGenerator in MMDet.
-    def _get_points_single(self,
-                           featmap_size: Tuple[int],
-                           stride: int,
-                           dtype: torch.dtype,
-                           device: torch.device,
-                           flatten: bool = False) -> Tuple[Tensor, Tensor]:
+    def _get_points_single(
+        self,
+        featmap_size: Tuple[int],
+        stride: int,
+        dtype: torch.dtype,
+        device: torch.device,
+        flatten: bool = False,
+    ) -> Tuple[Tensor, Tensor]:
         """Get points of a single scale level.
 
         Args:
@@ -454,11 +471,13 @@ class AnchorFreeMono3DHead(BaseMono3DDenseHead):
         return y, x
 
     # TODO: Refactor using MlvlPointGenerator in MMDet.
-    def get_points(self,
-                   featmap_sizes: List[Tuple[int]],
-                   dtype: torch.dtype,
-                   device: torch.device,
-                   flatten: bool = False) -> List[Tuple[Tensor, Tensor]]:
+    def get_points(
+        self,
+        featmap_sizes: List[Tuple[int]],
+        dtype: torch.dtype,
+        device: torch.device,
+        flatten: bool = False,
+    ) -> List[Tuple[Tensor, Tensor]]:
         """Get points according to feature map sizes.
 
         Args:
@@ -474,6 +493,8 @@ class AnchorFreeMono3DHead(BaseMono3DDenseHead):
         mlvl_points = []
         for i in range(len(featmap_sizes)):
             mlvl_points.append(
-                self._get_points_single(featmap_sizes[i], self.strides[i],
-                                        dtype, device, flatten))
+                self._get_points_single(
+                    featmap_sizes[i], self.strides[i], dtype, device, flatten
+                )
+            )
         return mlvl_points

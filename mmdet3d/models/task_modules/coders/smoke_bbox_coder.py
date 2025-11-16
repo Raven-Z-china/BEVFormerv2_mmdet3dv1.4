@@ -21,16 +21,21 @@ class SMOKECoder(BaseBBoxCoder):
         code_size (int): The dimension of boxes to be encoded.
     """
 
-    def __init__(self, base_depth: Tuple[float], base_dims: Tuple[float],
-                 code_size: int):
+    def __init__(
+        self, base_depth: Tuple[float], base_dims: Tuple[float], code_size: int
+    ):
         super(SMOKECoder, self).__init__()
         self.base_depth = base_depth
         self.base_dims = base_dims
         self.bbox_code_size = code_size
 
-    def encode(self, locations: Optional[Tensor], dimensions: Tensor,
-               orientations: Tensor,
-               input_metas: List[dict]) -> CameraInstance3DBoxes:
+    def encode(
+        self,
+        locations: Optional[Tensor],
+        dimensions: Tensor,
+        orientations: Tensor,
+        input_metas: List[dict],
+    ) -> CameraInstance3DBoxes:
         """Encode CameraInstance3DBoxes by locations, dimensions, orientations.
 
         Args:
@@ -49,20 +54,24 @@ class SMOKECoder(BaseBBoxCoder):
         """
 
         bboxes = torch.cat((locations, dimensions, orientations), dim=1)
-        assert bboxes.shape[1] == self.bbox_code_size, 'bboxes shape dose not'\
-            'match the bbox_code_size.'
+        assert bboxes.shape[1] == self.bbox_code_size, (
+            'bboxes shape dose not' 'match the bbox_code_size.'
+        )
         batch_bboxes = input_metas[0]['box_type_3d'](
-            bboxes, box_dim=self.bbox_code_size)
+            bboxes, box_dim=self.bbox_code_size
+        )
 
         return batch_bboxes
 
-    def decode(self,
-               reg: Tensor,
-               points: Tensor,
-               labels: Tensor,
-               cam2imgs: Tensor,
-               trans_mats: Tensor,
-               locations: Optional[Tensor] = None) -> Tuple[Tensor]:
+    def decode(
+        self,
+        reg: Tensor,
+        points: Tensor,
+        labels: Tensor,
+        cam2imgs: Tensor,
+        trans_mats: Tensor,
+        locations: Optional[Tensor] = None,
+    ) -> Tuple[Tensor]:
         """Decode regression into locations, dimensions, orientations.
 
         Args:
@@ -99,15 +108,14 @@ class SMOKECoder(BaseBBoxCoder):
         orientations = reg[:, 6:8]
         depths = self._decode_depth(depth_offsets)
         # get the 3D Bounding box's center location.
-        pred_locations = self._decode_location(points, centers2d_offsets,
-                                               depths, cam2imgs, trans_mats)
+        pred_locations = self._decode_location(
+            points, centers2d_offsets, depths, cam2imgs, trans_mats
+        )
         pred_dimensions = self._decode_dimension(labels, dimensions_offsets)
         if locations is None:
-            pred_orientations = self._decode_orientation(
-                orientations, pred_locations)
+            pred_orientations = self._decode_orientation(orientations, pred_locations)
         else:
-            pred_orientations = self._decode_orientation(
-                orientations, locations)
+            pred_orientations = self._decode_orientation(orientations, locations)
 
         return pred_locations, pred_dimensions, pred_orientations
 
@@ -118,9 +126,14 @@ class SMOKECoder(BaseBBoxCoder):
 
         return depths
 
-    def _decode_location(self, points: Tensor, centers2d_offsets: Tensor,
-                         depths: Tensor, cam2imgs: Tensor,
-                         trans_mats: Tensor) -> Tensor:
+    def _decode_location(
+        self,
+        points: Tensor,
+        centers2d_offsets: Tensor,
+        depths: Tensor,
+        cam2imgs: Tensor,
+        trans_mats: Tensor,
+    ) -> Tensor:
         """Retrieve objects location in camera coordinate based on projected
         points.
 
@@ -146,8 +159,7 @@ class SMOKECoder(BaseBBoxCoder):
         trans_mats_inv = trans_mats.inverse()[obj_id]
         cam2imgs_inv = cam2imgs.inverse()[obj_id]
         centers2d = points + centers2d_offsets
-        centers2d_extend = torch.cat((centers2d, centers2d.new_ones(N, 1)),
-                                     dim=1)
+        centers2d_extend = torch.cat((centers2d, centers2d.new_ones(N, 1)), dim=1)
         # expand project points as [N, 3, 1]
         centers2d_extend = centers2d_extend.unsqueeze(-1)
         # transform project points back on original image
@@ -155,7 +167,8 @@ class SMOKECoder(BaseBBoxCoder):
         centers2d_img = centers2d_img * depths.view(N, -1, 1)
         if cam2imgs.shape[1] == 4:
             centers2d_img = torch.cat(
-                (centers2d_img, centers2d.new_ones(N, 1, 1)), dim=1)
+                (centers2d_img, centers2d.new_ones(N, 1, 1)), dim=1
+            )
         locations = torch.matmul(cam2imgs_inv, centers2d_img).squeeze(2)
 
         return locations[:, :3]
@@ -176,8 +189,9 @@ class SMOKECoder(BaseBBoxCoder):
 
         return dimensions
 
-    def _decode_orientation(self, ori_vector: Tensor,
-                            locations: Optional[Tensor]) -> Tensor:
+    def _decode_orientation(
+        self, ori_vector: Tensor, locations: Optional[Tensor]
+    ) -> Tensor:
         """Retrieve object orientation.
 
         Args:

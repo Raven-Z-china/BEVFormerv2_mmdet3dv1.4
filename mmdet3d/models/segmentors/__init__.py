@@ -6,6 +6,9 @@ from .minkunet import MinkUNet
 from .seg3d_tta import Seg3DTTAModel
 
 __all__ = [
-    'Base3DSegmentor', 'EncoderDecoder3D', 'Cylinder3D', 'MinkUNet',
-    'Seg3DTTAModel'
+    'Base3DSegmentor',
+    'EncoderDecoder3D',
+    'Cylinder3D',
+    'MinkUNet',
+    'Seg3DTTAModel',
 ]

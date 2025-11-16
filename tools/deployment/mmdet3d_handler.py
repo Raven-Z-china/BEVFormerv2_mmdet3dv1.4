@@ -16,6 +16,7 @@ class MMdet3dHandler(BaseHandler):
     Handler to load models in MMDetection3D, and it will process data to get
     predicted results. For now, it only supports SECOND.
     """
+
     threshold = 0.5
     load_dim = 4
     use_dim = [0, 1, 2, 3]
@@ -31,9 +32,11 @@ class MMdet3dHandler(BaseHandler):
         """
         properties = context.system_properties
         self.map_location = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.device = torch.device(self.map_location + ':' +
-                                   str(properties.get('gpu_id')) if torch.cuda.
-                                   is_available() else self.map_location)
+        self.device = torch.device(
+            self.map_location + ':' + str(properties.get('gpu_id'))
+            if torch.cuda.is_available()
+            else self.map_location
+        )
         self.manifest = context.manifest
 
         model_dir = properties.get('model_dir')
@@ -65,9 +68,8 @@ class MMdet3dHandler(BaseHandler):
             points = points[:, self.use_dim]
             points_class = get_points_type(self.coord_type)
             points = points_class(
-                points,
-                points_dim=points.shape[-1],
-                attribute_dims=self.attribute_dims)
+                points, points_dim=points.shape[-1], attribute_dims=self.attribute_dims
+            )
 
         return points
 

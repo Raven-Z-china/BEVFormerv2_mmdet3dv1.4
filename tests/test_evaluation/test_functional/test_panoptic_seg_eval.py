@@ -42,8 +42,7 @@ def test_panoptic_seg_eval():
     num_grass = 50
     num_grass_pred = 40  # rest is sky
     semantic_preds.extend([1 for i in range(num_grass_pred)])  # grass
-    semantic_preds.extend([2
-                           for i in range(num_grass - num_grass_pred)])  # sky
+    semantic_preds.extend([2 for i in range(num_grass - num_grass_pred)])  # sky
     instance_preds.extend([0 for i in range(num_grass)])
     gt_semantic.extend([1 for i in range(num_grass)])  # grass
     gt_instance.extend([0 for i in range(num_grass)])
@@ -81,19 +80,23 @@ def test_panoptic_seg_eval():
     gt_semantic = np.array(gt_semantic, dtype=int).reshape(1, -1)
     gt_instance = np.array(gt_instance, dtype=int).reshape(1, -1)
 
-    gt_labels = [{
-        'pts_semantic_mask': gt_semantic,
-        'pts_instance_mask': gt_instance
-    }]
+    gt_labels = [{'pts_semantic_mask': gt_semantic, 'pts_instance_mask': gt_instance}]
 
-    seg_preds = [{
-        'pts_semantic_mask': semantic_preds,
-        'pts_instance_mask': instance_preds
-    }]
+    seg_preds = [
+        {'pts_semantic_mask': semantic_preds, 'pts_instance_mask': instance_preds}
+    ]
 
-    ret_value = panoptic_seg_eval(gt_labels, seg_preds, classes, thing_classes,
-                                  stuff_classes, min_points, offset, label2cat,
-                                  ignore_index)
+    ret_value = panoptic_seg_eval(
+        gt_labels,
+        seg_preds,
+        classes,
+        thing_classes,
+        stuff_classes,
+        min_points,
+        offset,
+        label2cat,
+        ignore_index,
+    )
 
     assert np.isclose(ret_value['pq'], 0.47916666666666663)
     assert np.isclose(ret_value['rq_mean'], 0.6666666666666666)

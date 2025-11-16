@@ -32,30 +32,40 @@ class GroupFree3DMHA(MultiheadAttention):
             Defaults to False.
     """
 
-    def __init__(self,
-                 embed_dims: int,
-                 num_heads: int,
-                 attn_drop: float = 0.,
-                 proj_drop: float = 0.,
-                 dropout_layer: ConfigType = dict(
-                     type='DropOut', drop_prob=0.),
-                 init_cfg: OptMultiConfig = None,
-                 batch_first: bool = False,
-                 **kwargs) -> None:
-        super(GroupFree3DMHA,
-              self).__init__(embed_dims, num_heads, attn_drop, proj_drop,
-                             dropout_layer, init_cfg, batch_first, **kwargs)
+    def __init__(
+        self,
+        embed_dims: int,
+        num_heads: int,
+        attn_drop: float = 0.0,
+        proj_drop: float = 0.0,
+        dropout_layer: ConfigType = dict(type='DropOut', drop_prob=0.0),
+        init_cfg: OptMultiConfig = None,
+        batch_first: bool = False,
+        **kwargs,
+    ) -> None:
+        super(GroupFree3DMHA, self).__init__(
+            embed_dims,
+            num_heads,
+            attn_drop,
+            proj_drop,
+            dropout_layer,
+            init_cfg,
+            batch_first,
+            **kwargs,
+        )
 
-    def forward(self,
-                query: Tensor,
-                key: Tensor,
-                value: Tensor,
-                identity: Tensor,
-                query_pos: Optional[Tensor] = None,
-                key_pos: Optional[Tensor] = None,
-                attn_mask: Optional[Tensor] = None,
-                key_padding_mask: Optional[Tensor] = None,
-                **kwargs) -> Tensor:
+    def forward(
+        self,
+        query: Tensor,
+        key: Tensor,
+        value: Tensor,
+        identity: Tensor,
+        query_pos: Optional[Tensor] = None,
+        key_pos: Optional[Tensor] = None,
+        attn_mask: Optional[Tensor] = None,
+        key_padding_mask: Optional[Tensor] = None,
+        **kwargs,
+    ) -> Tensor:
         """Forward function for `GroupFree3DMHA`.
 
         **kwargs allow passing a more general data flow when combining
@@ -98,8 +108,8 @@ class GroupFree3DMHA(MultiheadAttention):
                 value = value + key_pos
             else:
                 raise NotImplementedError(
-                    f'{self.__class__.name} '
-                    f"can't be used as {self.operation_name}")
+                    f'{self.__class__.name} ' f"can't be used as {self.operation_name}"
+                )
         else:
             value = value + query_pos
 
@@ -112,7 +122,8 @@ class GroupFree3DMHA(MultiheadAttention):
             key_pos=key_pos,
             attn_mask=attn_mask,
             key_padding_mask=key_padding_mask,
-            **kwargs)
+            **kwargs,
+        )
 
 
 @MODELS.register_module()
@@ -129,8 +140,10 @@ class ConvBNPositionalEncoding(nn.Module):
         super(ConvBNPositionalEncoding, self).__init__()
         self.position_embedding_head = nn.Sequential(
             nn.Conv1d(input_channel, num_pos_feats, kernel_size=1),
-            nn.BatchNorm1d(num_pos_feats), nn.ReLU(inplace=True),
-            nn.Conv1d(num_pos_feats, num_pos_feats, kernel_size=1))
+            nn.BatchNorm1d(num_pos_feats),
+            nn.ReLU(inplace=True),
+            nn.Conv1d(num_pos_feats, num_pos_feats, kernel_size=1),
+        )
 
     def forward(self, xyz: Tensor) -> Tensor:
         """Forward pass.

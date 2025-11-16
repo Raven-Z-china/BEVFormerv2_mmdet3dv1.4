@@ -4,11 +4,14 @@ from pyquaternion import Quaternion
 
 
 class Pose:
-    """SE(3) rigid transform class that allows compounding of 6-DOF poses
-    and provides common transformations that are commonly seen in geometric problems.
-    """
-    def __init__(self, wxyz=np.float32([1., 0., 0., 0.]), tvec=np.float32([0., 0., 0.])):
-        """Initialize a Pose with Quaternion and 3D Position
+    """SE(3) rigid transform class that allows compounding of 6-DOF poses and
+    provides common transformations that are commonly seen in geometric
+    problems."""
+
+    def __init__(
+        self, wxyz=np.float32([1.0, 0.0, 0.0, 0.0]), tvec=np.float32([0.0, 0.0, 0.0])
+    ):
+        """Initialize a Pose with Quaternion and 3D Position.
 
         Parameters
         ----------
@@ -74,8 +77,7 @@ class Pose:
         raise NotImplementedError('Right multiply not implemented yet!')
 
     def inverse(self):
-        """Returns a new Pose that corresponds to the
-        inverse of this one.
+        """Returns a new Pose that corresponds to the inverse of this one.
 
         Returns
         ----------
@@ -134,7 +136,7 @@ class Pose:
 
     @classmethod
     def from_matrix(cls, transformation_matrix):
-        """Initialize pose from 4x4 transformation matrix
+        """Initialize pose from 4x4 transformation matrix.
 
         Parameters
         ----------
@@ -145,7 +147,10 @@ class Pose:
         -------
         Pose
         """
-        return cls(wxyz=Quaternion(matrix=transformation_matrix[:3, :3]), tvec=np.float32(transformation_matrix[:3, 3]))
+        return cls(
+            wxyz=Quaternion(matrix=transformation_matrix[:3, :3]),
+            tvec=np.float32(transformation_matrix[:3, 3]),
+        )
 
     @classmethod
     def from_rotation_translation(cls, rotation_matrix, tvec):

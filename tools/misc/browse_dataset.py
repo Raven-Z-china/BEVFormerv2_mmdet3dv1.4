@@ -17,27 +17,32 @@ def parse_args():
         '--output-dir',
         default=None,
         type=str,
-        help='If there is no display interface, you can save it')
+        help='If there is no display interface, you can save it',
+    )
     parser.add_argument('--not-show', default=False, action='store_true')
     parser.add_argument(
-        '--show-interval',
-        type=float,
-        default=2,
-        help='the interval of show (s)')
+        '--show-interval', type=float, default=2, help='the interval of show (s)'
+    )
     parser.add_argument(
         '--task',
         type=str,
         choices=[
-            'mono_det', 'multi-view_det', 'lidar_det', 'lidar_seg',
-            'multi-modality_det'
+            'mono_det',
+            'multi-view_det',
+            'lidar_det',
+            'lidar_seg',
+            'multi-modality_det',
         ],
-        help='Determine the visualization method depending on the task.')
+        help='Determine the visualization method depending on the task.',
+    )
     parser.add_argument(
         '--aug',
         action='store_true',
-        help='Whether to visualize augmented datasets or original dataset.')
+        help='Whether to visualize augmented datasets or original dataset.',
+    )
     parser.add_argument(
-        '--ceph', action='store_true', help='Use ceph as data storage backend')
+        '--ceph', action='store_true', help='Use ceph as data storage backend'
+    )
     parser.add_argument(
         '--cfg-options',
         nargs='+',
@@ -47,7 +52,8 @@ def parse_args():
         'be overwritten is a list, it should be like key="[a,b]" or key=a,b '
         'It also allows nested list/tuple values, e.g. key="[(a,b),(c,d)]" '
         'Note that the quotation marks are necessary and that no white space '
-        'is allowed.')
+        'is allowed.',
+    )
     args = parser.parse_args()
     return args
 
@@ -107,8 +113,8 @@ def main():
 
     try:
         dataset = DATASETS.build(
-            cfg.train_dataloader.dataset,
-            default_args=dict(filter_empty_gt=False))
+            cfg.train_dataloader.dataset, default_args=dict(filter_empty_gt=False)
+        )
     except TypeError:  # seg dataset doesn't have `filter_empty_gt` key
         dataset = DATASETS.build(cfg.train_dataloader.dataset)
 
@@ -125,15 +131,22 @@ def main():
         data_input = item['inputs']
         data_sample = item['data_samples'].numpy()
 
-        out_file = osp.join(
-            args.output_dir,
-            f'{i}.jpg') if args.output_dir is not None else None
+        out_file = (
+            osp.join(args.output_dir, f'{i}.jpg')
+            if args.output_dir is not None
+            else None
+        )
 
         # o3d_save_path is valid when args.not_show is False
-        o3d_save_path = osp.join(args.output_dir, f'pc_{i}.png') if (
-            args.output_dir is not None
-            and vis_task in ['lidar_det', 'lidar_seg', 'multi-modality_det']
-            and not args.not_show) else None
+        o3d_save_path = (
+            osp.join(args.output_dir, f'pc_{i}.png')
+            if (
+                args.output_dir is not None
+                and vis_task in ['lidar_det', 'lidar_seg', 'multi-modality_det']
+                and not args.not_show
+            )
+            else None
+        )
 
         visualizer.add_datasample(
             '3d visualzier',
@@ -143,7 +156,8 @@ def main():
             wait_time=args.show_interval,
             out_file=out_file,
             o3d_save_path=o3d_save_path,
-            vis_task=vis_task)
+            vis_task=vis_task,
+        )
 
         progress_bar.update()
 

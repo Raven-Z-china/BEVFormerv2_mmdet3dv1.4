@@ -11,7 +11,8 @@ from mmdet3d.registry import MODELS
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='MMDet3D upgrade model version(before v0.6.0) of H3DNet')
+        description='MMDet3D upgrade model version(before v0.6.0) of H3DNet'
+    )
     parser.add_argument('checkpoint', help='checkpoint file')
     parser.add_argument('--out', help='path of the output checkpoint file')
     args = parser.parse_args()
@@ -40,10 +41,8 @@ def parse_config(config_strings):
 
     if 'sa_cfg' not in config.model.backbone:
         config.model.backbone['sa_cfg'] = dict(
-            type='PointSAModule',
-            pool_mod='max',
-            use_xyz=True,
-            normalize_xyz=True)
+            type='PointSAModule', pool_mod='max', use_xyz=True, normalize_xyz=True
+        )
 
     if 'type' not in config.model.rpn_head.vote_aggregation_cfg:
         config.model.rpn_head.vote_aggregation_cfg['type'] = 'PointSAModule'
@@ -51,14 +50,16 @@ def parse_config(config_strings):
     # Update rpn_head config
     if 'pred_layer_cfg' not in config.model.rpn_head:
         config.model.rpn_head['pred_layer_cfg'] = dict(
-            in_channels=128, shared_conv_channels=(128, 128), bias=True)
+            in_channels=128, shared_conv_channels=(128, 128), bias=True
+        )
 
     if 'feat_channels' in config.model.rpn_head:
         config.model.rpn_head.pop('feat_channels')
 
     if 'vote_moudule_cfg' in config.model.rpn_head:
         config.model.rpn_head['vote_module_cfg'] = config.model.rpn_head.pop(
-            'vote_moudule_cfg')
+            'vote_moudule_cfg'
+        )
 
     if config.model.rpn_head.vote_aggregation_cfg.use_xyz:
         config.model.rpn_head.vote_aggregation_cfg.mlp_channels[0] -= 3
@@ -70,16 +71,13 @@ def parse_config(config_strings):
             cfg.vote_aggregation_cfg['type'] = 'PointSAModule'
 
     if 'type' not in config.model.roi_head.bbox_head.suface_matching_cfg:
-        config.model.roi_head.bbox_head.suface_matching_cfg[
-            'type'] = 'PointSAModule'
+        config.model.roi_head.bbox_head.suface_matching_cfg['type'] = 'PointSAModule'
 
     if config.model.roi_head.bbox_head.suface_matching_cfg.use_xyz:
-        config.model.roi_head.bbox_head.suface_matching_cfg.mlp_channels[
-            0] -= 3
+        config.model.roi_head.bbox_head.suface_matching_cfg.mlp_channels[0] -= 3
 
     if 'type' not in config.model.roi_head.bbox_head.line_matching_cfg:
-        config.model.roi_head.bbox_head.line_matching_cfg[
-            'type'] = 'PointSAModule'
+        config.model.roi_head.bbox_head.line_matching_cfg['type'] = 'PointSAModule'
 
     if config.model.roi_head.bbox_head.line_matching_cfg.use_xyz:
         config.model.roi_head.bbox_head.line_matching_cfg.mlp_channels[0] -= 3
@@ -104,9 +102,8 @@ def main():
     cfg = parse_config(checkpoint['meta']['config'])
     # Build the model and load checkpoint
     model = MODELS.build(
-        cfg.model,
-        train_cfg=cfg.get('train_cfg'),
-        test_cfg=cfg.get('test_cfg'))
+        cfg.model, train_cfg=cfg.get('train_cfg'), test_cfg=cfg.get('test_cfg')
+    )
     orig_ckpt = checkpoint['state_dict']
     converted_ckpt = orig_ckpt.copy()
 
@@ -119,23 +116,31 @@ def main():
 
     RENAME_PREFIX = {
         'rpn_head.conv_pred.0': 'rpn_head.conv_pred.shared_convs.layer0',
-        'rpn_head.conv_pred.1': 'rpn_head.conv_pred.shared_convs.layer1'
+        'rpn_head.conv_pred.1': 'rpn_head.conv_pred.shared_convs.layer1',
     }
 
     DEL_KEYS = [
         'rpn_head.conv_pred.0.bn.num_batches_tracked',
-        'rpn_head.conv_pred.1.bn.num_batches_tracked'
+        'rpn_head.conv_pred.1.bn.num_batches_tracked',
     ]
 
     EXTRACT_KEYS = {
-        'rpn_head.conv_pred.conv_cls.weight':
-        ('rpn_head.conv_pred.conv_out.weight', [(0, 2), (-NUM_CLASSES, -1)]),
-        'rpn_head.conv_pred.conv_cls.bias':
-        ('rpn_head.conv_pred.conv_out.bias', [(0, 2), (-NUM_CLASSES, -1)]),
-        'rpn_head.conv_pred.conv_reg.weight':
-        ('rpn_head.conv_pred.conv_out.weight', [(2, -NUM_CLASSES)]),
-        'rpn_head.conv_pred.conv_reg.bias':
-        ('rpn_head.conv_pred.conv_out.bias', [(2, -NUM_CLASSES)])
+        'rpn_head.conv_pred.conv_cls.weight': (
+            'rpn_head.conv_pred.conv_out.weight',
+            [(0, 2), (-NUM_CLASSES, -1)],
+        ),
+        'rpn_head.conv_pred.conv_cls.bias': (
+            'rpn_head.conv_pred.conv_out.bias',
+            [(0, 2), (-NUM_CLASSES, -1)],
+        ),
+        'rpn_head.conv_pred.conv_reg.weight': (
+            'rpn_head.conv_pred.conv_out.weight',
+            [(2, -NUM_CLASSES)],
+        ),
+        'rpn_head.conv_pred.conv_reg.bias': (
+            'rpn_head.conv_pred.conv_out.bias',
+            [(2, -NUM_CLASSES)],
+        ),
     }
 
     # Delete some useless keys
@@ -147,8 +152,7 @@ def main():
     for old_key in converted_ckpt.keys():
         for rename_prefix in RENAME_PREFIX.keys():
             if rename_prefix in old_key:
-                new_key = old_key.replace(rename_prefix,
-                                          RENAME_PREFIX[rename_prefix])
+                new_key = old_key.replace(rename_prefix, RENAME_PREFIX[rename_prefix])
                 RENAME_KEYS[new_key] = old_key
     for new_key, old_key in RENAME_KEYS.items():
         converted_ckpt[new_key] = converted_ckpt.pop(old_key)
@@ -157,7 +161,7 @@ def main():
     for new_key, (old_key, indices) in EXTRACT_KEYS.items():
         cur_layers = orig_ckpt[old_key]
         converted_layers = []
-        for (start, end) in indices:
+        for start, end in indices:
             if end != -1:
                 converted_layers.append(cur_layers[start:end])
             else:

@@ -17,11 +17,10 @@ def fill_up_weights(up):
     """
     w = up.weight.data
     f = math.ceil(w.size(2) / 2)
-    c = (2 * f - 1 - f % 2) / (2. * f)
+    c = (2 * f - 1 - f % 2) / (2.0 * f)
     for i in range(w.size(2)):
         for j in range(w.size(3)):
-            w[0, 0, i, j] = \
-                (1 - math.fabs(i / f - c)) * (1 - math.fabs(j / f - c))
+            w[0, 0, i, j] = (1 - math.fabs(i / f - c)) * (1 - math.fabs(j / f - c))
     for c in range(1, w.size(0)):
         w[c, 0, :, :] = w[0, 0, :, :]
 
@@ -66,7 +65,8 @@ class IDAUpsample(BaseModule):
                 padding=1,
                 bias=True,
                 conv_cfg=dict(type='DCNv2') if self.use_dcn else None,
-                norm_cfg=norm_cfg)
+                norm_cfg=norm_cfg,
+            )
             node = ConvModule(
                 out_channels,
                 out_channels,
@@ -74,7 +74,8 @@ class IDAUpsample(BaseModule):
                 padding=1,
                 bias=True,
                 conv_cfg=dict(type='DCNv2') if self.use_dcn else None,
-                norm_cfg=norm_cfg)
+                norm_cfg=norm_cfg,
+            )
             up = build_conv_layer(
                 dict(type='deconv'),
                 out_channels,
@@ -84,7 +85,8 @@ class IDAUpsample(BaseModule):
                 padding=up_kernel_size // 2,
                 output_padding=0,
                 groups=out_channels,
-                bias=False)
+                bias=False,
+            )
 
             self.projs.append(proj)
             self.ups.append(up)
@@ -103,8 +105,7 @@ class IDAUpsample(BaseModule):
             project = self.projs[i - start_level]
             mlvl_features[i + 1] = upsample(project(mlvl_features[i + 1]))
             node = self.nodes[i - start_level]
-            mlvl_features[i + 1] = node(mlvl_features[i + 1] +
-                                        mlvl_features[i])
+            mlvl_features[i + 1] = node(mlvl_features[i + 1] + mlvl_features[i])
 
 
 class DLAUpsample(BaseModule):
@@ -125,14 +126,16 @@ class DLAUpsample(BaseModule):
             Default: True.
     """
 
-    def __init__(self,
-                 start_level,
-                 channels,
-                 scales,
-                 in_channels=None,
-                 norm_cfg=None,
-                 use_dcn=True,
-                 init_cfg=None):
+    def __init__(
+        self,
+        start_level,
+        channels,
+        scales,
+        in_channels=None,
+        norm_cfg=None,
+        use_dcn=True,
+        init_cfg=None,
+    ):
         super(DLAUpsample, self).__init__(init_cfg)
         self.start_level = start_level
         if in_channels is None:
@@ -143,11 +146,18 @@ class DLAUpsample(BaseModule):
         for i in range(len(channels) - 1):
             j = -i - 2
             setattr(
-                self, 'ida_{}'.format(i),
-                IDAUpsample(channels[j], in_channels[j:],
-                            scales[j:] // scales[j], norm_cfg, use_dcn))
-            scales[j + 1:] = scales[j]
-            in_channels[j + 1:] = [channels[j] for _ in channels[j + 1:]]
+                self,
+                'ida_{}'.format(i),
+                IDAUpsample(
+                    channels[j],
+                    in_channels[j:],
+                    scales[j:] // scales[j],
+                    norm_cfg,
+                    use_dcn,
+                ),
+            )
+            scales[j + 1 :] = scales[j]
+            in_channels[j + 1 :] = [channels[j] for _ in channels[j + 1 :]]
 
     def forward(self, mlvl_features):
         """Forward function.
@@ -184,28 +194,33 @@ class DLANeck(BaseModule):
             Default: True.
     """
 
-    def __init__(self,
-                 in_channels=[16, 32, 64, 128, 256, 512],
-                 start_level=2,
-                 end_level=5,
-                 norm_cfg=None,
-                 use_dcn=True,
-                 init_cfg=None):
+    def __init__(
+        self,
+        in_channels=[16, 32, 64, 128, 256, 512],
+        start_level=2,
+        end_level=5,
+        norm_cfg=None,
+        use_dcn=True,
+        init_cfg=None,
+    ):
         super(DLANeck, self).__init__(init_cfg)
         self.start_level = start_level
         self.end_level = end_level
-        scales = [2**i for i in range(len(in_channels[self.start_level:]))]
+        scales = [2**i for i in range(len(in_channels[self.start_level :]))]
         self.dla_up = DLAUpsample(
             start_level=self.start_level,
-            channels=in_channels[self.start_level:],
+            channels=in_channels[self.start_level :],
             scales=scales,
             norm_cfg=norm_cfg,
-            use_dcn=use_dcn)
+            use_dcn=use_dcn,
+        )
         self.ida_up = IDAUpsample(
             in_channels[self.start_level],
-            in_channels[self.start_level:self.end_level],
-            [2**i for i in range(self.end_level - self.start_level)], norm_cfg,
-            use_dcn)
+            in_channels[self.start_level : self.end_level],
+            [2**i for i in range(self.end_level - self.start_level)],
+            norm_cfg,
+            use_dcn,
+        )
 
     def forward(self, x):
         mlvl_features = [x[i] for i in range(len(x))]

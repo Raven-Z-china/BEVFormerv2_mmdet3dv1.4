@@ -10,7 +10,6 @@ from mmdet3d.structures import Det3DDataSample, PointData
 
 
 class TestInstanceSegMetric(unittest.TestCase):
-
     def _demo_mm_model_output(self):
         """Create a superset of inputs needed to run test or train batches."""
 
@@ -39,7 +38,7 @@ class TestInstanceSegMetric(unittest.TestCase):
             end = begin + 300
             pred_instance_mask[begin:end] = i
             labels.append(gt_label)
-            scores.append(.99)
+            scores.append(0.99)
 
         results_dict['pts_instance_mask'] = torch.tensor(pred_instance_mask)
         results_dict['instance_labels'] = torch.tensor(labels)
@@ -60,14 +59,49 @@ class TestInstanceSegMetric(unittest.TestCase):
     def test_evaluate(self):
         data_batch = {}
         predictions = self._demo_mm_model_output()
-        seg_valid_class_ids = (3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 24, 28,
-                               33, 34, 36, 39)
-        class_labels = ('cabinet', 'bed', 'chair', 'sofa', 'table', 'door',
-                        'window', 'bookshelf', 'picture', 'counter', 'desk',
-                        'curtain', 'refrigerator', 'showercurtrain', 'toilet',
-                        'sink', 'bathtub', 'garbagebin')
+        seg_valid_class_ids = (
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            14,
+            16,
+            24,
+            28,
+            33,
+            34,
+            36,
+            39,
+        )
+        class_labels = (
+            'cabinet',
+            'bed',
+            'chair',
+            'sofa',
+            'table',
+            'door',
+            'window',
+            'bookshelf',
+            'picture',
+            'counter',
+            'desk',
+            'curtain',
+            'refrigerator',
+            'showercurtrain',
+            'toilet',
+            'sink',
+            'bathtub',
+            'garbagebin',
+        )
         dataset_meta = dict(
-            seg_valid_class_ids=seg_valid_class_ids, classes=class_labels)
+            seg_valid_class_ids=seg_valid_class_ids, classes=class_labels
+        )
         instance_seg_metric = InstanceSegMetric()
         instance_seg_metric.dataset_meta = dataset_meta
         instance_seg_metric.process(data_batch, predictions)

@@ -14,8 +14,12 @@ from torch import Tensor, nn
 from mmdet3d.registry import MODELS, TASK_UTILS
 from mmdet3d.structures.bbox_3d.utils import rotation_3d_in_axis
 from mmdet3d.structures.det3d_data_sample import SampleList
-from mmdet3d.utils.typing_utils import (ConfigType, InstanceList,
-                                        OptConfigType, OptInstanceList)
+from mmdet3d.utils.typing_utils import (
+    ConfigType,
+    InstanceList,
+    OptConfigType,
+    OptInstanceList,
+)
 
 
 @MODELS.register_module()
@@ -44,21 +48,22 @@ class ImVoxelHead(BaseModule):
             Defaults to None.
     """
 
-    def __init__(self,
-                 n_classes: int,
-                 n_levels: int,
-                 n_channels: int,
-                 n_reg_outs: int,
-                 pts_assign_threshold: int,
-                 pts_center_threshold: int,
-                 prior_generator: ConfigType,
-                 center_loss: ConfigType = dict(
-                     type='mmdet.CrossEntropyLoss', use_sigmoid=True),
-                 bbox_loss: ConfigType = dict(type='RotatedIoU3DLoss'),
-                 cls_loss: ConfigType = dict(type='mmdet.FocalLoss'),
-                 train_cfg: OptConfigType = None,
-                 test_cfg: OptConfigType = None,
-                 init_cfg: OptConfigType = None):
+    def __init__(
+        self,
+        n_classes: int,
+        n_levels: int,
+        n_channels: int,
+        n_reg_outs: int,
+        pts_assign_threshold: int,
+        pts_center_threshold: int,
+        prior_generator: ConfigType,
+        center_loss: ConfigType = dict(type='mmdet.CrossEntropyLoss', use_sigmoid=True),
+        bbox_loss: ConfigType = dict(type='RotatedIoU3DLoss'),
+        cls_loss: ConfigType = dict(type='mmdet.FocalLoss'),
+        train_cfg: OptConfigType = None,
+        test_cfg: OptConfigType = None,
+        init_cfg: OptConfigType = None,
+    ):
         super(ImVoxelHead, self).__init__(init_cfg)
         self.pts_assign_threshold = pts_assign_threshold
         self.pts_center_threshold = pts_center_threshold
@@ -73,16 +78,15 @@ class ImVoxelHead(BaseModule):
     def _init_layers(self, n_channels, n_reg_outs, n_classes, n_levels):
         """Initialize neural network layers of the head."""
         self.conv_center = nn.Conv3d(n_channels, 1, 3, padding=1, bias=False)
-        self.conv_reg = nn.Conv3d(
-            n_channels, n_reg_outs, 3, padding=1, bias=False)
+        self.conv_reg = nn.Conv3d(n_channels, n_reg_outs, 3, padding=1, bias=False)
         self.conv_cls = nn.Conv3d(n_channels, n_classes, 3, padding=1)
-        self.scales = nn.ModuleList([Scale(1.) for _ in range(n_levels)])
+        self.scales = nn.ModuleList([Scale(1.0) for _ in range(n_levels)])
 
     def init_weights(self):
         """Initialize all layer weights."""
-        normal_init(self.conv_center, std=.01)
-        normal_init(self.conv_reg, std=.01)
-        normal_init(self.conv_cls, std=.01, bias=bias_init_with_prob(.01))
+        normal_init(self.conv_center, std=0.01)
+        normal_init(self.conv_reg, std=0.01)
+        normal_init(self.conv_cls, std=0.01, bias=bias_init_with_prob(0.01))
 
     def _forward_single(self, x: Tensor, scale: Scale):
         """Forward pass per level.
@@ -111,8 +115,7 @@ class ImVoxelHead(BaseModule):
         """
         return multi_apply(self._forward_single, x, self.scales)
 
-    def loss(self, x: Tuple[Tensor], batch_data_samples: SampleList,
-             **kwargs) -> dict:
+    def loss(self, x: Tuple[Tensor], batch_data_samples: SampleList, **kwargs) -> dict:
         """Perform forward propagation and loss calculation of the detection
         head on the features of the upstream network.
 
@@ -135,19 +138,24 @@ class ImVoxelHead(BaseModule):
         for data_sample in batch_data_samples:
             batch_input_metas.append(data_sample.metainfo)
             batch_gt_instances_3d.append(data_sample.gt_instances_3d)
-            batch_gt_instances_ignore.append(
-                data_sample.get('ignored_instances', None))
+            batch_gt_instances_ignore.append(data_sample.get('ignored_instances', None))
 
-        loss_inputs = outs + (valid_pred, batch_gt_instances_3d,
-                              batch_input_metas, batch_gt_instances_ignore)
+        loss_inputs = outs + (
+            valid_pred,
+            batch_gt_instances_3d,
+            batch_input_metas,
+            batch_gt_instances_ignore,
+        )
         losses = self.loss_by_feat(*loss_inputs)
         return losses
 
-    def loss_and_predict(self,
-                         x: Tuple[Tensor],
-                         batch_data_samples: SampleList,
-                         proposal_cfg: Optional[ConfigDict] = None,
-                         **kwargs) -> Tuple[dict, InstanceList]:
+    def loss_and_predict(
+        self,
+        x: Tuple[Tensor],
+        batch_data_samples: SampleList,
+        proposal_cfg: Optional[ConfigDict] = None,
+        **kwargs
+    ) -> Tuple[dict, InstanceList]:
         """Perform forward propagation of the head, then calculate loss and
         predictions from the features and data samples.
 
@@ -173,27 +181,30 @@ class ImVoxelHead(BaseModule):
         for data_sample in batch_data_samples:
             batch_input_metas.append(data_sample.metainfo)
             batch_gt_instances_3d.append(data_sample.gt_instances_3d)
-            batch_gt_instances_ignore.append(
-                data_sample.get('ignored_instances', None))
+            batch_gt_instances_ignore.append(data_sample.get('ignored_instances', None))
 
         valid_pred = x[-1]
         outs = self(x[:-1])
 
-        loss_inputs = outs + (valid_pred, batch_gt_instances_3d,
-                              batch_input_metas, batch_gt_instances_ignore)
+        loss_inputs = outs + (
+            valid_pred,
+            batch_gt_instances_3d,
+            batch_input_metas,
+            batch_gt_instances_ignore,
+        )
         losses = self.loss_by_feat(*loss_inputs)
 
         predictions = self.predict_by_feat(
             *outs,
             valid_pred=valid_pred,
             batch_input_metas=batch_input_metas,
-            cfg=proposal_cfg)
+            cfg=proposal_cfg
+        )
         return losses, predictions
 
-    def predict(self,
-                x: Tuple[Tensor],
-                batch_data_samples: SampleList,
-                rescale: bool = False) -> InstanceList:
+    def predict(
+        self, x: Tuple[Tensor], batch_data_samples: SampleList, rescale: bool = False
+    ) -> InstanceList:
         """Perform forward propagation of the 3D detection head and predict
         detection results on the features of the upstream network.
 
@@ -229,11 +240,20 @@ class ImVoxelHead(BaseModule):
             *outs,
             valid_pred=valid_pred,
             batch_input_metas=batch_input_metas,
-            rescale=rescale)
+            rescale=rescale
+        )
         return predictions
 
-    def _loss_by_feat_single(self, center_preds, bbox_preds, cls_preds,
-                             valid_preds, input_meta, gt_bboxes, gt_labels):
+    def _loss_by_feat_single(
+        self,
+        center_preds,
+        bbox_preds,
+        cls_preds,
+        valid_preds,
+        input_meta,
+        gt_bboxes,
+        gt_labels,
+    ):
         """Per scene loss function.
 
         Args:
@@ -251,29 +271,33 @@ class ImVoxelHead(BaseModule):
         """
         points = self._get_points(center_preds)
         center_targets, bbox_targets, cls_targets = self._get_targets(
-            points, gt_bboxes, gt_labels)
+            points, gt_bboxes, gt_labels
+        )
 
         center_preds = torch.cat(
-            [x.permute(1, 2, 3, 0).reshape(-1) for x in center_preds])
-        bbox_preds = torch.cat([
-            x.permute(1, 2, 3, 0).reshape(-1, x.shape[0]) for x in bbox_preds
-        ])
+            [x.permute(1, 2, 3, 0).reshape(-1) for x in center_preds]
+        )
+        bbox_preds = torch.cat(
+            [x.permute(1, 2, 3, 0).reshape(-1, x.shape[0]) for x in bbox_preds]
+        )
         cls_preds = torch.cat(
-            [x.permute(1, 2, 3, 0).reshape(-1, x.shape[0]) for x in cls_preds])
+            [x.permute(1, 2, 3, 0).reshape(-1, x.shape[0]) for x in cls_preds]
+        )
         valid_preds = torch.cat(
-            [x.permute(1, 2, 3, 0).reshape(-1) for x in valid_preds])
+            [x.permute(1, 2, 3, 0).reshape(-1) for x in valid_preds]
+        )
         points = torch.cat(points)
 
         # cls loss
         pos_inds = torch.nonzero(
-            torch.logical_and(cls_targets >= 0, valid_preds)).squeeze(1)
+            torch.logical_and(cls_targets >= 0, valid_preds)
+        ).squeeze(1)
         n_pos = points.new_tensor(len(pos_inds))
-        n_pos = max(reduce_mean(n_pos), 1.)
+        n_pos = max(reduce_mean(n_pos), 1.0)
         if torch.any(valid_preds):
             cls_loss = self.cls_loss(
-                cls_preds[valid_preds],
-                cls_targets[valid_preds],
-                avg_factor=n_pos)
+                cls_preds[valid_preds], cls_targets[valid_preds], avg_factor=n_pos
+            )
         else:
             cls_loss = cls_preds[valid_preds].sum()
 
@@ -285,26 +309,30 @@ class ImVoxelHead(BaseModule):
             pos_bbox_targets = bbox_targets[pos_inds]
             pos_points = points[pos_inds]
             center_loss = self.center_loss(
-                pos_center_preds, pos_center_targets, avg_factor=n_pos)
+                pos_center_preds, pos_center_targets, avg_factor=n_pos
+            )
             bbox_loss = self.bbox_loss(
                 self._bbox_pred_to_bbox(pos_points, pos_bbox_preds),
                 pos_bbox_targets,
                 weight=pos_center_targets,
-                avg_factor=pos_center_targets.sum())
+                avg_factor=pos_center_targets.sum(),
+            )
         else:
             center_loss = pos_center_preds.sum()
             bbox_loss = pos_bbox_preds.sum()
         return center_loss, bbox_loss, cls_loss
 
-    def loss_by_feat(self,
-                     center_preds: List[List[Tensor]],
-                     bbox_preds: List[List[Tensor]],
-                     cls_preds: List[List[Tensor]],
-                     valid_pred: Tensor,
-                     batch_gt_instances_3d: InstanceList,
-                     batch_input_metas: List[dict],
-                     batch_gt_instances_ignore: OptInstanceList = None,
-                     **kwargs) -> dict:
+    def loss_by_feat(
+        self,
+        center_preds: List[List[Tensor]],
+        bbox_preds: List[List[Tensor]],
+        cls_preds: List[List[Tensor]],
+        valid_pred: Tensor,
+        batch_gt_instances_3d: InstanceList,
+        batch_input_metas: List[dict],
+        batch_gt_instances_ignore: OptInstanceList = None,
+        **kwargs
+    ) -> dict:
         """Per scene loss function.
 
         Args:
@@ -341,20 +369,25 @@ class ImVoxelHead(BaseModule):
                 valid_preds=[x[i] for x in valid_preds],
                 input_meta=batch_input_metas[i],
                 gt_bboxes=batch_gt_instances_3d[i].bboxes_3d,
-                gt_labels=batch_gt_instances_3d[i].labels_3d)
+                gt_labels=batch_gt_instances_3d[i].labels_3d,
+            )
             center_losses.append(center_loss)
             bbox_losses.append(bbox_loss)
             cls_losses.append(cls_loss)
         return dict(
             center_loss=torch.mean(torch.stack(center_losses)),
             bbox_loss=torch.mean(torch.stack(bbox_losses)),
-            cls_loss=torch.mean(torch.stack(cls_losses)))
+            cls_loss=torch.mean(torch.stack(cls_losses)),
+        )
 
-    def _predict_by_feat_single(self, center_preds: List[Tensor],
-                                bbox_preds: List[Tensor],
-                                cls_preds: List[Tensor],
-                                valid_preds: List[Tensor],
-                                input_meta: dict) -> InstanceData:
+    def _predict_by_feat_single(
+        self,
+        center_preds: List[Tensor],
+        bbox_preds: List[Tensor],
+        cls_preds: List[Tensor],
+        valid_preds: List[Tensor],
+        input_meta: dict,
+    ) -> InstanceData:
         """Generate boxes for single sample.
 
         Args:
@@ -372,12 +405,11 @@ class ImVoxelHead(BaseModule):
         points = self._get_points(center_preds)
         mlvl_bboxes, mlvl_scores = [], []
         for center_pred, bbox_pred, cls_pred, valid_pred, point in zip(
-                center_preds, bbox_preds, cls_preds, valid_preds, points):
+            center_preds, bbox_preds, cls_preds, valid_preds, points
+        ):
             center_pred = center_pred.permute(1, 2, 3, 0).reshape(-1, 1)
-            bbox_pred = bbox_pred.permute(1, 2, 3,
-                                          0).reshape(-1, bbox_pred.shape[0])
-            cls_pred = cls_pred.permute(1, 2, 3,
-                                        0).reshape(-1, cls_pred.shape[0])
+            bbox_pred = bbox_pred.permute(1, 2, 3, 0).reshape(-1, bbox_pred.shape[0])
+            cls_pred = cls_pred.permute(1, 2, 3, 0).reshape(-1, cls_pred.shape[0])
             valid_pred = valid_pred.permute(1, 2, 3, 0).reshape(-1, 1)
 
             scores = cls_pred.sigmoid() * center_pred.sigmoid() * valid_pred
@@ -396,13 +428,15 @@ class ImVoxelHead(BaseModule):
         bboxes = torch.cat(mlvl_bboxes)
         scores = torch.cat(mlvl_scores)
         bboxes, scores, labels = self._single_scene_multiclass_nms(
-            bboxes, scores, input_meta)
+            bboxes, scores, input_meta
+        )
 
         bboxes = input_meta['box_type_3d'](
             bboxes,
             box_dim=bboxes.shape[1],
             with_yaw=bboxes.shape[1] == 7,
-            origin=(.5, .5, .5))
+            origin=(0.5, 0.5, 0.5),
+        )
 
         results = InstanceData()
         results.bboxes_3d = bboxes
@@ -410,11 +444,15 @@ class ImVoxelHead(BaseModule):
         results.labels_3d = labels
         return results
 
-    def predict_by_feat(self, center_preds: List[List[Tensor]],
-                        bbox_preds: List[List[Tensor]],
-                        cls_preds: List[List[Tensor]], valid_pred: Tensor,
-                        batch_input_metas: List[dict],
-                        **kwargs) -> List[InstanceData]:
+    def predict_by_feat(
+        self,
+        center_preds: List[List[Tensor]],
+        bbox_preds: List[List[Tensor]],
+        cls_preds: List[List[Tensor]],
+        valid_pred: Tensor,
+        batch_input_metas: List[dict],
+        **kwargs
+    ) -> List[InstanceData]:
         """Generate boxes for all scenes.
 
         Args:
@@ -439,7 +477,9 @@ class ImVoxelHead(BaseModule):
                     bbox_preds=[x[i] for x in bbox_preds],
                     cls_preds=[x[i] for x in cls_preds],
                     valid_preds=[x[i] for x in valid_preds],
-                    input_meta=batch_input_metas[i]))
+                    input_meta=batch_input_metas[i],
+                )
+            )
         return results
 
     @staticmethod
@@ -454,8 +494,7 @@ class ImVoxelHead(BaseModule):
             tuple[Tensor]: Upsampled valid masks for all feature levels.
         """
         return [
-            nn.Upsample(size=x.shape[-3:],
-                        mode='trilinear')(valid_pred).round().bool()
+            nn.Upsample(size=x.shape[-3:], mode='trilinear')(valid_pred).round().bool()
             for x in features
         ]
 
@@ -472,12 +511,11 @@ class ImVoxelHead(BaseModule):
         for x in features:
             n_voxels = x.size()[-3:][::-1]
             points.append(
-                self.prior_generator.grid_anchors(
-                    [n_voxels],
-                    device=x.device)[0][:, :3].reshape(n_voxels +
-                                                       (3, )).permute(
-                                                           2, 1, 0,
-                                                           3).reshape(-1, 3))
+                self.prior_generator.grid_anchors([n_voxels], device=x.device)[0][:, :3]
+                .reshape(n_voxels + (3,))
+                .permute(2, 1, 0, 3)
+                .reshape(-1, 3)
+            )
         return points
 
     @staticmethod
@@ -496,16 +534,24 @@ class ImVoxelHead(BaseModule):
 
         # dx_min, dx_max, dy_min, dy_max, dz_min, dz_max, alpha ->
         # x_center, y_center, z_center, w, l, h, alpha
-        shift = torch.stack(((bbox_pred[:, 1] - bbox_pred[:, 0]) / 2,
-                             (bbox_pred[:, 3] - bbox_pred[:, 2]) / 2,
-                             (bbox_pred[:, 5] - bbox_pred[:, 4]) / 2),
-                            dim=-1).view(-1, 1, 3)
+        shift = torch.stack(
+            (
+                (bbox_pred[:, 1] - bbox_pred[:, 0]) / 2,
+                (bbox_pred[:, 3] - bbox_pred[:, 2]) / 2,
+                (bbox_pred[:, 5] - bbox_pred[:, 4]) / 2,
+            ),
+            dim=-1,
+        ).view(-1, 1, 3)
         shift = rotation_3d_in_axis(shift, bbox_pred[:, 6], axis=2)[:, 0, :]
         center = points + shift
         size = torch.stack(
-            (bbox_pred[:, 0] + bbox_pred[:, 1], bbox_pred[:, 2] +
-             bbox_pred[:, 3], bbox_pred[:, 4] + bbox_pred[:, 5]),
-            dim=-1)
+            (
+                bbox_pred[:, 0] + bbox_pred[:, 1],
+                bbox_pred[:, 2] + bbox_pred[:, 3],
+                bbox_pred[:, 4] + bbox_pred[:, 5],
+            ),
+            dim=-1,
+        )
         return torch.cat((center, size, bbox_pred[:, 6:7]), dim=-1)
 
     # The function is directly copied from FCAF3DHead.
@@ -522,11 +568,14 @@ class ImVoxelHead(BaseModule):
                 (dx_min, dx_max, dy_min, dy_max, dz_min, dz_max).
         """
         shift = torch.stack(
-            (points[..., 0] - boxes[..., 0], points[..., 1] - boxes[..., 1],
-             points[..., 2] - boxes[..., 2]),
-            dim=-1).permute(1, 0, 2)
-        shift = rotation_3d_in_axis(
-            shift, -boxes[0, :, 6], axis=2).permute(1, 0, 2)
+            (
+                points[..., 0] - boxes[..., 0],
+                points[..., 1] - boxes[..., 1],
+                points[..., 2] - boxes[..., 2],
+            ),
+            dim=-1,
+        ).permute(1, 0, 2)
+        shift = rotation_3d_in_axis(shift, -boxes[0, :, 6], axis=2).permute(1, 0, 2)
         centers = boxes[..., :3] + shift
         dx_min = centers[..., 0] - boxes[..., 0] + boxes[..., 3] / 2
         dx_max = boxes[..., 0] + boxes[..., 3] / 2 - centers[..., 0]
@@ -534,8 +583,7 @@ class ImVoxelHead(BaseModule):
         dy_max = boxes[..., 1] + boxes[..., 4] / 2 - centers[..., 1]
         dz_min = centers[..., 2] - boxes[..., 2] + boxes[..., 5] / 2
         dz_max = boxes[..., 2] + boxes[..., 5] / 2 - centers[..., 2]
-        return torch.stack((dx_min, dx_max, dy_min, dy_max, dz_min, dz_max),
-                           dim=-1)
+        return torch.stack((dx_min, dx_max, dy_min, dy_max, dz_min, dz_max), dim=-1)
 
     # The function is directly copied from FCAF3DHead.
     @staticmethod
@@ -552,9 +600,14 @@ class ImVoxelHead(BaseModule):
         x_dims = face_distances[..., [0, 1]]
         y_dims = face_distances[..., [2, 3]]
         z_dims = face_distances[..., [4, 5]]
-        centerness_targets = x_dims.min(dim=-1)[0] / x_dims.max(dim=-1)[0] * \
-            y_dims.min(dim=-1)[0] / y_dims.max(dim=-1)[0] * \
-            z_dims.min(dim=-1)[0] / z_dims.max(dim=-1)[0]
+        centerness_targets = (
+            x_dims.min(dim=-1)[0]
+            / x_dims.max(dim=-1)[0]
+            * y_dims.min(dim=-1)[0]
+            / y_dims.max(dim=-1)[0]
+            * z_dims.min(dim=-1)[0]
+            / z_dims.max(dim=-1)[0]
+        )
         return torch.sqrt(centerness_targets)
 
     # The function is directly copied from FCAF3DHead.
@@ -573,10 +626,9 @@ class ImVoxelHead(BaseModule):
         """
         float_max = points[0].new_tensor(1e8)
         n_levels = len(points)
-        levels = torch.cat([
-            points[i].new_tensor(i).expand(len(points[i]))
-            for i in range(len(points))
-        ])
+        levels = torch.cat(
+            [points[i].new_tensor(i).expand(len(points[i])) for i in range(len(points))]
+        )
         points = torch.cat(points)
         gt_bboxes = gt_bboxes.to(points.device)
         n_points = len(points)
@@ -584,8 +636,7 @@ class ImVoxelHead(BaseModule):
         volumes = gt_bboxes.volume.unsqueeze(0).expand(n_points, n_boxes)
 
         # condition 1: point inside box
-        boxes = torch.cat((gt_bboxes.gravity_center, gt_bboxes.tensor[:, 3:]),
-                          dim=1)
+        boxes = torch.cat((gt_bboxes.gravity_center, gt_bboxes.tensor[:, 3:]), dim=1)
         boxes = boxes.expand(n_points, n_boxes, 7)
         points = points.unsqueeze(1).expand(n_points, n_boxes, 3)
         face_distances = self._get_face_distances(points, boxes)
@@ -596,16 +647,15 @@ class ImVoxelHead(BaseModule):
         n_pos_points_per_level = []
         for i in range(n_levels):
             n_pos_points_per_level.append(
-                torch.sum(inside_box_condition[levels == i], dim=0))
+                torch.sum(inside_box_condition[levels == i], dim=0)
+            )
         # find best level
         n_pos_points_per_level = torch.stack(n_pos_points_per_level, dim=0)
         lower_limit_mask = n_pos_points_per_level < self.pts_assign_threshold
         lower_index = torch.argmax(lower_limit_mask.int(), dim=0) - 1
         lower_index = torch.where(lower_index < 0, 0, lower_index)
-        all_upper_limit_mask = torch.all(
-            torch.logical_not(lower_limit_mask), dim=0)
-        best_level = torch.where(all_upper_limit_mask, n_levels - 1,
-                                 lower_index)
+        all_upper_limit_mask = torch.all(torch.logical_not(lower_limit_mask), dim=0)
+        best_level = torch.where(all_upper_limit_mask, n_levels - 1, lower_index)
         # keep only points with best level
         best_level = best_level.expand(n_points, n_boxes)
         levels = torch.unsqueeze(levels, 1).expand(n_points, n_boxes)
@@ -613,14 +663,15 @@ class ImVoxelHead(BaseModule):
 
         # condition 3: limit topk points per box by centerness
         centerness = self._get_centerness(face_distances)
-        centerness = torch.where(inside_box_condition, centerness,
-                                 torch.ones_like(centerness) * -1)
-        centerness = torch.where(level_condition, centerness,
-                                 torch.ones_like(centerness) * -1)
+        centerness = torch.where(
+            inside_box_condition, centerness, torch.ones_like(centerness) * -1
+        )
+        centerness = torch.where(
+            level_condition, centerness, torch.ones_like(centerness) * -1
+        )
         top_centerness = torch.topk(
-            centerness,
-            min(self.pts_center_threshold + 1, len(centerness)),
-            dim=0).values[-1]
+            centerness, min(self.pts_center_threshold + 1, len(centerness)), dim=0
+        ).values[-1]
         topk_condition = centerness > top_centerness.unsqueeze(0)
 
         # condition 4: min volume box per point
@@ -666,17 +717,16 @@ class ImVoxelHead(BaseModule):
                 nms_function = nms3d
             else:
                 class_bboxes = torch.cat(
-                    (class_bboxes, torch.zeros_like(class_bboxes[:, :1])),
-                    dim=1)
+                    (class_bboxes, torch.zeros_like(class_bboxes[:, :1])), dim=1
+                )
                 nms_function = nms3d_normal
 
-            nms_ids = nms_function(class_bboxes, class_scores,
-                                   self.test_cfg.iou_thr)
+            nms_ids = nms_function(class_bboxes, class_scores, self.test_cfg.iou_thr)
             nms_bboxes.append(class_bboxes[nms_ids])
             nms_scores.append(class_scores[nms_ids])
             nms_labels.append(
-                bboxes.new_full(
-                    class_scores[nms_ids].shape, i, dtype=torch.long))
+                bboxes.new_full(class_scores[nms_ids].shape, i, dtype=torch.long)
+            )
 
         if len(nms_bboxes):
             nms_bboxes = torch.cat(nms_bboxes, dim=0)
@@ -684,8 +734,8 @@ class ImVoxelHead(BaseModule):
             nms_labels = torch.cat(nms_labels, dim=0)
         else:
             nms_bboxes = bboxes.new_zeros((0, bboxes.shape[1]))
-            nms_scores = bboxes.new_zeros((0, ))
-            nms_labels = bboxes.new_zeros((0, ))
+            nms_scores = bboxes.new_zeros((0,))
+            nms_labels = bboxes.new_zeros((0,))
 
         if with_yaw:
             box_dim = 7

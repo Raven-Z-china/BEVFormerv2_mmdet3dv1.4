@@ -46,8 +46,7 @@ class BaseMono3DDenseHead(BaseModule, metaclass=ABCMeta):
     def __init__(self, init_cfg: OptMultiConfig = None) -> None:
         super(BaseMono3DDenseHead, self).__init__(init_cfg=init_cfg)
 
-    def loss(self, x: Tuple[Tensor], batch_data_samples: SampleList,
-             **kwargs) -> dict:
+    def loss(self, x: Tuple[Tensor], batch_data_samples: SampleList, **kwargs) -> dict:
         """
         Args:
             x (list[Tensor]): Features from FPN.
@@ -89,11 +88,14 @@ class BaseMono3DDenseHead(BaseModule, metaclass=ABCMeta):
             batch_img_metas.append(data_sample.metainfo)
             batch_gt_instances_3d.append(data_sample.gt_instances_3d)
             batch_gt_instances.append(data_sample.gt_instances)
-            batch_gt_instances_ignore.append(
-                data_sample.get('ignored_instances', None))
+            batch_gt_instances_ignore.append(data_sample.get('ignored_instances', None))
 
-        loss_inputs = outs + (batch_gt_instances_3d, batch_gt_instances,
-                              batch_img_metas, batch_gt_instances_ignore)
+        loss_inputs = outs + (
+            batch_gt_instances_3d,
+            batch_gt_instances,
+            batch_img_metas,
+            batch_gt_instances_ignore,
+        )
         losses = self.loss_by_feat(*loss_inputs)
 
         return losses
@@ -104,11 +106,13 @@ class BaseMono3DDenseHead(BaseModule, metaclass=ABCMeta):
         head."""
         pass
 
-    def loss_and_predict(self,
-                         x: Tuple[Tensor],
-                         batch_data_samples: SampleList,
-                         proposal_cfg: Optional[ConfigDict] = None,
-                         **kwargs) -> Tuple[dict, InstanceList]:
+    def loss_and_predict(
+        self,
+        x: Tuple[Tensor],
+        batch_data_samples: SampleList,
+        proposal_cfg: Optional[ConfigDict] = None,
+        **kwargs
+    ) -> Tuple[dict, InstanceList]:
         """Perform forward propagation of the head, then calculate loss and
         predictions from the features and data samples.
 
@@ -136,24 +140,27 @@ class BaseMono3DDenseHead(BaseModule, metaclass=ABCMeta):
             batch_img_metas.append(data_sample.metainfo)
             batch_gt_instances_3d.append(data_sample.gt_instances_3d)
             batch_gt_instances.append(data_sample.gt_instances)
-            batch_gt_instances_ignore.append(
-                data_sample.get('ignored_instances', None))
+            batch_gt_instances_ignore.append(data_sample.get('ignored_instances', None))
 
         outs = self(x)
 
-        loss_inputs = outs + (batch_gt_instances_3d, batch_gt_instances,
-                              batch_img_metas, batch_gt_instances_ignore)
+        loss_inputs = outs + (
+            batch_gt_instances_3d,
+            batch_gt_instances,
+            batch_img_metas,
+            batch_gt_instances_ignore,
+        )
         losses = self.loss_by_feat(*loss_inputs)
 
         predictions = self.predict_by_feat(
-            *outs, batch_img_metas=batch_img_metas, cfg=proposal_cfg)
+            *outs, batch_img_metas=batch_img_metas, cfg=proposal_cfg
+        )
 
         return losses, predictions
 
-    def predict(self,
-                x: Tuple[Tensor],
-                batch_data_samples: SampleList,
-                rescale: bool = False) -> InstanceList:
+    def predict(
+        self, x: Tuple[Tensor], batch_data_samples: SampleList, rescale: bool = False
+    ) -> InstanceList:
         """Perform forward propagation of the detection head and predict
         detection results on the features of the upstream network.
 
@@ -170,12 +177,11 @@ class BaseMono3DDenseHead(BaseModule, metaclass=ABCMeta):
             list[obj:`InstanceData`]: Detection results of each image
             after the post process.
         """
-        batch_img_metas = [
-            data_samples.metainfo for data_samples in batch_data_samples
-        ]
+        batch_img_metas = [data_samples.metainfo for data_samples in batch_data_samples]
         outs = self(x)
         predictions = self.predict_by_feat(
-            *outs, batch_img_metas=batch_img_metas, rescale=rescale)
+            *outs, batch_img_metas=batch_img_metas, rescale=rescale
+        )
 
         return predictions
 

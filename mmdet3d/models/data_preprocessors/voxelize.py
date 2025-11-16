@@ -8,23 +8,28 @@ from torch.autograd import Function
 from torch.nn import functional as F
 from torch.nn.modules.utils import _pair
 
-ext_module = ext_loader.load_ext('_ext', [
-    'dynamic_voxelize_forward', 'hard_voxelize_forward',
-    'dynamic_point_to_voxel_forward', 'dynamic_point_to_voxel_backward'
-])
+ext_module = ext_loader.load_ext(
+    '_ext',
+    [
+        'dynamic_voxelize_forward',
+        'hard_voxelize_forward',
+        'dynamic_point_to_voxel_forward',
+        'dynamic_point_to_voxel_backward',
+    ],
+)
 
 
 class _Voxelization(Function):
-
     @staticmethod
     def forward(
-            ctx: Any,
-            points: torch.Tensor,
-            voxel_size: Union[tuple, float],
-            coors_range: Union[tuple, float],
-            max_points: int = 35,
-            max_voxels: int = 20000,
-            deterministic: bool = True) -> Union[Tuple[torch.Tensor], Tuple]:
+        ctx: Any,
+        points: torch.Tensor,
+        voxel_size: Union[tuple, float],
+        coors_range: Union[tuple, float],
+        max_points: int = 35,
+        max_voxels: int = 20000,
+        deterministic: bool = True,
+    ) -> Union[Tuple[torch.Tensor], Tuple]:
         """Convert kitti points(N, >=3) to voxels.
 
         Args:
@@ -66,14 +71,13 @@ class _Voxelization(Function):
                 torch.tensor(voxel_size, dtype=torch.float),
                 torch.tensor(coors_range, dtype=torch.float),
                 coors,
-                NDim=3)
+                NDim=3,
+            )
             return coors
         else:
-            voxels = points.new_zeros(
-                size=(max_voxels, max_points, points.size(1)))
+            voxels = points.new_zeros(size=(max_voxels, max_points, points.size(1)))
             coors = points.new_zeros(size=(max_voxels, 3), dtype=torch.int)
-            num_points_per_voxel = points.new_zeros(
-                size=(max_voxels, ), dtype=torch.int)
+            num_points_per_voxel = points.new_zeros(size=(max_voxels,), dtype=torch.int)
             voxel_num = torch.zeros(size=(), dtype=torch.long)
             ext_module.hard_voxelize_forward(
                 points,
@@ -86,7 +90,8 @@ class _Voxelization(Function):
                 max_points=max_points,
                 max_voxels=max_voxels,
                 NDim=3,
-                deterministic=deterministic)
+                deterministic=deterministic,
+            )
             # select the valid voxels
             voxels_out = voxels[:voxel_num]
             coors_out = coors[:voxel_num]
@@ -125,13 +130,15 @@ class VoxelizationByGridShape(nn.Module):
             you could share with us the failing cases.
     """
 
-    def __init__(self,
-                 point_cloud_range: List,
-                 max_num_points: int,
-                 voxel_size: List = [],
-                 grid_shape: List[int] = [],
-                 max_voxels: Union[tuple, int] = 20000,
-                 deterministic: bool = True):
+    def __init__(
+        self,
+        point_cloud_range: List,
+        max_num_points: int,
+        voxel_size: List = [],
+        grid_shape: List[int] = [],
+        max_voxels: Union[tuple, int] = 20000,
+        deterministic: bool = True,
+    ):
         super().__init__()
         if voxel_size and grid_shape:
             raise ValueError('voxel_size is mutually exclusive grid_shape')
@@ -143,19 +150,18 @@ class VoxelizationByGridShape(nn.Module):
             self.max_voxels = _pair(max_voxels)
         self.deterministic = deterministic
 
-        point_cloud_range = torch.tensor(
-            point_cloud_range, dtype=torch.float32)
+        point_cloud_range = torch.tensor(point_cloud_range, dtype=torch.float32)
         if voxel_size:
             self.voxel_size = voxel_size
             voxel_size = torch.tensor(voxel_size, dtype=torch.float32)
-            grid_shape = (point_cloud_range[3:] -
-                          point_cloud_range[:3]) / voxel_size
+            grid_shape = (point_cloud_range[3:] - point_cloud_range[:3]) / voxel_size
             grid_shape = torch.round(grid_shape).long().tolist()
             self.grid_shape = grid_shape
         elif grid_shape:
             grid_shape = torch.tensor(grid_shape, dtype=torch.float32)
             voxel_size = (point_cloud_range[3:] - point_cloud_range[:3]) / (
-                grid_shape - 1)
+                grid_shape - 1
+            )
             voxel_size = voxel_size.tolist()
             self.voxel_size = voxel_size
         else:
@@ -167,9 +173,14 @@ class VoxelizationByGridShape(nn.Module):
         else:
             max_voxels = self.max_voxels[1]
 
-        return voxelization(input, self.voxel_size, self.point_cloud_range,
-                            self.max_num_points, max_voxels,
-                            self.deterministic)
+        return voxelization(
+            input,
+            self.voxel_size,
+            self.point_cloud_range,
+            self.max_num_points,
+            max_voxels,
+            self.deterministic,
+        )
 
     def __repr__(self):
         s = self.__class__.__name__ + '('
@@ -188,12 +199,14 @@ class _DynamicScatter(Function):
     point2voxel_map."""
 
     @staticmethod
-    def forward(ctx: Any,
-                feats: torch.Tensor,
-                coors: torch.Tensor,
-                reduce_type: str = 'max',
-                return_map: str = False) -> Tuple[torch.Tensor, torch.Tensor]:
-        """convert kitti points(N, >=3) to voxels.
+    def forward(
+        ctx: Any,
+        feats: torch.Tensor,
+        coors: torch.Tensor,
+        reduce_type: str = 'max',
+        return_map: str = False,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Convert kitti points(N, >=3) to voxels.
 
         Args:
             feats (torch.Tensor): [N, C]. Points features to be reduced
@@ -210,13 +223,10 @@ class _DynamicScatter(Function):
             reduced from input features that share the same voxel coordinates.
             The second is voxel coordinates with shape [M, ndim].
         """
-        results = ext_module.dynamic_point_to_voxel_forward(
-            feats, coors, reduce_type)
-        (voxel_feats, voxel_coors, point2voxel_map,
-         voxel_points_count) = results
+        results = ext_module.dynamic_point_to_voxel_forward(feats, coors, reduce_type)
+        (voxel_feats, voxel_coors, point2voxel_map, voxel_points_count) = results
         ctx.reduce_type = reduce_type
-        ctx.save_for_backward(feats, voxel_feats, point2voxel_map,
-                              voxel_points_count)
+        ctx.save_for_backward(feats, voxel_feats, point2voxel_map, voxel_points_count)
         ctx.mark_non_differentiable(voxel_coors)
         if return_map:
             return voxel_feats, voxel_coors, point2voxel_map
@@ -224,17 +234,24 @@ class _DynamicScatter(Function):
             return voxel_feats, voxel_coors
 
     @staticmethod
-    def backward(ctx: Any,
-                 grad_voxel_feats: torch.Tensor,
-                 grad_voxel_coors: Optional[torch.Tensor] = None) -> tuple:
-        (feats, voxel_feats, point2voxel_map,
-         voxel_points_count) = ctx.saved_tensors
+    def backward(
+        ctx: Any,
+        grad_voxel_feats: torch.Tensor,
+        grad_voxel_coors: Optional[torch.Tensor] = None,
+    ) -> tuple:
+        (feats, voxel_feats, point2voxel_map, voxel_points_count) = ctx.saved_tensors
         grad_feats = torch.zeros_like(feats)
         # TODO: whether to use index put or use cuda_backward
         # To use index put, need point to voxel index
         ext_module.dynamic_point_to_voxel_backward(
-            grad_feats, grad_voxel_feats.contiguous(), feats, voxel_feats,
-            point2voxel_map, voxel_points_count, ctx.reduce_type)
+            grad_feats,
+            grad_voxel_feats.contiguous(),
+            feats,
+            voxel_feats,
+            point2voxel_map,
+            voxel_points_count,
+            ctx.reduce_type,
+        )
         return grad_feats, None, None
 
 
@@ -257,8 +274,7 @@ class DynamicScatter3D(nn.Module):
             into voxel.
     """
 
-    def __init__(self, voxel_size: List, point_cloud_range: List,
-                 average_points: bool):
+    def __init__(self, voxel_size: List, point_cloud_range: List, average_points: bool):
         super().__init__()
 
         self.voxel_size = voxel_size
@@ -266,8 +282,8 @@ class DynamicScatter3D(nn.Module):
         self.average_points = average_points
 
     def forward_single(
-            self, points: torch.Tensor,
-            coors: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        self, points: torch.Tensor, coors: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Scatters points into voxels.
 
         Args:
@@ -282,11 +298,11 @@ class DynamicScatter3D(nn.Module):
             The second is voxel coordinates with shape [M, ndim].
         """
         reduce = 'mean' if self.average_points else 'max'
-        return dynamic_scatter_3d(points.contiguous(), coors.contiguous(),
-                                  reduce)
+        return dynamic_scatter_3d(points.contiguous(), coors.contiguous(), reduce)
 
-    def forward(self, points: torch.Tensor,
-                coors: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(
+        self, points: torch.Tensor, coors: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Scatters points/features into voxels.
 
         Args:
@@ -308,7 +324,8 @@ class DynamicScatter3D(nn.Module):
             for i in range(batch_size):
                 inds = torch.where(coors[:, 0] == i)
                 voxel, voxel_coor = self.forward_single(
-                    points[inds], coors[inds][:, 1:])
+                    points[inds], coors[inds][:, 1:]
+                )
                 coor_pad = F.pad(voxel_coor, (1, 0), mode='constant', value=i)
                 voxel_coors.append(coor_pad)
                 voxels.append(voxel)

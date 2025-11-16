@@ -7,23 +7,22 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from mmengine.model import xavier_init
 from mmcv.cnn.bricks.transformer import build_transformer_layer_sequence
+from mmengine.model import xavier_init
 from mmengine.model.base_module import BaseModule
+from torch.nn.init import normal_
+from torchvision.transforms.functional import rotate
 
 from mmdet3d.registry import MODELS
-from torch.nn.init import normal_
-
-from torchvision.transforms.functional import rotate
-from .temporal_self_attention import TemporalSelfAttention
-from .spatial_cross_attention import MSDeformableAttention3D
 from .decoder import CustomMSDeformableAttention
-
+from .spatial_cross_attention import MSDeformableAttention3D
+from .temporal_self_attention import TemporalSelfAttention
 
 
 @MODELS.register_module()
 class PerceptionTransformer(BaseModule):
     """Implements the Detr3D transformer.
+
     Args:
         as_two_stage (bool): Generate query from encoder features.
             Default: False.
@@ -33,20 +32,22 @@ class PerceptionTransformer(BaseModule):
             `as_two_stage` as True. Default: 300.
     """
 
-    def __init__(self,
-                 num_feature_levels=4,
-                 num_cams=6,
-                 two_stage_num_proposals=300,
-                 encoder=None,
-                 decoder=None,
-                 embed_dims=256,
-                 rotate_prev_bev=True,
-                 use_shift=True,
-                 use_can_bus=True,
-                 can_bus_norm=True,
-                 use_cams_embeds=True,
-                 rotate_center=[100, 100],
-                 **kwargs):
+    def __init__(
+        self,
+        num_feature_levels=4,
+        num_cams=6,
+        two_stage_num_proposals=300,
+        encoder=None,
+        decoder=None,
+        embed_dims=256,
+        rotate_prev_bev=True,
+        use_shift=True,
+        use_can_bus=True,
+        can_bus_norm=True,
+        use_cams_embeds=True,
+        rotate_center=[100, 100],
+        **kwargs
+    ):
         super(PerceptionTransformer, self).__init__(**kwargs)
         self.encoder = build_transformer_layer_sequence(encoder)
         self.decoder = build_transformer_layer_sequence(decoder)
@@ -67,10 +68,10 @@ class PerceptionTransformer(BaseModule):
 
     def init_layers(self):
         """Initialize layers of the Detr3DTransformer."""
-        self.level_embeds = nn.Parameter(torch.Tensor(
-            self.num_feature_levels, self.embed_dims))
-        self.cams_embeds = nn.Parameter(
-            torch.Tensor(self.num_cams, self.embed_dims))
+        self.level_embeds = nn.Parameter(
+            torch.Tensor(self.num_feature_levels, self.embed_dims)
+        )
+        self.cams_embeds = nn.Parameter(torch.Tensor(self.num_cams, self.embed_dims))
         self.reference_points = nn.Linear(self.embed_dims, 3)
         self.can_bus_mlp = nn.Sequential(
             nn.Linear(18, self.embed_dims // 2),
@@ -87,55 +88,59 @@ class PerceptionTransformer(BaseModule):
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
         for m in self.modules():
-            if isinstance(m, MSDeformableAttention3D) or isinstance(m, TemporalSelfAttention) \
-                    or isinstance(m, CustomMSDeformableAttention):
+            if (
+                isinstance(m, MSDeformableAttention3D)
+                or isinstance(m, TemporalSelfAttention)
+                or isinstance(m, CustomMSDeformableAttention)
+            ):
                 try:
                     m.init_weight()
                 except AttributeError:
                     m.init_weights()
         normal_(self.level_embeds)
         normal_(self.cams_embeds)
-        xavier_init(self.reference_points, distribution='uniform', bias=0.)
-        xavier_init(self.can_bus_mlp, distribution='uniform', bias=0.)
+        xavier_init(self.reference_points, distribution='uniform', bias=0.0)
+        xavier_init(self.can_bus_mlp, distribution='uniform', bias=0.0)
 
     def get_bev_features(
-            self,
-            mlvl_feats,
-            bev_queries,
-            bev_h,
-            bev_w,
-            grid_length=[0.512, 0.512],
-            bev_pos=None,
-            prev_bev=None,
-            **kwargs):
-        """
-        obtain bev features.
-        """
+        self,
+        mlvl_feats,
+        bev_queries,
+        bev_h,
+        bev_w,
+        grid_length=[0.512, 0.512],
+        bev_pos=None,
+        prev_bev=None,
+        **kwargs
+    ):
+        """Obtain bev features."""
 
         bs = mlvl_feats[0].size(0)
         bev_queries = bev_queries.unsqueeze(1).repeat(1, bs, 1)
         bev_pos = bev_pos.flatten(2).permute(2, 0, 1)
 
         # obtain rotation angle and shift with ego motion
-        delta_x = np.array([each['can_bus'][0]
-                           for each in kwargs['img_metas']])
-        delta_y = np.array([each['can_bus'][1]
-                           for each in kwargs['img_metas']])
+        delta_x = np.array([each['can_bus'][0] for each in kwargs['img_metas']])
+        delta_y = np.array([each['can_bus'][1] for each in kwargs['img_metas']])
         ego_angle = np.array(
-            [each['can_bus'][-2] / np.pi * 180 for each in kwargs['img_metas']])
+            [each['can_bus'][-2] / np.pi * 180 for each in kwargs['img_metas']]
+        )
         grid_length_y = grid_length[0]
         grid_length_x = grid_length[1]
-        translation_length = np.sqrt(delta_x ** 2 + delta_y ** 2)
+        translation_length = np.sqrt(delta_x**2 + delta_y**2)
         translation_angle = np.arctan2(delta_y, delta_x) / np.pi * 180
         bev_angle = ego_angle - translation_angle
-        shift_y = translation_length * \
-            np.cos(bev_angle / 180 * np.pi) / grid_length_y / bev_h
-        shift_x = translation_length * \
-            np.sin(bev_angle / 180 * np.pi) / grid_length_x / bev_w
+        shift_y = (
+            translation_length * np.cos(bev_angle / 180 * np.pi) / grid_length_y / bev_h
+        )
+        shift_x = (
+            translation_length * np.sin(bev_angle / 180 * np.pi) / grid_length_x / bev_w
+        )
         shift_y = shift_y * self.use_shift
         shift_x = shift_x * self.use_shift
-        shift = bev_queries.new_tensor(
-            [shift_x, shift_y]).permute(1, 0)  # xy, bs -> bs, xy
+        shift = bev_queries.new_tensor([shift_x, shift_y]).permute(
+            1, 0
+        )  # xy, bs -> bs, xy
 
         if prev_bev is not None:
             if prev_bev.shape[1] == bev_h * bev_w:
@@ -144,17 +149,21 @@ class PerceptionTransformer(BaseModule):
                 for i in range(bs):
                     # num_prev_bev = prev_bev.size(1)
                     rotation_angle = kwargs['img_metas'][i]['can_bus'][-1]
-                    tmp_prev_bev = prev_bev[:, i].reshape(
-                        bev_h, bev_w, -1).permute(2, 0, 1)
-                    tmp_prev_bev = rotate(tmp_prev_bev, rotation_angle,
-                                          center=self.rotate_center)
+                    tmp_prev_bev = (
+                        prev_bev[:, i].reshape(bev_h, bev_w, -1).permute(2, 0, 1)
+                    )
+                    tmp_prev_bev = rotate(
+                        tmp_prev_bev, rotation_angle, center=self.rotate_center
+                    )
                     tmp_prev_bev = tmp_prev_bev.permute(1, 2, 0).reshape(
-                        bev_h * bev_w, 1, -1)
+                        bev_h * bev_w, 1, -1
+                    )
                     prev_bev[:, i] = tmp_prev_bev[:, 0]
 
         # add can bus signals
         can_bus = bev_queries.new_tensor(
-            [each['can_bus'] for each in kwargs['img_metas']])  # [:, :]
+            [each['can_bus'] for each in kwargs['img_metas']]
+        )  # [:, :]
         can_bus = self.can_bus_mlp(can_bus)[None, :, :]
         bev_queries = bev_queries + can_bus * self.use_can_bus
 
@@ -166,19 +175,21 @@ class PerceptionTransformer(BaseModule):
             feat = feat.flatten(3).permute(1, 0, 3, 2)
             if self.use_cams_embeds:
                 feat = feat + self.cams_embeds[:, None, None, :].to(feat.dtype)
-            feat = feat + self.level_embeds[None,
-                                            None, lvl:lvl + 1, :].to(feat.dtype)
+            feat = feat + self.level_embeds[None, None, lvl : lvl + 1, :].to(feat.dtype)
             spatial_shapes.append(spatial_shape)
             feat_flatten.append(feat)
 
         feat_flatten = torch.cat(feat_flatten, 2)
         spatial_shapes = torch.as_tensor(
-            spatial_shapes, dtype=torch.long, device=bev_pos.device)
-        level_start_index = torch.cat((spatial_shapes.new_zeros(
-            (1,)), spatial_shapes.prod(1).cumsum(0)[:-1]))
+            spatial_shapes, dtype=torch.long, device=bev_pos.device
+        )
+        level_start_index = torch.cat(
+            (spatial_shapes.new_zeros((1,)), spatial_shapes.prod(1).cumsum(0)[:-1])
+        )
 
         feat_flatten = feat_flatten.permute(
-            0, 2, 1, 3)  # (num_cam, H*W, bs, embed_dims)
+            0, 2, 1, 3
+        )  # (num_cam, H*W, bs, embed_dims)
 
         bev_embed = self.encoder(
             bev_queries,
@@ -196,18 +207,20 @@ class PerceptionTransformer(BaseModule):
 
         return bev_embed
 
-    def forward(self,
-                mlvl_feats,
-                bev_queries,
-                object_query_embed,
-                bev_h,
-                bev_w,
-                grid_length=[0.512, 0.512],
-                bev_pos=None,
-                reg_branches=None,
-                cls_branches=None,
-                prev_bev=None,
-                **kwargs):
+    def forward(
+        self,
+        mlvl_feats,
+        bev_queries,
+        object_query_embed,
+        bev_h,
+        bev_w,
+        grid_length=[0.512, 0.512],
+        bev_pos=None,
+        reg_branches=None,
+        cls_branches=None,
+        prev_bev=None,
+        **kwargs
+    ):
         """Forward function for `Detr3DTransformer`.
         Args:
             mlvl_feats (list(Tensor)): Input queries from
@@ -253,11 +266,11 @@ class PerceptionTransformer(BaseModule):
             grid_length=grid_length,
             bev_pos=bev_pos,
             prev_bev=prev_bev,
-            **kwargs)  # bev_embed shape: bs, bev_h*bev_w, embed_dims
+            **kwargs
+        )  # bev_embed shape: bs, bev_h*bev_w, embed_dims
 
         bs = mlvl_feats[0].size(0)
-        query_pos, query = torch.split(
-            object_query_embed, self.embed_dims, dim=1)
+        query_pos, query = torch.split(object_query_embed, self.embed_dims, dim=1)
         query_pos = query_pos.unsqueeze(0).expand(bs, -1, -1)
         query = query.unsqueeze(0).expand(bs, -1, -1)
         reference_points = self.reference_points(query_pos)
@@ -278,7 +291,8 @@ class PerceptionTransformer(BaseModule):
             cls_branches=cls_branches,
             spatial_shapes=torch.tensor([[bev_h, bev_w]], device=query.device),
             level_start_index=torch.tensor([0], device=query.device),
-            **kwargs)
+            **kwargs
+        )
 
         inter_references_out = inter_references
 

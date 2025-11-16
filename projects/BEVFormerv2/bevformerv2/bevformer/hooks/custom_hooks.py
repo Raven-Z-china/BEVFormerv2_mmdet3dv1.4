@@ -1,13 +1,11 @@
-from mmengine.registry import HOOKS
 from mmengine.hooks.hook import Hook
-
+from mmengine.registry import HOOKS
 
 
 @HOOKS.register_module()
 class TransferWeight(Hook):
-    
     def __init__(self, every_n_inters=1):
-        self.every_n_inters=every_n_inters
+        self.every_n_inters = every_n_inters
 
     def after_train_iter(self, runner):
         if self.every_n_inner_iters(runner, self.every_n_inters):

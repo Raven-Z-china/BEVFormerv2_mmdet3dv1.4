@@ -20,7 +20,6 @@ def _generate_kitti_dataset_config():
 
         @TRANSFORMS.register_module()
         class Identity(BaseTransform):
-
             def transform(self, info):
                 if 'ann_info' in info:
                     info['gt_labels_3d'] = info['ann_info']['gt_labels_3d']
@@ -42,8 +41,14 @@ def _generate_kitti_dataset_config():
 
 def test_getitem():
     np.random.seed(0)
-    data_root, ann_file, classes, data_prefix, \
-        pipeline, modality, = _generate_kitti_dataset_config()
+    (
+        data_root,
+        ann_file,
+        classes,
+        data_prefix,
+        pipeline,
+        modality,
+    ) = _generate_kitti_dataset_config()
     modality['use_camera'] = True
 
     kitti_dataset = KittiDataset(
@@ -55,7 +60,8 @@ def test_getitem():
         ),
         pipeline=pipeline,
         metainfo=dict(classes=classes),
-        modality=modality)
+        modality=modality,
+    )
 
     kitti_dataset.prepare_data(0)
     input_dict = kitti_dataset.get_data_info(0)
@@ -79,8 +85,7 @@ def test_getitem():
 
     assert 'gt_bboxes_3d' in ann_info
     assert isinstance(ann_info['gt_bboxes_3d'], LiDARInstance3DBoxes)
-    assert torch.allclose(ann_info['gt_bboxes_3d'].tensor.sum(),
-                          torch.tensor(7.2650))
+    assert torch.allclose(ann_info['gt_bboxes_3d'].tensor.sum(), torch.tensor(7.2650))
     assert 'centers_2d' in ann_info
     assert ann_info['centers_2d'].dtype == np.float32
     assert 'depths' in ann_info
@@ -95,7 +100,8 @@ def test_getitem():
         ),
         pipeline=pipeline,
         metainfo=dict(classes=['Car']),
-        modality=modality)
+        modality=modality,
+    )
 
     input_dict = car_kitti_dataset.get_data_info(0)
     ann_info = car_kitti_dataset.parse_ann_info(input_dict)

@@ -9,23 +9,27 @@ from .single_stage import SingleStage3DDetector
 class GroupFree3DNet(SingleStage3DDetector):
     """`Group-Free 3D <https://arxiv.org/abs/2104.00678>`_."""
 
-    def __init__(self,
-                 backbone,
-                 bbox_head=None,
-                 train_cfg=None,
-                 test_cfg=None,
-                 init_cfg=None,
-                 **kwargs):
+    def __init__(
+        self,
+        backbone,
+        bbox_head=None,
+        train_cfg=None,
+        test_cfg=None,
+        init_cfg=None,
+        **kwargs
+    ):
         super(GroupFree3DNet, self).__init__(
             backbone=backbone,
             bbox_head=bbox_head,
             train_cfg=train_cfg,
             test_cfg=test_cfg,
             init_cfg=init_cfg,
-            **kwargs)
+            **kwargs
+        )
 
-    def loss(self, batch_inputs_dict: dict, batch_data_samples: SampleList,
-             **kwargs) -> dict:
+    def loss(
+        self, batch_inputs_dict: dict, batch_data_samples: SampleList, **kwargs
+    ) -> dict:
         """Calculate losses from a batch of inputs dict and data samples.
 
         Args:
@@ -47,8 +51,9 @@ class GroupFree3DNet(SingleStage3DDetector):
         losses = self.bbox_head.loss(points, x, batch_data_samples, **kwargs)
         return losses
 
-    def predict(self, batch_inputs_dict: dict, batch_data_samples: SampleList,
-                **kwargs) -> SampleList:
+    def predict(
+        self, batch_inputs_dict: dict, batch_data_samples: SampleList, **kwargs
+    ) -> SampleList:
         """Predict results from a batch of inputs and data samples with post-
         processing.
 
@@ -80,8 +85,6 @@ class GroupFree3DNet(SingleStage3DDetector):
         """
         x = self.extract_feat(batch_inputs_dict)
         points = batch_inputs_dict['points']
-        results_list = self.bbox_head.predict(points, x, batch_data_samples,
-                                              **kwargs)
-        predictions = self.add_pred_to_datasample(batch_data_samples,
-                                                  results_list)
+        results_list = self.bbox_head.predict(points, x, batch_data_samples, **kwargs)
+        predictions = self.add_pred_to_datasample(batch_data_samples, results_list)
         return predictions

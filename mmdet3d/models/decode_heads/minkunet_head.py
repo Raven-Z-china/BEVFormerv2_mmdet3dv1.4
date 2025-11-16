@@ -24,8 +24,9 @@ class MinkUNetHead(Base3DDecodeHead):
     def __init__(self, channels: int, num_classes: int, **kwargs) -> None:
         super().__init__(channels, num_classes, **kwargs)
 
-    def build_conv_seg(self, channels: int, num_classes: int,
-                       kernel_size: int) -> nn.Module:
+    def build_conv_seg(
+        self, channels: int, num_classes: int, kernel_size: int
+    ) -> nn.Module:
         """Build Convolutional Segmentation Layers."""
         return nn.Linear(channels, num_classes)
 
@@ -37,8 +38,7 @@ class MinkUNetHead(Base3DDecodeHead):
         ]
         return torch.cat(gt_semantic_segs)
 
-    def predict(self, inputs: Tensor,
-                batch_data_samples: SampleList) -> List[Tensor]:
+    def predict(self, inputs: Tensor, batch_data_samples: SampleList) -> List[Tensor]:
         """Forward function for testing.
 
         Args:
@@ -52,7 +52,8 @@ class MinkUNetHead(Base3DDecodeHead):
         seg_logits = self.forward(inputs)
 
         batch_idx = torch.cat(
-            [data_samples.batch_idx for data_samples in batch_data_samples])
+            [data_samples.batch_idx for data_samples in batch_data_samples]
+        )
         seg_logit_list = []
         for i, data_sample in enumerate(batch_data_samples):
             seg_logit = seg_logits[batch_idx == i]

@@ -10,7 +10,6 @@ from mmdet3d.testing import create_detector_inputs
 
 
 class TestImVoxelHead(TestCase):
-
     def test_imvoxel_head_loss(self):
         """Test imvoxel head loss when truth is empty and non-empty."""
         if not torch.cuda.is_available():
@@ -20,7 +19,8 @@ class TestImVoxelHead(TestCase):
         prior_generator = dict(
             type='AlignedAnchor3DRangeGenerator',
             ranges=[[-3.2, -0.2, -2.28, 3.2, 6.2, 0.28]],
-            rotations=[.0])
+            rotations=[0.0],
+        )
         imvoxel_head = ImVoxelHead(
             n_classes=1,
             n_levels=1,
@@ -37,10 +37,7 @@ class TestImVoxelHead(TestCase):
 
         # fake input of head
         # (x, valid_preds)
-        x = [
-            torch.randn(1, 32, 10, 10, 4).cuda(),
-            torch.ones(1, 1, 10, 10, 4).cuda()
-        ]
+        x = [torch.randn(1, 32, 10, 10, 4).cuda(), torch.ones(1, 1, 10, 10, 4).cuda()]
 
         # fake annotation
         num_gt_instance = 1
@@ -50,10 +47,9 @@ class TestImVoxelHead(TestCase):
             img_size=(128, 128),
             num_gt_instance=num_gt_instance,
             with_pts_semantic_mask=False,
-            with_pts_instance_mask=False)
-        data_samples = [
-            sample.cuda() for sample in packed_inputs['data_samples']
-        ]
+            with_pts_instance_mask=False,
+        )
+        data_samples = [sample.cuda() for sample in packed_inputs['data_samples']]
 
         losses = imvoxel_head.loss(x, data_samples)
         print(losses)

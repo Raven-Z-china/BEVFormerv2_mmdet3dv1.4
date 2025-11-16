@@ -9,8 +9,7 @@ from mmengine.model import BaseModule
 from mmengine.structures import InstanceData
 from torch import Tensor, nn
 
-from mmdet3d.models.utils import (clip_sigmoid, draw_heatmap_gaussian,
-                                  gaussian_radius)
+from mmdet3d.models.utils import clip_sigmoid, draw_heatmap_gaussian, gaussian_radius
 from mmdet3d.registry import MODELS, TASK_UTILS
 from mmdet3d.structures import Det3DDataSample, xywhr2xyxyr
 from ..layers import circle_nms, nms_bev
@@ -35,19 +34,23 @@ class SeparateHead(BaseModule):
         bias (str, optional): Type of bias. Default: 'auto'.
     """
 
-    def __init__(self,
-                 in_channels,
-                 heads,
-                 head_conv=64,
-                 final_kernel=1,
-                 init_bias=-2.19,
-                 conv_cfg=dict(type='Conv2d'),
-                 norm_cfg=dict(type='BN2d'),
-                 bias='auto',
-                 init_cfg=None,
-                 **kwargs):
-        assert init_cfg is None, 'To prevent abnormal initialization ' \
+    def __init__(
+        self,
+        in_channels,
+        heads,
+        head_conv=64,
+        final_kernel=1,
+        init_bias=-2.19,
+        conv_cfg=dict(type='Conv2d'),
+        norm_cfg=dict(type='BN2d'),
+        bias='auto',
+        init_cfg=None,
+        **kwargs,
+    ):
+        assert init_cfg is None, (
+            'To prevent abnormal initialization '
             'behavior, init_cfg is not allowed to be set'
+        )
         super(SeparateHead, self).__init__(init_cfg=init_cfg)
         self.heads = heads
         self.init_bias = init_bias
@@ -65,7 +68,9 @@ class SeparateHead(BaseModule):
                         padding=final_kernel // 2,
                         bias=bias,
                         conv_cfg=conv_cfg,
-                        norm_cfg=norm_cfg))
+                        norm_cfg=norm_cfg,
+                    )
+                )
                 c_in = head_conv
 
             conv_layers.append(
@@ -76,7 +81,9 @@ class SeparateHead(BaseModule):
                     kernel_size=final_kernel,
                     stride=1,
                     padding=final_kernel // 2,
-                    bias=True))
+                    bias=True,
+                )
+            )
             conv_layers = nn.Sequential(*conv_layers)
 
             self.__setattr__(head, conv_layers)
@@ -147,21 +154,25 @@ class DCNSeparateHead(BaseModule):
         bias (str, optional): Type of bias. Default: 'auto'.
     """  # noqa: W605
 
-    def __init__(self,
-                 in_channels,
-                 num_cls,
-                 heads,
-                 dcn_config,
-                 head_conv=64,
-                 final_kernel=1,
-                 init_bias=-2.19,
-                 conv_cfg=dict(type='Conv2d'),
-                 norm_cfg=dict(type='BN2d'),
-                 bias='auto',
-                 init_cfg=None,
-                 **kwargs):
-        assert init_cfg is None, 'To prevent abnormal initialization ' \
+    def __init__(
+        self,
+        in_channels,
+        num_cls,
+        heads,
+        dcn_config,
+        head_conv=64,
+        final_kernel=1,
+        init_bias=-2.19,
+        conv_cfg=dict(type='Conv2d'),
+        norm_cfg=dict(type='BN2d'),
+        bias='auto',
+        init_cfg=None,
+        **kwargs,
+    ):
+        assert init_cfg is None, (
+            'To prevent abnormal initialization '
             'behavior, init_cfg is not allowed to be set'
+        )
         super(DCNSeparateHead, self).__init__(init_cfg=init_cfg)
         if 'heatmap' in heads:
             heads.pop('heatmap')
@@ -180,7 +191,8 @@ class DCNSeparateHead(BaseModule):
                 padding=1,
                 conv_cfg=conv_cfg,
                 bias=bias,
-                norm_cfg=norm_cfg),
+                norm_cfg=norm_cfg,
+            ),
             build_conv_layer(
                 conv_cfg,
                 head_conv,
@@ -188,7 +200,8 @@ class DCNSeparateHead(BaseModule):
                 kernel_size=3,
                 stride=1,
                 padding=1,
-                bias=bias)
+                bias=bias,
+            ),
         ]
         self.cls_head = nn.Sequential(*cls_head)
         self.init_bias = init_bias
@@ -198,7 +211,8 @@ class DCNSeparateHead(BaseModule):
             heads,
             head_conv=head_conv,
             final_kernel=final_kernel,
-            bias=bias)
+            bias=bias,
+        )
         if init_cfg is None:
             self.init_cfg = dict(type='Kaiming', layer='Conv2d')
 
@@ -274,31 +288,32 @@ class CenterHead(BaseModule):
         init_cfg (dict, optional): Config for initialization.
     """
 
-    def __init__(self,
-                 in_channels: Union[List[int], int] = [128],
-                 tasks: Optional[List[dict]] = None,
-                 bbox_coder: Optional[dict] = None,
-                 common_heads: dict = dict(),
-                 loss_cls: dict = dict(
-                     type='mmdet.GaussianFocalLoss', reduction='mean'),
-                 loss_bbox: dict = dict(
-                     type='mmdet.L1Loss', reduction='none', loss_weight=0.25),
-                 separate_head: dict = dict(
-                     type='mmdet.SeparateHead',
-                     init_bias=-2.19,
-                     final_kernel=3),
-                 share_conv_channel: int = 64,
-                 num_heatmap_convs: int = 2,
-                 conv_cfg: dict = dict(type='Conv2d'),
-                 norm_cfg: dict = dict(type='BN2d'),
-                 bias: str = 'auto',
-                 norm_bbox: bool = True,
-                 train_cfg: Optional[dict] = None,
-                 test_cfg: Optional[dict] = None,
-                 init_cfg: Optional[dict] = None,
-                 **kwargs):
-        assert init_cfg is None, 'To prevent abnormal initialization ' \
+    def __init__(
+        self,
+        in_channels: Union[List[int], int] = [128],
+        tasks: Optional[List[dict]] = None,
+        bbox_coder: Optional[dict] = None,
+        common_heads: dict = dict(),
+        loss_cls: dict = dict(type='mmdet.GaussianFocalLoss', reduction='mean'),
+        loss_bbox: dict = dict(type='mmdet.L1Loss', reduction='none', loss_weight=0.25),
+        separate_head: dict = dict(
+            type='mmdet.SeparateHead', init_bias=-2.19, final_kernel=3
+        ),
+        share_conv_channel: int = 64,
+        num_heatmap_convs: int = 2,
+        conv_cfg: dict = dict(type='Conv2d'),
+        norm_cfg: dict = dict(type='BN2d'),
+        bias: str = 'auto',
+        norm_bbox: bool = True,
+        train_cfg: Optional[dict] = None,
+        test_cfg: Optional[dict] = None,
+        init_cfg: Optional[dict] = None,
+        **kwargs,
+    ):
+        assert init_cfg is None, (
+            'To prevent abnormal initialization '
             'behavior, init_cfg is not allowed to be set'
+        )
         super(CenterHead, self).__init__(init_cfg=init_cfg, **kwargs)
 
         # TODO we should rename this variable,
@@ -326,7 +341,8 @@ class CenterHead(BaseModule):
             padding=1,
             conv_cfg=conv_cfg,
             norm_cfg=norm_cfg,
-            bias=bias)
+            bias=bias,
+        )
 
         self.task_heads = nn.ModuleList()
 
@@ -334,7 +350,8 @@ class CenterHead(BaseModule):
             heads = copy.deepcopy(common_heads)
             heads.update(dict(heatmap=(num_cls, num_heatmap_convs)))
             separate_head.update(
-                in_channels=share_conv_channel, heads=heads, num_cls=num_cls)
+                in_channels=share_conv_channel, heads=heads, num_cls=num_cls
+            )
             self.task_heads.append(MODELS.build(separate_head))
 
     def forward_single(self, x: Tensor) -> dict:
@@ -428,7 +445,8 @@ class CenterHead(BaseModule):
                     boxes are valid.
         """
         heatmaps, anno_boxes, inds, masks = multi_apply(
-            self.get_targets_single, batch_gt_instances_3d)
+            self.get_targets_single, batch_gt_instances_3d
+        )
         # Transpose heatmaps
         heatmaps = list(map(list, zip(*heatmaps)))
         heatmaps = [torch.stack(hms_) for hms_ in heatmaps]
@@ -443,8 +461,7 @@ class CenterHead(BaseModule):
         masks = [torch.stack(masks_) for masks_ in masks]
         return heatmaps, anno_boxes, inds, masks
 
-    def get_targets_single(self,
-                           gt_instances_3d: InstanceData) -> Tuple[Tensor]:
+    def get_targets_single(self, gt_instances_3d: InstanceData) -> Tuple[Tensor]:
         """Generate training targets for a single sample.
 
         Args:
@@ -467,8 +484,8 @@ class CenterHead(BaseModule):
         gt_bboxes_3d = gt_instances_3d.bboxes_3d
         device = gt_labels_3d.device
         gt_bboxes_3d = torch.cat(
-            (gt_bboxes_3d.gravity_center, gt_bboxes_3d.tensor[:, 3:]),
-            dim=1).to(device)
+            (gt_bboxes_3d.gravity_center, gt_bboxes_3d.tensor[:, 3:]), dim=1
+        ).to(device)
         max_objs = self.train_cfg['max_objs'] * self.train_cfg['dense_reg']
         grid_size = torch.tensor(self.train_cfg['grid_size']).to(device)
         pc_range = torch.tensor(self.train_cfg['point_cloud_range'])
@@ -480,10 +497,12 @@ class CenterHead(BaseModule):
         task_masks = []
         flag = 0
         for class_name in self.class_names:
-            task_masks.append([
-                torch.where(gt_labels_3d == class_name.index(i) + flag)
-                for i in class_name
-            ])
+            task_masks.append(
+                [
+                    torch.where(gt_labels_3d == class_name.index(i) + flag)
+                    for i in class_name
+                ]
+            )
             flag += len(class_name)
 
         task_boxes = []
@@ -504,11 +523,10 @@ class CenterHead(BaseModule):
 
         for idx, task_head in enumerate(self.task_heads):
             heatmap = gt_bboxes_3d.new_zeros(
-                (len(self.class_names[idx]), feature_map_size[1],
-                 feature_map_size[0]))
+                (len(self.class_names[idx]), feature_map_size[1], feature_map_size[0])
+            )
 
-            anno_box = gt_bboxes_3d.new_zeros((max_objs, 10),
-                                              dtype=torch.float32)
+            anno_box = gt_bboxes_3d.new_zeros((max_objs, 10), dtype=torch.float32)
 
             ind = gt_labels_3d.new_zeros((max_objs), dtype=torch.int64)
             mask = gt_bboxes_3d.new_zeros((max_objs), dtype=torch.uint8)
@@ -520,38 +538,45 @@ class CenterHead(BaseModule):
 
                 length = task_boxes[idx][k][3]
                 width = task_boxes[idx][k][4]
-                length = length / voxel_size[0] / self.train_cfg[
-                    'out_size_factor']
-                width = width / voxel_size[1] / self.train_cfg[
-                    'out_size_factor']
+                length = length / voxel_size[0] / self.train_cfg['out_size_factor']
+                width = width / voxel_size[1] / self.train_cfg['out_size_factor']
 
                 if width > 0 and length > 0:
                     radius = gaussian_radius(
-                        (width, length),
-                        min_overlap=self.train_cfg['gaussian_overlap'])
+                        (width, length), min_overlap=self.train_cfg['gaussian_overlap']
+                    )
                     radius = max(self.train_cfg['min_radius'], int(radius))
 
                     # be really careful for the coordinate system of
                     # your box annotation.
-                    x, y, z = task_boxes[idx][k][0], task_boxes[idx][k][
-                        1], task_boxes[idx][k][2]
+                    x, y, z = (
+                        task_boxes[idx][k][0],
+                        task_boxes[idx][k][1],
+                        task_boxes[idx][k][2],
+                    )
 
                     coor_x = (
-                        x - pc_range[0]
-                    ) / voxel_size[0] / self.train_cfg['out_size_factor']
+                        (x - pc_range[0])
+                        / voxel_size[0]
+                        / self.train_cfg['out_size_factor']
+                    )
                     coor_y = (
-                        y - pc_range[1]
-                    ) / voxel_size[1] / self.train_cfg['out_size_factor']
+                        (y - pc_range[1])
+                        / voxel_size[1]
+                        / self.train_cfg['out_size_factor']
+                    )
 
-                    center = torch.tensor([coor_x, coor_y],
-                                          dtype=torch.float32,
-                                          device=device)
+                    center = torch.tensor(
+                        [coor_x, coor_y], dtype=torch.float32, device=device
+                    )
                     center_int = center.to(torch.int32)
 
                     # throw out not in range objects to avoid out of array
                     # area when creating the heatmap
-                    if not (0 <= center_int[0] < feature_map_size[0]
-                            and 0 <= center_int[1] < feature_map_size[1]):
+                    if not (
+                        0 <= center_int[0] < feature_map_size[0]
+                        and 0 <= center_int[1] < feature_map_size[1]
+                    ):
                         continue
 
                     draw_gaussian(heatmap[cls_id], center_int, radius)
@@ -559,8 +584,10 @@ class CenterHead(BaseModule):
                     new_idx = k
                     x, y = center_int[0], center_int[1]
 
-                    assert (y * feature_map_size[0] + x <
-                            feature_map_size[0] * feature_map_size[1])
+                    assert (
+                        y * feature_map_size[0] + x
+                        < feature_map_size[0] * feature_map_size[1]
+                    )
 
                     ind[new_idx] = y * feature_map_size[0] + x
                     mask[new_idx] = 1
@@ -570,14 +597,17 @@ class CenterHead(BaseModule):
                     box_dim = task_boxes[idx][k][3:6]
                     if self.norm_bbox:
                         box_dim = box_dim.log()
-                    anno_box[new_idx] = torch.cat([
-                        center - torch.tensor([x, y], device=device),
-                        z.unsqueeze(0), box_dim,
-                        torch.sin(rot).unsqueeze(0),
-                        torch.cos(rot).unsqueeze(0),
-                        vx.unsqueeze(0),
-                        vy.unsqueeze(0)
-                    ])
+                    anno_box[new_idx] = torch.cat(
+                        [
+                            center - torch.tensor([x, y], device=device),
+                            z.unsqueeze(0),
+                            box_dim,
+                            torch.sin(rot).unsqueeze(0),
+                            torch.cos(rot).unsqueeze(0),
+                            vx.unsqueeze(0),
+                            vy.unsqueeze(0),
+                        ]
+                    )
 
             heatmaps.append(heatmap)
             anno_boxes.append(anno_box)
@@ -585,9 +615,13 @@ class CenterHead(BaseModule):
             inds.append(ind)
         return heatmaps, anno_boxes, inds, masks
 
-    def loss(self, pts_feats: List[Tensor],
-             batch_data_samples: List[Det3DDataSample], *args,
-             **kwargs) -> Dict[str, Tensor]:
+    def loss(
+        self,
+        pts_feats: List[Tensor],
+        batch_data_samples: List[Det3DDataSample],
+        *args,
+        **kwargs,
+    ) -> Dict[str, Tensor]:
         """Forward function for point cloud branch.
 
         Args:
@@ -606,9 +640,13 @@ class CenterHead(BaseModule):
         losses = self.loss_by_feat(outs, batch_gt_instance_3d)
         return losses
 
-    def loss_by_feat(self, preds_dicts: Tuple[List[dict]],
-                     batch_gt_instances_3d: List[InstanceData], *args,
-                     **kwargs):
+    def loss_by_feat(
+        self,
+        preds_dicts: Tuple[List[dict]],
+        batch_gt_instances_3d: List[InstanceData],
+        *args,
+        **kwargs,
+    ):
         """Loss function for CenterHead.
 
         Args:
@@ -624,24 +662,27 @@ class CenterHead(BaseModule):
             dict[str,torch.Tensor]: Loss of heatmap and bbox of each task.
         """
 
-        heatmaps, anno_boxes, inds, masks = self.get_targets(
-            batch_gt_instances_3d)
+        heatmaps, anno_boxes, inds, masks = self.get_targets(batch_gt_instances_3d)
         loss_dict = dict()
         for task_id, preds_dict in enumerate(preds_dicts):
             # heatmap focal loss
             preds_dict[0]['heatmap'] = clip_sigmoid(preds_dict[0]['heatmap'])
             num_pos = heatmaps[task_id].eq(1).float().sum().item()
             loss_heatmap = self.loss_cls(
-                preds_dict[0]['heatmap'],
-                heatmaps[task_id],
-                avg_factor=max(num_pos, 1))
+                preds_dict[0]['heatmap'], heatmaps[task_id], avg_factor=max(num_pos, 1)
+            )
             target_box = anno_boxes[task_id]
             # reconstruct the anno_box from multiple reg heads
             preds_dict[0]['anno_box'] = torch.cat(
-                (preds_dict[0]['reg'], preds_dict[0]['height'],
-                 preds_dict[0]['dim'], preds_dict[0]['rot'],
-                 preds_dict[0]['vel']),
-                dim=1)
+                (
+                    preds_dict[0]['reg'],
+                    preds_dict[0]['height'],
+                    preds_dict[0]['dim'],
+                    preds_dict[0]['rot'],
+                    preds_dict[0]['vel'],
+                ),
+                dim=1,
+            )
 
             # Regression loss for dimension, offset, height, rotation
             ind = inds[task_id]
@@ -656,16 +697,19 @@ class CenterHead(BaseModule):
             code_weights = self.train_cfg.get('code_weights', None)
             bbox_weights = mask * mask.new_tensor(code_weights)
             loss_bbox = self.loss_bbox(
-                pred, target_box, bbox_weights, avg_factor=(num + 1e-4))
+                pred, target_box, bbox_weights, avg_factor=(num + 1e-4)
+            )
             loss_dict[f'task{task_id}.loss_heatmap'] = loss_heatmap
             loss_dict[f'task{task_id}.loss_bbox'] = loss_bbox
         return loss_dict
 
-    def predict(self,
-                pts_feats: Dict[str, torch.Tensor],
-                batch_data_samples: List[Det3DDataSample],
-                rescale=True,
-                **kwargs) -> List[InstanceData]:
+    def predict(
+        self,
+        pts_feats: Dict[str, torch.Tensor],
+        batch_data_samples: List[Det3DDataSample],
+        rescale=True,
+        **kwargs,
+    ) -> List[InstanceData]:
         """
         Args:
             pts_feats (dict): Point features..
@@ -687,12 +731,17 @@ class CenterHead(BaseModule):
             batch_input_metas.append(metainfo)
 
         results_list = self.predict_by_feat(
-            preds_dict, batch_input_metas, rescale=rescale, **kwargs)
+            preds_dict, batch_input_metas, rescale=rescale, **kwargs
+        )
         return results_list
 
-    def predict_by_feat(self, preds_dicts: Tuple[List[dict]],
-                        batch_input_metas: List[dict], *args,
-                        **kwargs) -> List[InstanceData]:
+    def predict_by_feat(
+        self,
+        preds_dicts: Tuple[List[dict]],
+        batch_input_metas: List[dict],
+        *args,
+        **kwargs,
+    ) -> List[InstanceData]:
         """Generate bboxes from bbox head predictions.
 
         Args:
@@ -747,7 +796,8 @@ class CenterHead(BaseModule):
                 batch_dim,
                 batch_vel,
                 reg=batch_reg,
-                task_id=task_id)
+                task_id=task_id,
+            )
             assert self.test_cfg['nms_type'] in ['circle', 'rotate']
             batch_reg_preds = [box['bboxes'] for box in temp]
             batch_cls_preds = [box['scores'] for box in temp]
@@ -764,9 +814,11 @@ class CenterHead(BaseModule):
                         circle_nms(
                             boxes.detach().cpu().numpy(),
                             self.test_cfg['min_radius'][task_id],
-                            post_max_size=self.test_cfg['post_max_size']),
+                            post_max_size=self.test_cfg['post_max_size'],
+                        ),
                         dtype=torch.long,
-                        device=boxes.device)
+                        device=boxes.device,
+                    )
 
                     boxes3d = boxes3d[keep]
                     scores = scores[keep]
@@ -776,10 +828,14 @@ class CenterHead(BaseModule):
                 rets.append(ret_task)
             else:
                 rets.append(
-                    self.get_task_detections(num_class_with_bg,
-                                             batch_cls_preds, batch_reg_preds,
-                                             batch_cls_labels,
-                                             batch_input_metas))
+                    self.get_task_detections(
+                        num_class_with_bg,
+                        batch_cls_preds,
+                        batch_reg_preds,
+                        batch_cls_labels,
+                        batch_input_metas,
+                    )
+                )
 
         # Merge branches results
         num_samples = len(rets[0])
@@ -792,7 +848,8 @@ class CenterHead(BaseModule):
                     bboxes = torch.cat([ret[i][k] for ret in rets])
                     bboxes[:, 2] = bboxes[:, 2] - bboxes[:, 5] * 0.5
                     bboxes = batch_input_metas[i]['box_type_3d'](
-                        bboxes, self.bbox_coder.code_size)
+                        bboxes, self.bbox_coder.code_size
+                    )
                 elif k == 'scores':
                     scores = torch.cat([ret[i][k] for ret in rets])
                 elif k == 'labels':
@@ -807,8 +864,14 @@ class CenterHead(BaseModule):
             ret_list.append(temp_instances)
         return ret_list
 
-    def get_task_detections(self, num_class_with_bg, batch_cls_preds,
-                            batch_reg_preds, batch_cls_labels, img_metas):
+    def get_task_detections(
+        self,
+        num_class_with_bg,
+        batch_cls_preds,
+        batch_reg_preds,
+        batch_cls_labels,
+        img_metas,
+    ):
         """Rotate nms for each task.
 
         Args:
@@ -837,11 +900,12 @@ class CenterHead(BaseModule):
             post_center_range = torch.tensor(
                 post_center_range,
                 dtype=batch_reg_preds[0].dtype,
-                device=batch_reg_preds[0].device)
+                device=batch_reg_preds[0].device,
+            )
 
         for i, (box_preds, cls_preds, cls_labels) in enumerate(
-                zip(batch_reg_preds, batch_cls_preds, batch_cls_labels)):
-
+            zip(batch_reg_preds, batch_cls_preds, batch_cls_labels)
+        ):
             # Apply NMS in bird eye view
 
             # get the highest score per prediction, then apply nms
@@ -849,9 +913,8 @@ class CenterHead(BaseModule):
             if num_class_with_bg == 1:
                 top_scores = cls_preds.squeeze(-1)
                 top_labels = torch.zeros(
-                    cls_preds.shape[0],
-                    device=cls_preds.device,
-                    dtype=torch.long)
+                    cls_preds.shape[0], device=cls_preds.device, dtype=torch.long
+                )
 
             else:
                 top_labels = cls_labels.long()
@@ -859,8 +922,8 @@ class CenterHead(BaseModule):
 
             if self.test_cfg['score_threshold'] > 0.0:
                 thresh = torch.tensor(
-                    [self.test_cfg['score_threshold']],
-                    device=cls_preds.device).type_as(cls_preds)
+                    [self.test_cfg['score_threshold']], device=cls_preds.device
+                ).type_as(cls_preds)
                 top_scores_keep = top_scores >= thresh
                 top_scores = top_scores.masked_select(top_scores_keep)
 
@@ -869,8 +932,11 @@ class CenterHead(BaseModule):
                     box_preds = box_preds[top_scores_keep]
                     top_labels = top_labels[top_scores_keep]
 
-                boxes_for_nms = xywhr2xyxyr(img_metas[i]['box_type_3d'](
-                    box_preds[:, :], self.bbox_coder.code_size).bev)
+                boxes_for_nms = xywhr2xyxyr(
+                    img_metas[i]['box_type_3d'](
+                        box_preds[:, :], self.bbox_coder.code_size
+                    ).bev
+                )
                 # the nms in 3d detection just remove overlap boxes.
 
                 selected = nms_bev(
@@ -878,7 +944,8 @@ class CenterHead(BaseModule):
                     top_scores,
                     thresh=self.test_cfg['nms_thr'],
                     pre_max_size=self.test_cfg['pre_max_size'],
-                    post_max_size=self.test_cfg['post_max_size'])
+                    post_max_size=self.test_cfg['post_max_size'],
+                )
             else:
                 selected = []
 
@@ -896,30 +963,27 @@ class CenterHead(BaseModule):
                 final_scores = scores
                 final_labels = label_preds
                 if post_center_range is not None:
-                    mask = (final_box_preds[:, :3] >=
-                            post_center_range[:3]).all(1)
-                    mask &= (final_box_preds[:, :3] <=
-                             post_center_range[3:]).all(1)
+                    mask = (final_box_preds[:, :3] >= post_center_range[:3]).all(1)
+                    mask &= (final_box_preds[:, :3] <= post_center_range[3:]).all(1)
                     predictions_dict = dict(
                         bboxes=final_box_preds[mask],
                         scores=final_scores[mask],
-                        labels=final_labels[mask])
+                        labels=final_labels[mask],
+                    )
                 else:
                     predictions_dict = dict(
-                        bboxes=final_box_preds,
-                        scores=final_scores,
-                        labels=final_labels)
+                        bboxes=final_box_preds, scores=final_scores, labels=final_labels
+                    )
             else:
                 dtype = batch_reg_preds[0].dtype
                 device = batch_reg_preds[0].device
                 predictions_dict = dict(
-                    bboxes=torch.zeros([0, self.bbox_coder.code_size],
-                                       dtype=dtype,
-                                       device=device),
+                    bboxes=torch.zeros(
+                        [0, self.bbox_coder.code_size], dtype=dtype, device=device
+                    ),
                     scores=torch.zeros([0], dtype=dtype, device=device),
-                    labels=torch.zeros([0],
-                                       dtype=top_labels.dtype,
-                                       device=device))
+                    labels=torch.zeros([0], dtype=top_labels.dtype, device=device),
+                )
 
             predictions_dicts.append(predictions_dict)
         return predictions_dicts

@@ -2,10 +2,11 @@
 from mmengine.dataset.sampler import DefaultSampler
 
 from mmdet3d.datasets.transforms.formating import Pack3DDetInputs
-from mmdet3d.datasets.transforms.loading import (LoadAnnotations3D,
-                                                 LoadImageFromFileMono3D)
-from mmdet3d.datasets.transforms.transforms_3d import (RandomFlip3D,
-                                                       RandomResize3D)
+from mmdet3d.datasets.transforms.loading import (
+    LoadAnnotations3D,
+    LoadImageFromFileMono3D,
+)
+from mmdet3d.datasets.transforms.transforms_3d import RandomFlip3D, RandomResize3D
 from mmdet3d.datasets.waymo_dataset import WaymoDataset
 from mmdet3d.evaluation.metrics.waymo_metric import WaymoMetric
 
@@ -41,7 +42,8 @@ train_pipeline = [
         with_attr_label=False,
         with_bbox_3d=True,
         with_label_3d=True,
-        with_bbox_depth=True),
+        with_bbox_depth=True,
+    ),
     # base shape (1248, 832), scale (0.95, 1.05)
     dict(
         type=RandomResize3D,
@@ -53,18 +55,22 @@ train_pipeline = [
     dict(
         type=Pack3DDetInputs,
         keys=[
-            'img', 'gt_bboxes', 'gt_bboxes_labels', 'gt_bboxes_3d',
-            'gt_labels_3d', 'centers_2d', 'depths'
-        ]),
+            'img',
+            'gt_bboxes',
+            'gt_bboxes_labels',
+            'gt_bboxes_3d',
+            'gt_labels_3d',
+            'centers_2d',
+            'depths',
+        ],
+    ),
 ]
 
 test_pipeline = [
     dict(type=LoadImageFromFileMono3D, backend_args=backend_args),
     dict(
-        type=RandomResize3D,
-        scale=(1248, 832),
-        ratio_range=(1., 1.),
-        keep_ratio=True),
+        type=RandomResize3D, scale=(1248, 832), ratio_range=(1.0, 1.0), keep_ratio=True
+    ),
     dict(type=Pack3DDetInputs, keys=['img']),
 ]
 # construct a pipeline for data and gt loading in show function
@@ -72,10 +78,8 @@ test_pipeline = [
 eval_pipeline = [
     dict(type=LoadImageFromFileMono3D, backend_args=backend_args),
     dict(
-        type=RandomResize3D,
-        scale=(1248, 832),
-        ratio_range=(1., 1.),
-        keep_ratio=True),
+        type=RandomResize3D, scale=(1248, 832), ratio_range=(1.0, 1.0), keep_ratio=True
+    ),
     dict(type=Pack3DDetInputs, keys=['img']),
 ]
 
@@ -96,7 +100,8 @@ train_dataloader = dict(
             CAM_FRONT_LEFT='training/image_1',
             CAM_FRONT_RIGHT='training/image_2',
             CAM_SIDE_LEFT='training/image_3',
-            CAM_SIDE_RIGHT='training/image_4'),
+            CAM_SIDE_RIGHT='training/image_4',
+        ),
         pipeline=train_pipeline,
         modality=input_modality,
         test_mode=False,
@@ -107,7 +112,9 @@ train_dataloader = dict(
         load_type='mv_image_based',
         # load one frame every three frames
         load_interval=5,
-        backend_args=backend_args))
+        backend_args=backend_args,
+    ),
+)
 
 val_dataloader = dict(
     batch_size=1,
@@ -124,7 +131,8 @@ val_dataloader = dict(
             CAM_FRONT_LEFT='training/image_1',
             CAM_FRONT_RIGHT='training/image_2',
             CAM_SIDE_LEFT='training/image_3',
-            CAM_SIDE_RIGHT='training/image_4'),
+            CAM_SIDE_RIGHT='training/image_4',
+        ),
         ann_file='waymo_infos_val.pkl',
         pipeline=eval_pipeline,
         modality=input_modality,
@@ -134,7 +142,9 @@ val_dataloader = dict(
         # and box_type_3d='Depth' in sunrgbd and scannet dataset.
         box_type_3d='Camera',
         load_type='mv_image_based',
-        backend_args=backend_args))
+        backend_args=backend_args,
+    ),
+)
 
 test_dataloader = dict(
     batch_size=1,
@@ -151,7 +161,8 @@ test_dataloader = dict(
             CAM_FRONT_LEFT='training/image_1',
             CAM_FRONT_RIGHT='training/image_2',
             CAM_SIDE_LEFT='training/image_3',
-            CAM_SIDE_RIGHT='training/image_4'),
+            CAM_SIDE_RIGHT='training/image_4',
+        ),
         ann_file='waymo_infos_val.pkl',
         pipeline=eval_pipeline,
         modality=input_modality,
@@ -161,7 +172,9 @@ test_dataloader = dict(
         # and box_type_3d='Depth' in sunrgbd and scannet dataset.
         box_type_3d='Camera',
         load_type='mv_image_based',
-        backend_args=backend_args))
+        backend_args=backend_args,
+    ),
+)
 
 val_evaluator = dict(
     type=WaymoMetric,
@@ -170,5 +183,6 @@ val_evaluator = dict(
     data_root='./data/waymo/waymo_format',
     metric='LET_mAP',
     load_type='mv_image_based',
-    backend_args=backend_args)
+    backend_args=backend_args,
+)
 test_evaluator = val_evaluator

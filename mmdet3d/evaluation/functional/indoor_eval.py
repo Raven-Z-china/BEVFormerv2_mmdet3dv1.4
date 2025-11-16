@@ -38,8 +38,7 @@ def average_precision(recalls, precisions, mode='area'):
             mpre[:, i - 1] = np.maximum(mpre[:, i - 1], mpre[:, i])
         for i in range(num_scales):
             ind = np.where(mrec[i, 1:] != mrec[i, :-1])[0]
-            ap[i] = np.sum(
-                (mrec[i, ind + 1] - mrec[i, ind]) * mpre[i, ind + 1])
+            ap[i] = np.sum((mrec[i, ind + 1] - mrec[i, ind]) * mpre[i, ind + 1])
     elif mode == '11points':
         for i in range(num_scales):
             for thr in np.arange(0, 1 + 1e-3, 0.1):
@@ -48,8 +47,7 @@ def average_precision(recalls, precisions, mode='area'):
                 ap[i] += prec
             ap /= 11
     else:
-        raise ValueError(
-            'Unrecognized mode, only "area" and "11points" are supported')
+        raise ValueError('Unrecognized mode, only "area" and "11points" are supported')
     return ap
 
 
@@ -139,12 +137,12 @@ def eval_det_cls(pred, gt, iou_thr=None):
         for iou_idx, thresh in enumerate(iou_thr):
             if iou_max > thresh:
                 if not R['det'][iou_idx][jmax]:
-                    tp_thr[iou_idx][d] = 1.
+                    tp_thr[iou_idx][d] = 1.0
                     R['det'][iou_idx][jmax] = 1
                 else:
-                    fp_thr[iou_idx][d] = 1.
+                    fp_thr[iou_idx][d] = 1.0
             else:
-                fp_thr[iou_idx][d] = 1.
+                fp_thr[iou_idx][d] = 1.0
 
     ret = []
     for iou_idx, thresh in enumerate(iou_thr):
@@ -181,8 +179,9 @@ def eval_map_recall(pred, gt, ovthresh=None):
     ret_values = {}
     for classname in gt.keys():
         if classname in pred:
-            ret_values[classname] = eval_det_cls(pred[classname],
-                                                 gt[classname], ovthresh)
+            ret_values[classname] = eval_det_cls(
+                pred[classname], gt[classname], ovthresh
+            )
     recall = [{} for i in ovthresh]
     precision = [{} for i in ovthresh]
     ap = [{} for i in ovthresh]
@@ -190,8 +189,11 @@ def eval_map_recall(pred, gt, ovthresh=None):
     for label in gt.keys():
         for iou_idx, thresh in enumerate(ovthresh):
             if label in pred:
-                recall[iou_idx][label], precision[iou_idx][label], ap[iou_idx][
-                    label] = ret_values[label][iou_idx]
+                (
+                    recall[iou_idx][label],
+                    precision[iou_idx][label],
+                    ap[iou_idx][label],
+                ) = ret_values[label][iou_idx]
             else:
                 recall[iou_idx][label] = np.zeros(1)
                 precision[iou_idx][label] = np.zeros(1)
@@ -200,12 +202,7 @@ def eval_map_recall(pred, gt, ovthresh=None):
     return recall, precision, ap
 
 
-def indoor_eval(gt_annos,
-                dt_annos,
-                metric,
-                label2cat,
-                logger=None,
-                box_mode_3d=None):
+def indoor_eval(gt_annos, dt_annos, metric, label2cat, logger=None, box_mode_3d=None):
     """Indoor Evaluation.
 
     Evaluate the result of the detection.
@@ -265,18 +262,15 @@ def indoor_eval(gt_annos,
     rec, prec, ap = eval_map_recall(pred, gt, metric)
     ret_dict = dict()
     header = ['classes']
-    table_columns = [[label2cat[label]
-                      for label in ap[0].keys()] + ['Overall']]
+    table_columns = [[label2cat[label] for label in ap[0].keys()] + ['Overall']]
 
     for i, iou_thresh in enumerate(metric):
         header.append(f'AP_{iou_thresh:.2f}')
         header.append(f'AR_{iou_thresh:.2f}')
         rec_list = []
         for label in ap[i].keys():
-            ret_dict[f'{label2cat[label]}_AP_{iou_thresh:.2f}'] = float(
-                ap[i][label][0])
-        ret_dict[f'mAP_{iou_thresh:.2f}'] = float(
-            np.mean(list(ap[i].values())))
+            ret_dict[f'{label2cat[label]}_AP_{iou_thresh:.2f}'] = float(ap[i][label][0])
+        ret_dict[f'mAP_{iou_thresh:.2f}'] = float(np.mean(list(ap[i].values())))
 
         table_columns.append(list(map(float, list(ap[i].values()))))
         table_columns[-1] += [ret_dict[f'mAP_{iou_thresh:.2f}']]
@@ -284,7 +278,8 @@ def indoor_eval(gt_annos,
 
         for label in rec[i].keys():
             ret_dict[f'{label2cat[label]}_rec_{iou_thresh:.2f}'] = float(
-                rec[i][label][-1])
+                rec[i][label][-1]
+            )
             rec_list.append(rec[i][label][-1])
         ret_dict[f'mAR_{iou_thresh:.2f}'] = float(np.mean(rec_list))
 

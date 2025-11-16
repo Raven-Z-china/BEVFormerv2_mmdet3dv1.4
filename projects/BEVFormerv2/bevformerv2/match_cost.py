@@ -110,8 +110,8 @@ def bbox_overlaps(bboxes1, bboxes2, mode='iou', is_aligned=False, eps=1e-6):
 
     assert mode in ['iou', 'iof', 'giou'], f'Unsupported mode {mode}'
     # Either the boxes are empty or the length of boxes' last dimension is 4
-    assert (bboxes1.size(-1) == 4 or bboxes1.size(0) == 0)
-    assert (bboxes2.size(-1) == 4 or bboxes2.size(0) == 0)
+    assert bboxes1.size(-1) == 4 or bboxes1.size(0) == 0
+    assert bboxes2.size(-1) == 4 or bboxes2.size(0) == 0
 
     # Batch dim must be the same
     # Batch dim: (B1, B2, ... Bn)
@@ -125,14 +125,12 @@ def bbox_overlaps(bboxes1, bboxes2, mode='iou', is_aligned=False, eps=1e-6):
 
     if rows * cols == 0:
         if is_aligned:
-            return bboxes1.new(batch_shape + (rows, ))
+            return bboxes1.new(batch_shape + (rows,))
         else:
             return bboxes1.new(batch_shape + (rows, cols))
 
-    area1 = (bboxes1[..., 2] - bboxes1[..., 0]) * (
-        bboxes1[..., 3] - bboxes1[..., 1])
-    area2 = (bboxes2[..., 2] - bboxes2[..., 0]) * (
-        bboxes2[..., 3] - bboxes2[..., 1])
+    area1 = (bboxes1[..., 2] - bboxes1[..., 0]) * (bboxes1[..., 3] - bboxes1[..., 1])
+    area2 = (bboxes2[..., 2] - bboxes2[..., 0]) * (bboxes2[..., 3] - bboxes2[..., 1])
 
     if is_aligned:
         lt = torch.max(bboxes1[..., :2], bboxes2[..., :2])  # [B, rows, 2]
@@ -149,10 +147,12 @@ def bbox_overlaps(bboxes1, bboxes2, mode='iou', is_aligned=False, eps=1e-6):
             enclosed_lt = torch.min(bboxes1[..., :2], bboxes2[..., :2])
             enclosed_rb = torch.max(bboxes1[..., 2:], bboxes2[..., 2:])
     else:
-        lt = torch.max(bboxes1[..., :, None, :2],
-                       bboxes2[..., None, :, :2])  # [B, rows, cols, 2]
-        rb = torch.min(bboxes1[..., :, None, 2:],
-                       bboxes2[..., None, :, 2:])  # [B, rows, cols, 2]
+        lt = torch.max(
+            bboxes1[..., :, None, :2], bboxes2[..., None, :, :2]
+        )  # [B, rows, cols, 2]
+        rb = torch.min(
+            bboxes1[..., :, None, 2:], bboxes2[..., None, :, 2:]
+        )  # [B, rows, cols, 2]
 
         wh = fp16_clamp(rb - lt, min=0)
         overlap = wh[..., 0] * wh[..., 1]
@@ -162,10 +162,12 @@ def bbox_overlaps(bboxes1, bboxes2, mode='iou', is_aligned=False, eps=1e-6):
         else:
             union = area1[..., None]
         if mode == 'giou':
-            enclosed_lt = torch.min(bboxes1[..., :, None, :2],
-                                    bboxes2[..., None, :, :2])
-            enclosed_rb = torch.max(bboxes1[..., :, None, 2:],
-                                    bboxes2[..., None, :, 2:])
+            enclosed_lt = torch.min(
+                bboxes1[..., :, None, :2], bboxes2[..., None, :, :2]
+            )
+            enclosed_rb = torch.max(
+                bboxes1[..., :, None, 2:], bboxes2[..., None, :, 2:]
+            )
 
     eps = union.new_tensor([eps])
     union = torch.max(union, eps)
@@ -179,6 +181,7 @@ def bbox_overlaps(bboxes1, bboxes2, mode='iou', is_aligned=False, eps=1e-6):
     gious = ious - (enclose_area - union) / enclose_area
     return gious
 
+
 @TASK_UTILS.register_module()
 class BBox3DL1Cost(object):
     """BBox3DL1Cost.
@@ -187,7 +190,7 @@ class BBox3DL1Cost(object):
         weight (int | float, optional): loss_weight
     """
 
-    def __init__(self, weight=1.):
+    def __init__(self, weight=1.0):
         self.weight = weight
 
     def __call__(self, bbox_pred, gt_bboxes):
@@ -208,33 +211,29 @@ class BBox3DL1Cost(object):
 @TASK_UTILS.register_module()
 class FocalLossCost:
     """FocalLossCost.
-     Args:
-         weight (int | float, optional): loss_weight
-         alpha (int | float, optional): focal_loss alpha
-         gamma (int | float, optional): focal_loss gamma
-         eps (float, optional): default 1e-12
-         binary_input (bool, optional): Whether the input is binary,
-            default False.
-     Examples:
-         >>> from mmdet.core.bbox.match_costs.match_cost import FocalLossCost
-         >>> import torch
-         >>> self = FocalLossCost()
-         >>> cls_pred = torch.rand(4, 3)
-         >>> gt_labels = torch.tensor([0, 1, 2])
-         >>> factor = torch.tensor([10, 8, 10, 8])
-         >>> self(cls_pred, gt_labels)
-         tensor([[-0.3236, -0.3364, -0.2699],
-                [-0.3439, -0.3209, -0.4807],
-                [-0.4099, -0.3795, -0.2929],
-                [-0.1950, -0.1207, -0.2626]])
+
+    Args:
+        weight (int | float, optional): loss_weight
+        alpha (int | float, optional): focal_loss alpha
+        gamma (int | float, optional): focal_loss gamma
+        eps (float, optional): default 1e-12
+        binary_input (bool, optional): Whether the input is binary,
+           default False.
+    Examples:
+        >>> from mmdet.core.bbox.match_costs.match_cost import FocalLossCost
+        >>> import torch
+        >>> self = FocalLossCost()
+        >>> cls_pred = torch.rand(4, 3)
+        >>> gt_labels = torch.tensor([0, 1, 2])
+        >>> factor = torch.tensor([10, 8, 10, 8])
+        >>> self(cls_pred, gt_labels)
+        tensor([[-0.3236, -0.3364, -0.2699],
+               [-0.3439, -0.3209, -0.4807],
+               [-0.4099, -0.3795, -0.2929],
+               [-0.1950, -0.1207, -0.2626]])
     """
 
-    def __init__(self,
-                 weight=1.,
-                 alpha=0.25,
-                 gamma=2,
-                 eps=1e-12,
-                 binary_input=False):
+    def __init__(self, weight=1.0, alpha=0.25, gamma=2, eps=1e-12, binary_input=False):
         self.weight = weight
         self.alpha = alpha
         self.gamma = gamma
@@ -251,10 +250,14 @@ class FocalLossCost:
             torch.Tensor: cls_cost value with weight
         """
         cls_pred = cls_pred.sigmoid()
-        neg_cost = -(1 - cls_pred + self.eps).log() * (
-            1 - self.alpha) * cls_pred.pow(self.gamma)
-        pos_cost = -(cls_pred + self.eps).log() * self.alpha * (
-            1 - cls_pred).pow(self.gamma)
+        neg_cost = (
+            -(1 - cls_pred + self.eps).log()
+            * (1 - self.alpha)
+            * cls_pred.pow(self.gamma)
+        )
+        pos_cost = (
+            -(cls_pred + self.eps).log() * self.alpha * (1 - cls_pred).pow(self.gamma)
+        )
 
         cls_cost = pos_cost[:, gt_labels] - neg_cost[:, gt_labels]
         return cls_cost * self.weight
@@ -274,13 +277,18 @@ class FocalLossCost:
         gt_labels = gt_labels.flatten(1).float()
         n = cls_pred.shape[1]
         cls_pred = cls_pred.sigmoid()
-        neg_cost = -(1 - cls_pred + self.eps).log() * (
-            1 - self.alpha) * cls_pred.pow(self.gamma)
-        pos_cost = -(cls_pred + self.eps).log() * self.alpha * (
-            1 - cls_pred).pow(self.gamma)
+        neg_cost = (
+            -(1 - cls_pred + self.eps).log()
+            * (1 - self.alpha)
+            * cls_pred.pow(self.gamma)
+        )
+        pos_cost = (
+            -(cls_pred + self.eps).log() * self.alpha * (1 - cls_pred).pow(self.gamma)
+        )
 
-        cls_cost = torch.einsum('nc,mc->nm', pos_cost, gt_labels) + \
-            torch.einsum('nc,mc->nm', neg_cost, (1 - gt_labels))
+        cls_cost = torch.einsum('nc,mc->nm', pos_cost, gt_labels) + torch.einsum(
+            'nc,mc->nm', neg_cost, (1 - gt_labels)
+        )
         return cls_cost / n * self.weight
 
     def __call__(self, cls_pred, gt_labels):
@@ -301,21 +309,22 @@ class FocalLossCost:
 @TASK_UTILS.register_module()
 class IoUCost:
     """IoUCost.
-     Args:
-         iou_mode (str, optional): iou mode such as 'iou' | 'giou'
-         weight (int | float, optional): loss weight
-     Examples:
-         >>> from mmdet.core.bbox.match_costs.match_cost import IoUCost
-         >>> import torch
-         >>> self = IoUCost()
-         >>> bboxes = torch.FloatTensor([[1,1, 2, 2], [2, 2, 3, 4]])
-         >>> gt_bboxes = torch.FloatTensor([[0, 0, 2, 4], [1, 2, 3, 4]])
-         >>> self(bboxes, gt_bboxes)
-         tensor([[-0.1250,  0.1667],
-                [ 0.1667, -0.5000]])
+
+    Args:
+        iou_mode (str, optional): iou mode such as 'iou' | 'giou'
+        weight (int | float, optional): loss weight
+    Examples:
+        >>> from mmdet.core.bbox.match_costs.match_cost import IoUCost
+        >>> import torch
+        >>> self = IoUCost()
+        >>> bboxes = torch.FloatTensor([[1,1, 2, 2], [2, 2, 3, 4]])
+        >>> gt_bboxes = torch.FloatTensor([[0, 0, 2, 4], [1, 2, 3, 4]])
+        >>> self(bboxes, gt_bboxes)
+        tensor([[-0.1250,  0.1667],
+               [ 0.1667, -0.5000]])
     """
 
-    def __init__(self, iou_mode='giou', weight=1.):
+    def __init__(self, iou_mode='giou', weight=1.0):
         self.weight = weight
         self.iou_mode = iou_mode
 
@@ -331,7 +340,8 @@ class IoUCost:
         """
         # overlaps: [num_bboxes, num_gt]
         overlaps = bbox_overlaps(
-            bboxes, gt_bboxes, mode=self.iou_mode, is_aligned=False)
+            bboxes, gt_bboxes, mode=self.iou_mode, is_aligned=False
+        )
         # The 1 is a constant that doesn't change the matching, so omitted.
         iou_cost = -overlaps
         return iou_cost * self.weight

@@ -2,18 +2,24 @@
 from typing import List, Optional, Tuple
 
 import torch
-from mmdet.models.utils import (gaussian_radius, gen_gaussian_target,
-                                multi_apply)
-from mmdet.models.utils.gaussian_target import (get_local_maximum,
-                                                get_topk_from_heatmap,
-                                                transpose_and_gather_feat)
+from mmdet.models.utils import gaussian_radius, gen_gaussian_target, multi_apply
+from mmdet.models.utils.gaussian_target import (
+    get_local_maximum,
+    get_topk_from_heatmap,
+    transpose_and_gather_feat,
+)
 from mmengine.structures import InstanceData
 from torch import Tensor
 from torch.nn import functional as F
 
 from mmdet3d.registry import MODELS, TASK_UTILS
-from mmdet3d.utils import (ConfigType, InstanceList, OptConfigType,
-                           OptInstanceList, OptMultiConfig)
+from mmdet3d.utils import (
+    ConfigType,
+    InstanceList,
+    OptConfigType,
+    OptInstanceList,
+    OptMultiConfig,
+)
 from .anchor_free_mono3d_head import AnchorFreeMono3DHead
 
 
@@ -51,22 +57,21 @@ class SMOKEMono3DHead(AnchorFreeMono3DHead):
             dict]): Initialization config dict. Defaults to None.
     """  # noqa: E501
 
-    def __init__(self,
-                 num_classes: int,
-                 in_channels: int,
-                 dim_channel: List[int],
-                 ori_channel: List[int],
-                 bbox_coder: ConfigType,
-                 loss_cls: ConfigType = dict(
-                     type='mmdet.GaussionFocalLoss', loss_weight=1.0),
-                 loss_bbox: ConfigType = dict(
-                     type='mmdet.L1Loss', loss_weight=0.1),
-                 loss_dir: OptConfigType = None,
-                 loss_attr: OptConfigType = None,
-                 norm_cfg: OptConfigType = dict(
-                     type='GN', num_groups=32, requires_grad=True),
-                 init_cfg: OptMultiConfig = None,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        num_classes: int,
+        in_channels: int,
+        dim_channel: List[int],
+        ori_channel: List[int],
+        bbox_coder: ConfigType,
+        loss_cls: ConfigType = dict(type='mmdet.GaussionFocalLoss', loss_weight=1.0),
+        loss_bbox: ConfigType = dict(type='mmdet.L1Loss', loss_weight=0.1),
+        loss_dir: OptConfigType = None,
+        loss_attr: OptConfigType = None,
+        norm_cfg: OptConfigType = dict(type='GN', num_groups=32, requires_grad=True),
+        init_cfg: OptMultiConfig = None,
+        **kwargs
+    ) -> None:
         super().__init__(
             num_classes,
             in_channels,
@@ -76,7 +81,8 @@ class SMOKEMono3DHead(AnchorFreeMono3DHead):
             loss_attr=loss_attr,
             norm_cfg=norm_cfg,
             init_cfg=init_cfg,
-            **kwargs)
+            **kwargs
+        )
         self.dim_channel = dim_channel
         self.ori_channel = ori_channel
         self.bbox_coder = TASK_UTILS.build(bbox_coder)
@@ -108,8 +114,14 @@ class SMOKEMono3DHead(AnchorFreeMono3DHead):
         Returns:
             tuple: Scores for each class, bbox of input feature maps.
         """
-        cls_score, bbox_pred, dir_cls_pred, attr_pred, cls_feat, reg_feat = \
-            super().forward_single(x)
+        (
+            cls_score,
+            bbox_pred,
+            dir_cls_pred,
+            attr_pred,
+            cls_feat,
+            reg_feat,
+        ) = super().forward_single(x)
         cls_score = cls_score.sigmoid()  # turn to 0-1
         cls_score = cls_score.clamp(min=1e-4, max=1 - 1e-4)
         # (N, C, H, W)
@@ -120,11 +132,13 @@ class SMOKEMono3DHead(AnchorFreeMono3DHead):
         bbox_pred[:, self.ori_channel, ...] = F.normalize(vector_ori)
         return cls_score, bbox_pred
 
-    def predict_by_feat(self,
-                        cls_scores: List[Tensor],
-                        bbox_preds: List[Tensor],
-                        batch_img_metas: Optional[List[dict]] = None,
-                        rescale: bool = None) -> InstanceList:
+    def predict_by_feat(
+        self,
+        cls_scores: List[Tensor],
+        bbox_preds: List[Tensor],
+        batch_img_metas: Optional[List[dict]] = None,
+        rescale: bool = None,
+    ) -> InstanceList:
         """Generate bboxes from bbox head predictions.
 
         Args:
@@ -147,14 +161,18 @@ class SMOKEMono3DHead(AnchorFreeMono3DHead):
                 (num_instances, 7).
         """
         assert len(cls_scores) == len(bbox_preds) == 1
-        cam2imgs = torch.stack([
-            cls_scores[0].new_tensor(img_meta['cam2img'])
-            for img_meta in batch_img_metas
-        ])
-        trans_mats = torch.stack([
-            cls_scores[0].new_tensor(img_meta['trans_mat'])
-            for img_meta in batch_img_metas
-        ])
+        cam2imgs = torch.stack(
+            [
+                cls_scores[0].new_tensor(img_meta['cam2img'])
+                for img_meta in batch_img_metas
+            ]
+        )
+        trans_mats = torch.stack(
+            [
+                cls_scores[0].new_tensor(img_meta['trans_mat'])
+                for img_meta in batch_img_metas
+            ]
+        )
         batch_bboxes, batch_scores, batch_topk_labels = self._decode_heatmap(
             cls_scores[0],
             bbox_preds[0],
@@ -162,11 +180,11 @@ class SMOKEMono3DHead(AnchorFreeMono3DHead):
             cam2imgs=cam2imgs,
             trans_mats=trans_mats,
             topk=100,
-            kernel=3)
+            kernel=3,
+        )
 
         result_list = []
         for img_id in range(len(batch_img_metas)):
-
             bboxes = batch_bboxes[img_id]
             scores = batch_scores[img_id]
             labels = batch_topk_labels[img_id]
@@ -177,7 +195,8 @@ class SMOKEMono3DHead(AnchorFreeMono3DHead):
             labels = labels[keep_idx]
 
             bboxes = batch_img_metas[img_id]['box_type_3d'](
-                bboxes, box_dim=self.bbox_code_size, origin=(0.5, 0.5, 0.5))
+                bboxes, box_dim=self.bbox_code_size, origin=(0.5, 0.5, 0.5)
+            )
             attrs = None
 
             results = InstanceData()
@@ -192,14 +211,16 @@ class SMOKEMono3DHead(AnchorFreeMono3DHead):
 
         return result_list
 
-    def _decode_heatmap(self,
-                        cls_score: Tensor,
-                        reg_pred: Tensor,
-                        batch_img_metas: List[dict],
-                        cam2imgs: Tensor,
-                        trans_mats: Tensor,
-                        topk: int = 100,
-                        kernel: int = 3) -> Tuple[Tensor, Tensor, Tensor]:
+    def _decode_heatmap(
+        self,
+        cls_score: Tensor,
+        reg_pred: Tensor,
+        batch_img_metas: List[dict],
+        cam2imgs: Tensor,
+        trans_mats: Tensor,
+        topk: int = 100,
+        kernel: int = 3,
+    ) -> Tuple[Tensor, Tensor, Tensor]:
         """Transform outputs into detections raw bbox predictions.
 
         Args:
@@ -235,26 +256,33 @@ class SMOKEMono3DHead(AnchorFreeMono3DHead):
         center_heatmap_pred = get_local_maximum(cls_score, kernel=kernel)
 
         *batch_dets, topk_ys, topk_xs = get_topk_from_heatmap(
-            center_heatmap_pred, k=topk)
+            center_heatmap_pred, k=topk
+        )
         batch_scores, batch_index, batch_topk_labels = batch_dets
 
         regression = transpose_and_gather_feat(reg_pred, batch_index)
         regression = regression.view(-1, 8)
 
-        points = torch.cat([topk_xs.view(-1, 1),
-                            topk_ys.view(-1, 1).float()],
-                           dim=1)
+        points = torch.cat([topk_xs.view(-1, 1), topk_ys.view(-1, 1).float()], dim=1)
         locations, dimensions, orientations = self.bbox_coder.decode(
-            regression, points, batch_topk_labels, cam2imgs, trans_mats)
+            regression, points, batch_topk_labels, cam2imgs, trans_mats
+        )
 
         batch_bboxes = torch.cat((locations, dimensions, orientations), dim=1)
         batch_bboxes = batch_bboxes.view(bs, -1, self.bbox_code_size)
         return batch_bboxes, batch_scores, batch_topk_labels
 
-    def get_predictions(self, labels_3d: Tensor, centers_2d: Tensor,
-                        gt_locations: Tensor, gt_dimensions: Tensor,
-                        gt_orientations: Tensor, indices: Tensor,
-                        batch_img_metas: List[dict], pred_reg: Tensor) -> dict:
+    def get_predictions(
+        self,
+        labels_3d: Tensor,
+        centers_2d: Tensor,
+        gt_locations: Tensor,
+        gt_dimensions: Tensor,
+        gt_orientations: Tensor,
+        indices: Tensor,
+        batch_img_metas: List[dict],
+        pred_reg: Tensor,
+    ) -> dict:
         """Prepare predictions for computing loss.
 
         Args:
@@ -287,24 +315,36 @@ class SMOKEMono3DHead(AnchorFreeMono3DHead):
         """
         batch, channel = pred_reg.shape[0], pred_reg.shape[1]
         w = pred_reg.shape[3]
-        cam2imgs = torch.stack([
-            gt_locations.new_tensor(img_meta['cam2img'])
-            for img_meta in batch_img_metas
-        ])
-        trans_mats = torch.stack([
-            gt_locations.new_tensor(img_meta['trans_mat'])
-            for img_meta in batch_img_metas
-        ])
+        cam2imgs = torch.stack(
+            [
+                gt_locations.new_tensor(img_meta['cam2img'])
+                for img_meta in batch_img_metas
+            ]
+        )
+        trans_mats = torch.stack(
+            [
+                gt_locations.new_tensor(img_meta['trans_mat'])
+                for img_meta in batch_img_metas
+            ]
+        )
         centers_2d_inds = centers_2d[:, 1] * w + centers_2d[:, 0]
         centers_2d_inds = centers_2d_inds.view(batch, -1)
         pred_regression = transpose_and_gather_feat(pred_reg, centers_2d_inds)
         pred_regression_pois = pred_regression.view(-1, channel)
         locations, dimensions, orientations = self.bbox_coder.decode(
-            pred_regression_pois, centers_2d, labels_3d, cam2imgs, trans_mats,
-            gt_locations)
+            pred_regression_pois,
+            centers_2d,
+            labels_3d,
+            cam2imgs,
+            trans_mats,
+            gt_locations,
+        )
 
-        locations, dimensions, orientations = locations[indices], dimensions[
-            indices], orientations[indices]
+        locations, dimensions, orientations = (
+            locations[indices],
+            dimensions[indices],
+            orientations[indices],
+        )
 
         locations[:, 1] += dimensions[:, 1] / 2
 
@@ -313,20 +353,27 @@ class SMOKEMono3DHead(AnchorFreeMono3DHead):
         assert len(locations) == len(gt_locations)
         assert len(dimensions) == len(gt_dimensions)
         assert len(orientations) == len(gt_orientations)
-        bbox3d_yaws = self.bbox_coder.encode(gt_locations, gt_dimensions,
-                                             orientations, batch_img_metas)
-        bbox3d_dims = self.bbox_coder.encode(gt_locations, dimensions,
-                                             gt_orientations, batch_img_metas)
-        bbox3d_locs = self.bbox_coder.encode(locations, gt_dimensions,
-                                             gt_orientations, batch_img_metas)
+        bbox3d_yaws = self.bbox_coder.encode(
+            gt_locations, gt_dimensions, orientations, batch_img_metas
+        )
+        bbox3d_dims = self.bbox_coder.encode(
+            gt_locations, dimensions, gt_orientations, batch_img_metas
+        )
+        bbox3d_locs = self.bbox_coder.encode(
+            locations, gt_dimensions, gt_orientations, batch_img_metas
+        )
 
         pred_bboxes = dict(ori=bbox3d_yaws, dim=bbox3d_dims, loc=bbox3d_locs)
 
         return pred_bboxes
 
-    def get_targets(self, batch_gt_instances_3d: InstanceList,
-                    batch_gt_instances: InstanceList, feat_shape: Tuple[int],
-                    batch_img_metas: List[dict]) -> Tuple[Tensor, int, dict]:
+    def get_targets(
+        self,
+        batch_gt_instances_3d: InstanceList,
+        batch_gt_instances: InstanceList,
+        feat_shape: Tuple[int],
+        batch_img_metas: List[dict],
+    ) -> Tuple[Tensor, int, dict]:
         """Get training targets for batch images.
 
         Args:
@@ -362,31 +409,25 @@ class SMOKEMono3DHead(AnchorFreeMono3DHead):
                     shape (N, 8, 3)
         """
 
-        gt_bboxes = [
-            gt_instances.bboxes for gt_instances in batch_gt_instances
-        ]
-        gt_labels = [
-            gt_instances.labels for gt_instances in batch_gt_instances
-        ]
+        gt_bboxes = [gt_instances.bboxes for gt_instances in batch_gt_instances]
+        gt_labels = [gt_instances.labels for gt_instances in batch_gt_instances]
         gt_bboxes_3d = [
-            gt_instances_3d.bboxes_3d
-            for gt_instances_3d in batch_gt_instances_3d
+            gt_instances_3d.bboxes_3d for gt_instances_3d in batch_gt_instances_3d
         ]
         gt_labels_3d = [
-            gt_instances_3d.labels_3d
-            for gt_instances_3d in batch_gt_instances_3d
+            gt_instances_3d.labels_3d for gt_instances_3d in batch_gt_instances_3d
         ]
         centers_2d = [
-            gt_instances_3d.centers_2d
-            for gt_instances_3d in batch_gt_instances_3d
+            gt_instances_3d.centers_2d for gt_instances_3d in batch_gt_instances_3d
         ]
         img_shape = batch_img_metas[0]['pad_shape']
 
-        reg_mask = torch.stack([
-            gt_bboxes[0].new_tensor(
-                not img_meta['affine_aug'], dtype=torch.bool)
-            for img_meta in batch_img_metas
-        ])
+        reg_mask = torch.stack(
+            [
+                gt_bboxes[0].new_tensor(not img_meta['affine_aug'], dtype=torch.bool)
+                for img_meta in batch_img_metas
+            ]
+        )
 
         img_h, img_w = img_shape[:2]
         bs, _, feat_h, feat_w = feat_shape
@@ -397,7 +438,8 @@ class SMOKEMono3DHead(AnchorFreeMono3DHead):
         assert width_ratio == height_ratio
 
         center_heatmap_target = gt_bboxes[-1].new_zeros(
-            [bs, self.num_classes, feat_h, feat_w])
+            [bs, self.num_classes, feat_h, feat_w]
+        )
 
         gt_centers_2d = centers_2d.copy()
 
@@ -411,22 +453,22 @@ class SMOKEMono3DHead(AnchorFreeMono3DHead):
                 center_x_int, center_y_int = center.int()
                 scale_box_h = (gt_bbox[j][3] - gt_bbox[j][1]) * height_ratio
                 scale_box_w = (gt_bbox[j][2] - gt_bbox[j][0]) * width_ratio
-                radius = gaussian_radius([scale_box_h, scale_box_w],
-                                         min_overlap=0.7)
+                radius = gaussian_radius([scale_box_h, scale_box_w], min_overlap=0.7)
                 radius = max(0, int(radius))
                 ind = gt_label[j]
-                gen_gaussian_target(center_heatmap_target[batch_id, ind],
-                                    [center_x_int, center_y_int], radius)
+                gen_gaussian_target(
+                    center_heatmap_target[batch_id, ind],
+                    [center_x_int, center_y_int],
+                    radius,
+                )
 
         avg_factor = max(1, center_heatmap_target.eq(1).sum())
         num_ctrs = [center_2d.shape[0] for center_2d in centers_2d]
         max_objs = max(num_ctrs)
 
-        reg_inds = torch.cat(
-            [reg_mask[i].repeat(num_ctrs[i]) for i in range(bs)])
+        reg_inds = torch.cat([reg_mask[i].repeat(num_ctrs[i]) for i in range(bs)])
 
-        inds = torch.zeros((bs, max_objs),
-                           dtype=torch.bool).to(centers_2d[0].device)
+        inds = torch.zeros((bs, max_objs), dtype=torch.bool).to(centers_2d[0].device)
 
         # put gt 3d bboxes to gpu
         gt_bboxes_3d = [
@@ -435,14 +477,12 @@ class SMOKEMono3DHead(AnchorFreeMono3DHead):
 
         batch_centers_2d = centers_2d[0].new_zeros((bs, max_objs, 2))
         batch_labels_3d = gt_labels_3d[0].new_zeros((bs, max_objs))
-        batch_gt_locations = \
-            gt_bboxes_3d[0].tensor.new_zeros((bs, max_objs, 3))
+        batch_gt_locations = gt_bboxes_3d[0].tensor.new_zeros((bs, max_objs, 3))
         for i in range(bs):
-            inds[i, :num_ctrs[i]] = 1
-            batch_centers_2d[i, :num_ctrs[i]] = centers_2d[i]
-            batch_labels_3d[i, :num_ctrs[i]] = gt_labels_3d[i]
-            batch_gt_locations[i, :num_ctrs[i]] = \
-                gt_bboxes_3d[i].tensor[:, :3]
+            inds[i, : num_ctrs[i]] = 1
+            batch_centers_2d[i, : num_ctrs[i]] = centers_2d[i]
+            batch_labels_3d[i, : num_ctrs[i]] = gt_labels_3d[i]
+            batch_gt_locations[i, : num_ctrs[i]] = gt_bboxes_3d[i].tensor[:, :3]
 
         inds = inds.flatten()
         batch_centers_2d = batch_centers_2d.view(-1, 2) * width_ratio
@@ -450,18 +490,16 @@ class SMOKEMono3DHead(AnchorFreeMono3DHead):
 
         # filter the empty image, without gt_bboxes_3d
         gt_bboxes_3d = [
-            gt_bbox_3d for gt_bbox_3d in gt_bboxes_3d
-            if gt_bbox_3d.tensor.shape[0] > 0
+            gt_bbox_3d for gt_bbox_3d in gt_bboxes_3d if gt_bbox_3d.tensor.shape[0] > 0
         ]
 
         gt_dimensions = torch.cat(
-            [gt_bbox_3d.tensor[:, 3:6] for gt_bbox_3d in gt_bboxes_3d])
-        gt_orientations = torch.cat([
-            gt_bbox_3d.tensor[:, 6].unsqueeze(-1)
-            for gt_bbox_3d in gt_bboxes_3d
-        ])
-        gt_corners = torch.cat(
-            [gt_bbox_3d.corners for gt_bbox_3d in gt_bboxes_3d])
+            [gt_bbox_3d.tensor[:, 3:6] for gt_bbox_3d in gt_bboxes_3d]
+        )
+        gt_orientations = torch.cat(
+            [gt_bbox_3d.tensor[:, 6].unsqueeze(-1) for gt_bbox_3d in gt_bboxes_3d]
+        )
+        gt_corners = torch.cat([gt_bbox_3d.corners for gt_bbox_3d in gt_bboxes_3d])
 
         target_labels = dict(
             gt_centers_2d=batch_centers_2d.long(),
@@ -471,18 +509,20 @@ class SMOKEMono3DHead(AnchorFreeMono3DHead):
             gt_locs=batch_gt_locations,
             gt_dims=gt_dimensions,
             gt_yaws=gt_orientations,
-            gt_cors=gt_corners)
+            gt_cors=gt_corners,
+        )
 
         return center_heatmap_target, avg_factor, target_labels
 
     def loss_by_feat(
-            self,
-            cls_scores: List[Tensor],
-            bbox_preds: List[Tensor],
-            batch_gt_instances_3d: InstanceList,
-            batch_gt_instances: InstanceList,
-            batch_img_metas: List[dict],
-            batch_gt_instances_ignore: OptInstanceList = None) -> dict:
+        self,
+        cls_scores: List[Tensor],
+        bbox_preds: List[Tensor],
+        batch_gt_instances_3d: InstanceList,
+        batch_gt_instances: InstanceList,
+        batch_img_metas: List[dict],
+        batch_gt_instances_ignore: OptInstanceList = None,
+    ) -> dict:
         """Compute loss of the head.
 
         Args:
@@ -514,11 +554,12 @@ class SMOKEMono3DHead(AnchorFreeMono3DHead):
         center_2d_heatmap = cls_scores[0]
         pred_reg = bbox_preds[0]
 
-        center_2d_heatmap_target, avg_factor, target_labels = \
-            self.get_targets(batch_gt_instances_3d,
-                             batch_gt_instances,
-                             center_2d_heatmap.shape,
-                             batch_img_metas)
+        center_2d_heatmap_target, avg_factor, target_labels = self.get_targets(
+            batch_gt_instances_3d,
+            batch_gt_instances,
+            center_2d_heatmap.shape,
+            batch_img_metas,
+        )
 
         pred_bboxes = self.get_predictions(
             labels_3d=target_labels['gt_labels_3d'],
@@ -528,24 +569,29 @@ class SMOKEMono3DHead(AnchorFreeMono3DHead):
             gt_orientations=target_labels['gt_yaws'],
             indices=target_labels['indices'],
             batch_img_metas=batch_img_metas,
-            pred_reg=pred_reg)
+            pred_reg=pred_reg,
+        )
 
         loss_cls = self.loss_cls(
-            center_2d_heatmap, center_2d_heatmap_target, avg_factor=avg_factor)
+            center_2d_heatmap, center_2d_heatmap_target, avg_factor=avg_factor
+        )
 
         reg_inds = target_labels['reg_indices']
 
         loss_bbox_oris = self.loss_bbox(
             pred_bboxes['ori'].corners[reg_inds, ...],
-            target_labels['gt_cors'][reg_inds, ...])
+            target_labels['gt_cors'][reg_inds, ...],
+        )
 
         loss_bbox_dims = self.loss_bbox(
             pred_bboxes['dim'].corners[reg_inds, ...],
-            target_labels['gt_cors'][reg_inds, ...])
+            target_labels['gt_cors'][reg_inds, ...],
+        )
 
         loss_bbox_locs = self.loss_bbox(
             pred_bboxes['loc'].corners[reg_inds, ...],
-            target_labels['gt_cors'][reg_inds, ...])
+            target_labels['gt_cors'][reg_inds, ...],
+        )
 
         loss_bbox = loss_bbox_dims + loss_bbox_locs + loss_bbox_oris
 

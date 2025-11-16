@@ -10,12 +10,13 @@ from mmdet3d.registry import MODELS
 
 
 def chamfer_distance(
-        src: Tensor,
-        dst: Tensor,
-        src_weight: Union[Tensor, float] = 1.0,
-        dst_weight: Union[Tensor, float] = 1.0,
-        criterion_mode: str = 'l2',
-        reduction: str = 'mean') -> Tuple[Tensor, Tensor, Tensor, Tensor]:
+    src: Tensor,
+    dst: Tensor,
+    src_weight: Union[Tensor, float] = 1.0,
+    dst_weight: Union[Tensor, float] = 1.0,
+    criterion_mode: str = 'l2',
+    reduction: str = 'mean',
+) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
     """Calculate Chamfer Distance of two sets.
 
     Args:
@@ -61,8 +62,8 @@ def chamfer_distance(
     src2dst_distance, indices1 = torch.min(distance, dim=2)  # (B,N)
     dst2src_distance, indices2 = torch.min(distance, dim=1)  # (B,M)
 
-    loss_src = (src2dst_distance * src_weight)
-    loss_dst = (dst2src_distance * dst_weight)
+    loss_src = src2dst_distance * src_weight
+    loss_dst = dst2src_distance * dst_weight
 
     if reduction == 'sum':
         loss_src = torch.sum(loss_src)
@@ -92,11 +93,13 @@ class ChamferDistance(nn.Module):
         loss_dst_weight (float): Weight of loss_target. Defaults to 1.0.
     """
 
-    def __init__(self,
-                 mode: str = 'l2',
-                 reduction: str = 'mean',
-                 loss_src_weight: float = 1.0,
-                 loss_dst_weight: float = 1.0) -> None:
+    def __init__(
+        self,
+        mode: str = 'l2',
+        reduction: str = 'mean',
+        loss_src_weight: float = 1.0,
+        loss_dst_weight: float = 1.0,
+    ) -> None:
         super(ChamferDistance, self).__init__()
 
         assert mode in ['smooth_l1', 'l1', 'l2']
@@ -141,11 +144,11 @@ class ChamferDistance(nn.Module):
                 ``(loss_source, loss_target)``.
         """
         assert reduction_override in (None, 'none', 'mean', 'sum')
-        reduction = (
-            reduction_override if reduction_override else self.reduction)
+        reduction = reduction_override if reduction_override else self.reduction
 
         loss_source, loss_target, indices1, indices2 = chamfer_distance(
-            source, target, src_weight, dst_weight, self.mode, reduction)
+            source, target, src_weight, dst_weight, self.mode, reduction
+        )
 
         loss_source *= self.loss_src_weight
         loss_target *= self.loss_dst_weight

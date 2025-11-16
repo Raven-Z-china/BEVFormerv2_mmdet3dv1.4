@@ -40,7 +40,7 @@ SCHEDULES_LUT = {
     '_150e_': 150,
     '_200e_': 200,
     '_250e_': 250,
-    '_400e_': 400
+    '_400e_': 400,
 }
 
 # TODO: add support for lyft dataset
@@ -56,9 +56,9 @@ RESULTS_LUT = {
     'sunrgbd': ['mAP_0.50'],
     'kitti-mono3d': [
         'img_bbox/KITTI/Car_3D_AP40_moderate_strict',
-        'Car_3D_AP40_moderate_strict'
+        'Car_3D_AP40_moderate_strict',
     ],
-    'nus-mono3d': ['img_bbox_NuScenes/NDS', 'NDS']
+    'nus-mono3d': ['img_bbox_NuScenes/NDS', 'NDS'],
 }
 
 
@@ -103,21 +103,19 @@ def get_best_results(log_json_path):
                 continue
 
             # record memory and find best results & epochs
-            if log_line['mode'] == 'train' \
-                    and max_memory <= log_line['memory']:
+            if log_line['mode'] == 'train' and max_memory <= log_line['memory']:
                 max_memory = log_line['memory']
 
             elif log_line['mode'] == 'val':
                 result_dict = {
                     key: log_line[key]
-                    for key in RESULTS_LUT[dataset] if key in log_line
+                    for key in RESULTS_LUT[dataset]
+                    if key in log_line
                 }
                 if len(max_dict) == 0:
                     max_dict = result_dict
                     max_dict['epoch'] = log_line['epoch']
-                elif all(
-                    [max_dict[key] <= result_dict[key]
-                     for key in result_dict]):
+                elif all([max_dict[key] <= result_dict[key] for key in result_dict]):
                     max_dict.update(result_dict)
                     max_dict['epoch'] = log_line['epoch']
 
@@ -128,11 +126,11 @@ def get_best_results(log_json_path):
 def parse_args():
     parser = argparse.ArgumentParser(description='Gather benchmarked models')
     parser.add_argument(
-        'root',
-        type=str,
-        help='root path of benchmarked models to be gathered')
+        'root', type=str, help='root path of benchmarked models to be gathered'
+    )
     parser.add_argument(
-        'out', type=str, help='output path of gathered models to be stored')
+        'out', type=str, help='output path of gathered models to be stored'
+    )
 
     args = parser.parse_args()
     return args
@@ -182,7 +180,9 @@ def main():
                 results=model_performance,
                 epochs=final_epoch,
                 model_time=model_time,
-                log_json_path=osp.split(log_json_path)[-1]))
+                log_json_path=osp.split(log_json_path)[-1],
+            )
+        )
 
     # publish model for each checkpoint
     publish_model_infos = []
@@ -190,32 +190,36 @@ def main():
         model_publish_dir = osp.join(models_out, model['config'].rstrip('.py'))
         mmengine.mkdir_or_exist(model_publish_dir)
 
-        model_name = model['config'].split('/')[-1].rstrip(
-            '.py') + '_' + model['model_time']
+        model_name = (
+            model['config'].split('/')[-1].rstrip('.py') + '_' + model['model_time']
+        )
         publish_model_path = osp.join(model_publish_dir, model_name)
-        trained_model_path = osp.join(models_root,
-                                      'epoch_{}.pth'.format(model['epochs']))
+        trained_model_path = osp.join(
+            models_root, 'epoch_{}.pth'.format(model['epochs'])
+        )
 
         # convert model
-        final_model_path = process_checkpoint(trained_model_path,
-                                              publish_model_path)
+        final_model_path = process_checkpoint(trained_model_path, publish_model_path)
 
         # copy log
         shutil.copy(
             osp.join(models_root, model['log_json_path']),
-            osp.join(model_publish_dir, f'{model_name}.log.json'))
+            osp.join(model_publish_dir, f'{model_name}.log.json'),
+        )
         shutil.copy(
             osp.join(models_root, model['log_json_path'].rstrip('.json')),
-            osp.join(model_publish_dir, f'{model_name}.log'))
+            osp.join(model_publish_dir, f'{model_name}.log'),
+        )
 
         # copy config to guarantee reproducibility
         config_path = model['config']
-        config_path = osp.join(
-            'configs',
-            config_path) if 'configs' not in config_path else config_path
+        config_path = (
+            osp.join('configs', config_path)
+            if 'configs' not in config_path
+            else config_path
+        )
         target_cconfig_path = osp.split(config_path)[-1]
-        shutil.copy(config_path,
-                    osp.join(model_publish_dir, target_cconfig_path))
+        shutil.copy(config_path, osp.join(model_publish_dir, target_cconfig_path))
 
         model['model_path'] = final_model_path
         publish_model_infos.append(model)

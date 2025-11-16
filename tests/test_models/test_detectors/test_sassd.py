@@ -4,24 +4,22 @@ import torch
 from mmengine import DefaultScope
 
 from mmdet3d.registry import MODELS
-from mmdet3d.testing import (create_detector_inputs, get_detector_cfg,
-                             setup_seed)
+from mmdet3d.testing import create_detector_inputs, get_detector_cfg, setup_seed
 
 
 class TestSDSSD(unittest.TestCase):
-
     def test_3dssd(self):
         import mmdet3d.models
 
         assert hasattr(mmdet3d.models, 'SASSD')
         DefaultScope.get_instance('test_sassd', scope_name='mmdet3d')
         setup_seed(0)
-        voxel_net_cfg = get_detector_cfg(
-            'sassd/sassd_8xb6-80e_kitti-3d-3class.py')
+        voxel_net_cfg = get_detector_cfg('sassd/sassd_8xb6-80e_kitti-3d-3class.py')
         model = MODELS.build(voxel_net_cfg)
         num_gt_instance = 3
         packed_inputs = create_detector_inputs(
-            num_gt_instance=num_gt_instance, num_classes=1)
+            num_gt_instance=num_gt_instance, num_classes=1
+        )
 
         if torch.cuda.is_available():
             model = model.cuda()

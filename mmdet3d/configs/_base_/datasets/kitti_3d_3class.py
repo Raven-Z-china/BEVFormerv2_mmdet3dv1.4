@@ -5,12 +5,17 @@ from mmengine.visualization.vis_backend import LocalVisBackend
 
 from mmdet3d.datasets.kitti_dataset import KittiDataset
 from mmdet3d.datasets.transforms.formating import Pack3DDetInputs
-from mmdet3d.datasets.transforms.loading import (LoadAnnotations3D,
-                                                 LoadPointsFromFile)
+from mmdet3d.datasets.transforms.loading import LoadAnnotations3D, LoadPointsFromFile
 from mmdet3d.datasets.transforms.test_time_aug import MultiScaleFlipAug3D
 from mmdet3d.datasets.transforms.transforms_3d import (  # noqa
-    GlobalRotScaleTrans, ObjectNoise, ObjectRangeFilter, ObjectSample,
-    PointShuffle, PointsRangeFilter, RandomFlip3D)
+    GlobalRotScaleTrans,
+    ObjectNoise,
+    ObjectRangeFilter,
+    ObjectSample,
+    PointShuffle,
+    PointsRangeFilter,
+    RandomFlip3D,
+)
 from mmdet3d.evaluation.metrics.kitti_metric import KittiMetric
 from mmdet3d.visualization.local_visualizer import Det3DLocalVisualizer
 
@@ -43,7 +48,8 @@ db_sampler = dict(
     rate=1.0,
     prepare=dict(
         filter_by_difficulty=[-1],
-        filter_by_min_points=dict(Car=5, Pedestrian=10, Cyclist=10)),
+        filter_by_min_points=dict(Car=5, Pedestrian=10, Cyclist=10),
+    ),
     classes=class_names,
     sample_groups=dict(Car=12, Pedestrian=6, Cyclist=6),
     points_loader=dict(
@@ -51,8 +57,10 @@ db_sampler = dict(
         coord_type='LIDAR',
         load_dim=4,
         use_dim=4,
-        backend_args=backend_args),
-    backend_args=backend_args)
+        backend_args=backend_args,
+    ),
+    backend_args=backend_args,
+)
 
 train_pipeline = [
     dict(
@@ -60,7 +68,8 @@ train_pipeline = [
         coord_type='LIDAR',
         load_dim=4,  # x, y, z, intensity
         use_dim=4,
-        backend_args=backend_args),
+        backend_args=backend_args,
+    ),
     dict(type=LoadAnnotations3D, with_bbox_3d=True, with_label_3d=True),
     dict(type=ObjectSample, db_sampler=db_sampler),
     dict(
@@ -68,17 +77,18 @@ train_pipeline = [
         num_try=100,
         translation_std=[1.0, 1.0, 0.5],
         global_rot_range=[0.0, 0.0],
-        rot_range=[-0.78539816, 0.78539816]),
+        rot_range=[-0.78539816, 0.78539816],
+    ),
     dict(type=RandomFlip3D, flip_ratio_bev_horizontal=0.5),
     dict(
         type=GlobalRotScaleTrans,
         rot_range=[-0.78539816, 0.78539816],
-        scale_ratio_range=[0.95, 1.05]),
+        scale_ratio_range=[0.95, 1.05],
+    ),
     dict(type=PointsRangeFilter, point_cloud_range=point_cloud_range),
     dict(type=ObjectRangeFilter, point_cloud_range=point_cloud_range),
     dict(type=PointShuffle),
-    dict(
-        type=Pack3DDetInputs, keys=['points', 'gt_bboxes_3d', 'gt_labels_3d'])
+    dict(type=Pack3DDetInputs, keys=['points', 'gt_bboxes_3d', 'gt_labels_3d']),
 ]
 test_pipeline = [
     dict(
@@ -86,7 +96,8 @@ test_pipeline = [
         coord_type='LIDAR',
         load_dim=4,
         use_dim=4,
-        backend_args=backend_args),
+        backend_args=backend_args,
+    ),
     dict(
         type=MultiScaleFlipAug3D,
         img_scale=(1333, 800),
@@ -96,12 +107,14 @@ test_pipeline = [
             dict(
                 type=GlobalRotScaleTrans,
                 rot_range=[0, 0],
-                scale_ratio_range=[1., 1.],
-                translation_std=[0, 0, 0]),
+                scale_ratio_range=[1.0, 1.0],
+                translation_std=[0, 0, 0],
+            ),
             dict(type=RandomFlip3D),
-            dict(type=PointsRangeFilter, point_cloud_range=point_cloud_range)
-        ]),
-    dict(type=Pack3DDetInputs, keys=['points'])
+            dict(type=PointsRangeFilter, point_cloud_range=point_cloud_range),
+        ],
+    ),
+    dict(type=Pack3DDetInputs, keys=['points']),
 ]
 # construct a pipeline for data and gt loading in show function
 # please keep its loading function consistent with test_pipeline (e.g. client)
@@ -111,8 +124,9 @@ eval_pipeline = [
         coord_type='LIDAR',
         load_dim=4,
         use_dim=4,
-        backend_args=backend_args),
-    dict(type=Pack3DDetInputs, keys=['points'])
+        backend_args=backend_args,
+    ),
+    dict(type=Pack3DDetInputs, keys=['points']),
 ]
 train_dataloader = dict(
     batch_size=6,
@@ -134,7 +148,10 @@ train_dataloader = dict(
             # we use box_type_3d='LiDAR' in kitti and nuscenes dataset
             # and box_type_3d='Depth' in sunrgbd and scannet dataset.
             box_type_3d='LiDAR',
-            backend_args=backend_args)))
+            backend_args=backend_args,
+        ),
+    ),
+)
 val_dataloader = dict(
     batch_size=1,
     num_workers=1,
@@ -151,7 +168,9 @@ val_dataloader = dict(
         test_mode=True,
         metainfo=metainfo,
         box_type_3d='LiDAR',
-        backend_args=backend_args))
+        backend_args=backend_args,
+    ),
+)
 test_dataloader = dict(
     batch_size=1,
     num_workers=1,
@@ -168,14 +187,18 @@ test_dataloader = dict(
         test_mode=True,
         metainfo=metainfo,
         box_type_3d='LiDAR',
-        backend_args=backend_args))
+        backend_args=backend_args,
+    ),
+)
 val_evaluator = dict(
     type=KittiMetric,
     ann_file=data_root + 'kitti_infos_val.pkl',
     metric='bbox',
-    backend_args=backend_args)
+    backend_args=backend_args,
+)
 test_evaluator = val_evaluator
 
 vis_backends = [dict(type=LocalVisBackend)]
 visualizer = dict(
-    type=Det3DLocalVisualizer, vis_backends=vis_backends, name='visualizer')
+    type=Det3DLocalVisualizer, vis_backends=vis_backends, name='visualizer'
+)

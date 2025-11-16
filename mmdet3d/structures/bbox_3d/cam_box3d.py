@@ -49,6 +49,7 @@ class CameraInstance3DBoxes(BaseInstance3DBoxes):
         with_yaw (bool): If True, the value of yaw will be set to 0 as minmax
             boxes.
     """
+
     YAW_AXIS = 1
 
     def __init__(
@@ -56,7 +57,7 @@ class CameraInstance3DBoxes(BaseInstance3DBoxes):
         tensor: Union[Tensor, np.ndarray, Sequence[Sequence[float]]],
         box_dim: int = 7,
         with_yaw: bool = True,
-        origin: Tuple[float, float, float] = (0.5, 1.0, 0.5)
+        origin: Tuple[float, float, float] = (0.5, 1.0, 0.5),
     ) -> None:
         if isinstance(tensor, Tensor):
             device = tensor.device
@@ -67,10 +68,11 @@ class CameraInstance3DBoxes(BaseInstance3DBoxes):
             # Use reshape, so we don't end up creating a new tensor that does
             # not depend on the inputs (and consequently confuses jit)
             tensor = tensor.reshape((-1, box_dim))
-        assert tensor.dim() == 2 and tensor.size(-1) == box_dim, \
-            ('The box dimension must be 2 and the length of the last '
-             f'dimension must be {box_dim}, but got boxes with shape '
-             f'{tensor.shape}.')
+        assert tensor.dim() == 2 and tensor.size(-1) == box_dim, (
+            'The box dimension must be 2 and the length of the last '
+            f'dimension must be {box_dim}, but got boxes with shape '
+            f'{tensor.shape}.'
+        )
 
         if tensor.shape[-1] == 6:
             # If the dimension of boxes is 6, we expand box_dim by padding 0 as
@@ -157,16 +159,15 @@ class CameraInstance3DBoxes(BaseInstance3DBoxes):
 
         dims = self.dims
         corners_norm = torch.from_numpy(
-            np.stack(np.unravel_index(np.arange(8), [2] * 3), axis=1)).to(
-                device=dims.device, dtype=dims.dtype)
+            np.stack(np.unravel_index(np.arange(8), [2] * 3), axis=1)
+        ).to(device=dims.device, dtype=dims.dtype)
 
         corners_norm = corners_norm[[0, 1, 3, 2, 4, 5, 7, 6]]
         # use relative origin (0.5, 1, 0.5)
         corners_norm = corners_norm - dims.new_tensor([0.5, 1, 0.5])
         corners = dims.view([-1, 1, 3]) * corners_norm.reshape([1, 8, 3])
 
-        corners = rotation_3d_in_axis(
-            corners, self.tensor[:, 6], axis=self.YAW_AXIS)
+        corners = rotation_3d_in_axis(corners, self.tensor[:, 6], axis=self.YAW_AXIS)
         corners += self.tensor[:, :3].view(-1, 1, 3)
         return corners
 
@@ -184,9 +185,13 @@ class CameraInstance3DBoxes(BaseInstance3DBoxes):
     def rotate(
         self,
         angle: Union[Tensor, np.ndarray, float],
-        points: Optional[Union[Tensor, np.ndarray, BasePoints]] = None
-    ) -> Union[Tuple[Tensor, Tensor], Tuple[np.ndarray, np.ndarray], Tuple[
-            BasePoints, Tensor], None]:
+        points: Optional[Union[Tensor, np.ndarray, BasePoints]] = None,
+    ) -> Union[
+        Tuple[Tensor, Tensor],
+        Tuple[np.ndarray, np.ndarray],
+        Tuple[BasePoints, Tensor],
+        None,
+    ]:
         """Rotate boxes with points (optional) with the given angle or rotation
         matrix.
 
@@ -204,15 +209,14 @@ class CameraInstance3DBoxes(BaseInstance3DBoxes):
         if not isinstance(angle, Tensor):
             angle = self.tensor.new_tensor(angle)
 
-        assert angle.shape == torch.Size([3, 3]) or angle.numel() == 1, \
-            f'invalid rotation angle shape {angle.shape}'
+        assert (
+            angle.shape == torch.Size([3, 3]) or angle.numel() == 1
+        ), f'invalid rotation angle shape {angle.shape}'
 
         if angle.numel() == 1:
             self.tensor[:, 0:3], rot_mat_T = rotation_3d_in_axis(
-                self.tensor[:, 0:3],
-                angle,
-                axis=self.YAW_AXIS,
-                return_mat=True)
+                self.tensor[:, 0:3], angle, axis=self.YAW_AXIS, return_mat=True
+            )
         else:
             rot_mat_T = angle
             rot_sin = rot_mat_T[2, 0]
@@ -237,7 +241,7 @@ class CameraInstance3DBoxes(BaseInstance3DBoxes):
     def flip(
         self,
         bev_direction: str = 'horizontal',
-        points: Optional[Union[Tensor, np.ndarray, BasePoints]] = None
+        points: Optional[Union[Tensor, np.ndarray, BasePoints]] = None,
     ) -> Union[Tensor, np.ndarray, BasePoints, None]:
         """Flip the boxes in BEV along given BEV direction.
 
@@ -276,8 +280,9 @@ class CameraInstance3DBoxes(BaseInstance3DBoxes):
             return points
 
     @classmethod
-    def height_overlaps(cls, boxes1: 'CameraInstance3DBoxes',
-                        boxes2: 'CameraInstance3DBoxes') -> Tensor:
+    def height_overlaps(
+        cls, boxes1: 'CameraInstance3DBoxes', boxes2: 'CameraInstance3DBoxes'
+    ) -> Tensor:
         """Calculate height overlaps of two boxes.
 
         Note:
@@ -301,16 +306,17 @@ class CameraInstance3DBoxes(BaseInstance3DBoxes):
 
         # positive direction of the gravity axis
         # in cam coord system points to the earth
-        heighest_of_bottom = torch.min(boxes1_bottom_height,
-                                       boxes2_bottom_height)
+        heighest_of_bottom = torch.min(boxes1_bottom_height, boxes2_bottom_height)
         lowest_of_top = torch.max(boxes1_top_height, boxes2_top_height)
         overlaps_h = torch.clamp(heighest_of_bottom - lowest_of_top, min=0)
         return overlaps_h
 
-    def convert_to(self,
-                   dst: int,
-                   rt_mat: Optional[Union[Tensor, np.ndarray]] = None,
-                   correct_yaw: bool = False) -> 'BaseInstance3DBoxes':
+    def convert_to(
+        self,
+        dst: int,
+        rt_mat: Optional[Union[Tensor, np.ndarray]] = None,
+        correct_yaw: bool = False,
+    ) -> 'BaseInstance3DBoxes':
         """Convert self to ``dst`` mode.
 
         Args:
@@ -332,16 +338,12 @@ class CameraInstance3DBoxes(BaseInstance3DBoxes):
 
         # TODO: always set correct_yaw=True
         return Box3DMode.convert(
-            box=self,
-            src=Box3DMode.CAM,
-            dst=dst,
-            rt_mat=rt_mat,
-            correct_yaw=correct_yaw)
+            box=self, src=Box3DMode.CAM, dst=dst, rt_mat=rt_mat, correct_yaw=correct_yaw
+        )
 
     def points_in_boxes_part(
-            self,
-            points: Tensor,
-            boxes_override: Optional[Tensor] = None) -> Tensor:
+        self, points: Tensor, boxes_override: Optional[Tensor] = None
+    ) -> Tensor:
         """Find the box in which each point is.
 
         Args:
@@ -357,23 +359,20 @@ class CameraInstance3DBoxes(BaseInstance3DBoxes):
         """
         from .coord_3d_mode import Coord3DMode
 
-        points_lidar = Coord3DMode.convert(points, Coord3DMode.CAM,
-                                           Coord3DMode.LIDAR)
+        points_lidar = Coord3DMode.convert(points, Coord3DMode.CAM, Coord3DMode.LIDAR)
         if boxes_override is not None:
             boxes_lidar = boxes_override
         else:
             boxes_lidar = Coord3DMode.convert(
-                self.tensor,
-                Coord3DMode.CAM,
-                Coord3DMode.LIDAR,
-                is_point=False)
+                self.tensor, Coord3DMode.CAM, Coord3DMode.LIDAR, is_point=False
+            )
 
         box_idx = super().points_in_boxes_part(points_lidar, boxes_lidar)
         return box_idx
 
-    def points_in_boxes_all(self,
-                            points: Tensor,
-                            boxes_override: Optional[Tensor] = None) -> Tensor:
+    def points_in_boxes_all(
+        self, points: Tensor, boxes_override: Optional[Tensor] = None
+    ) -> Tensor:
         """Find all boxes in which each point is.
 
         Args:
@@ -388,16 +387,13 @@ class CameraInstance3DBoxes(BaseInstance3DBoxes):
         """
         from .coord_3d_mode import Coord3DMode
 
-        points_lidar = Coord3DMode.convert(points, Coord3DMode.CAM,
-                                           Coord3DMode.LIDAR)
+        points_lidar = Coord3DMode.convert(points, Coord3DMode.CAM, Coord3DMode.LIDAR)
         if boxes_override is not None:
             boxes_lidar = boxes_override
         else:
             boxes_lidar = Coord3DMode.convert(
-                self.tensor,
-                Coord3DMode.CAM,
-                Coord3DMode.LIDAR,
-                is_point=False)
+                self.tensor, Coord3DMode.CAM, Coord3DMode.LIDAR, is_point=False
+            )
 
         box_idx = super().points_in_boxes_all(points_lidar, boxes_lidar)
         return box_idx

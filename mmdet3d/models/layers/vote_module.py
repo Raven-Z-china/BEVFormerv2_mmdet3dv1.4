@@ -39,19 +39,21 @@ class VoteModule(nn.Module):
             Defaults to None.
     """
 
-    def __init__(self,
-                 in_channels: int,
-                 vote_per_seed: int = 1,
-                 gt_per_seed: int = 3,
-                 num_points: int = -1,
-                 conv_channels: Tuple[int] = (16, 16),
-                 conv_cfg: ConfigType = dict(type='Conv1d'),
-                 norm_cfg: ConfigType = dict(type='BN1d'),
-                 act_cfg: ConfigType = dict(type='ReLU'),
-                 norm_feats: bool = True,
-                 with_res_feat: bool = True,
-                 vote_xyz_range: List[float] = None,
-                 vote_loss: OptConfigType = None) -> None:
+    def __init__(
+        self,
+        in_channels: int,
+        vote_per_seed: int = 1,
+        gt_per_seed: int = 3,
+        num_points: int = -1,
+        conv_channels: Tuple[int] = (16, 16),
+        conv_cfg: ConfigType = dict(type='Conv1d'),
+        norm_cfg: ConfigType = dict(type='BN1d'),
+        act_cfg: ConfigType = dict(type='ReLU'),
+        norm_feats: bool = True,
+        with_res_feat: bool = True,
+        vote_xyz_range: List[float] = None,
+        vote_loss: OptConfigType = None,
+    ) -> None:
         super(VoteModule, self).__init__()
         self.in_channels = in_channels
         self.vote_per_seed = vote_per_seed
@@ -79,7 +81,9 @@ class VoteModule(nn.Module):
                     norm_cfg=norm_cfg,
                     act_cfg=act_cfg,
                     bias=True,
-                    inplace=True))
+                    inplace=True,
+                )
+            )
             prev_channels = conv_channels[k]
         self.vote_conv = nn.Sequential(*vote_conv_list)
 
@@ -90,8 +94,7 @@ class VoteModule(nn.Module):
             out_channel = 3 * self.vote_per_seed
         self.conv_out = nn.Conv1d(prev_channels, out_channel, 1)
 
-    def forward(self, seed_points: Tensor,
-                seed_feats: Tensor) -> Tuple[Tensor]:
+    def forward(self, seed_points: Tensor, seed_feats: Tensor) -> Tuple[Tensor]:
         """Forward.
 
         Args:
@@ -110,11 +113,12 @@ class VoteModule(nn.Module):
                   ``C=vote_feature_dim``.
         """
         if self.num_points != -1:
-            assert self.num_points < seed_points.shape[1], \
-                f'Number of vote points ({self.num_points}) should be '\
+            assert self.num_points < seed_points.shape[1], (
+                f'Number of vote points ({self.num_points}) should be '
                 f'smaller than seed points size ({seed_points.shape[1]})'
-            seed_points = seed_points[:, :self.num_points]
-            seed_feats = seed_feats[..., :self.num_points]
+            )
+            seed_points = seed_points[:, : self.num_points]
+            seed_feats = seed_feats[..., : self.num_points]
 
         batch_size, feat_channels, num_seed = seed_feats.shape
         num_vote = num_seed * self.vote_per_seed
@@ -122,19 +126,19 @@ class VoteModule(nn.Module):
         # (batch_size, (3+out_dim)*vote_per_seed, num_seed)
         votes = self.conv_out(x)
 
-        votes = votes.transpose(2, 1).view(batch_size, num_seed,
-                                           self.vote_per_seed, -1)
+        votes = votes.transpose(2, 1).view(batch_size, num_seed, self.vote_per_seed, -1)
 
         offset = votes[:, :, :, 0:3]
         if self.vote_xyz_range is not None:
             limited_offset_list = []
             for axis in range(len(self.vote_xyz_range)):
-                limited_offset_list.append(offset[..., axis].clamp(
-                    min=-self.vote_xyz_range[axis],
-                    max=self.vote_xyz_range[axis]))
+                limited_offset_list.append(
+                    offset[..., axis].clamp(
+                        min=-self.vote_xyz_range[axis], max=self.vote_xyz_range[axis]
+                    )
+                )
             limited_offset = torch.stack(limited_offset_list, -1)
-            vote_points = (seed_points.unsqueeze(2) +
-                           limited_offset).contiguous()
+            vote_points = (seed_points.unsqueeze(2) + limited_offset).contiguous()
         else:
             vote_points = (seed_points.unsqueeze(2) + offset).contiguous()
         vote_points = vote_points.view(batch_size, num_vote, 3)
@@ -142,11 +146,14 @@ class VoteModule(nn.Module):
 
         if self.with_res_feat:
             res_feats = votes[:, :, :, 3:]
-            vote_feats = (seed_feats.transpose(2, 1).unsqueeze(2) +
-                          res_feats).contiguous()
-            vote_feats = vote_feats.view(batch_size,
-                                         num_vote, feat_channels).transpose(
-                                             2, 1).contiguous()
+            vote_feats = (
+                seed_feats.transpose(2, 1).unsqueeze(2) + res_feats
+            ).contiguous()
+            vote_feats = (
+                vote_feats.view(batch_size, num_vote, feat_channels)
+                .transpose(2, 1)
+                .contiguous()
+            )
 
             if self.norm_feats:
                 features_norm = torch.norm(vote_feats, p=2, dim=1)
@@ -155,9 +162,14 @@ class VoteModule(nn.Module):
             vote_feats = seed_feats
         return vote_points, vote_feats, offset
 
-    def get_loss(self, seed_points: Tensor, vote_points: Tensor,
-                 seed_indices: Tensor, vote_targets_mask: Tensor,
-                 vote_targets: Tensor) -> Tensor:
+    def get_loss(
+        self,
+        seed_points: Tensor,
+        vote_points: Tensor,
+        seed_indices: Tensor,
+        vote_targets_mask: Tensor,
+        vote_targets: Tensor,
+    ) -> Tensor:
         """Calculate loss of voting module.
 
         Args:
@@ -172,11 +184,11 @@ class VoteModule(nn.Module):
         """
         batch_size, num_seed = seed_points.shape[:2]
 
-        seed_gt_votes_mask = torch.gather(vote_targets_mask, 1,
-                                          seed_indices).float()
+        seed_gt_votes_mask = torch.gather(vote_targets_mask, 1, seed_indices).float()
 
         seed_indices_expand = seed_indices.unsqueeze(-1).repeat(
-            1, 1, 3 * self.gt_per_seed)
+            1, 1, 3 * self.gt_per_seed
+        )
         seed_gt_votes = torch.gather(vote_targets, 1, seed_indices_expand)
         seed_gt_votes += seed_points.repeat(1, 1, self.gt_per_seed)
 
@@ -184,7 +196,8 @@ class VoteModule(nn.Module):
         distance = self.vote_loss(
             vote_points.view(batch_size * num_seed, -1, 3),
             seed_gt_votes.view(batch_size * num_seed, -1, 3),
-            dst_weight=weight.view(batch_size * num_seed, 1))[1]
+            dst_weight=weight.view(batch_size * num_seed, 1),
+        )[1]
         vote_loss = torch.sum(torch.min(distance, dim=1)[0])
 
         return vote_loss

@@ -4,12 +4,10 @@ import torch
 from mmengine import DefaultScope
 
 from mmdet3d.registry import MODELS
-from mmdet3d.testing import (create_detector_inputs, get_detector_cfg,
-                             setup_seed)
+from mmdet3d.testing import create_detector_inputs, get_detector_cfg, setup_seed
 
 
 class TestCenterPoint(unittest.TestCase):
-
     def test_center_point(self):
         import mmdet3d.models
 
@@ -23,17 +21,18 @@ class TestCenterPoint(unittest.TestCase):
         model = MODELS.build(centerpoint_net_cfg)
         num_gt_instance = 50
         packed_inputs = create_detector_inputs(
-            with_img=True, num_gt_instance=num_gt_instance, points_feat_dim=5)
+            with_img=True, num_gt_instance=num_gt_instance, points_feat_dim=5
+        )
 
         for sample_id in range(len(packed_inputs['data_samples'])):
             det_sample = packed_inputs['data_samples'][sample_id]
             num_instances = len(det_sample.gt_instances_3d.bboxes_3d)
             bbox_3d_class = det_sample.gt_instances_3d.bboxes_3d.__class__
             det_sample.gt_instances_3d.bboxes_3d = bbox_3d_class(
-                torch.rand(num_instances, 9), box_dim=9)
+                torch.rand(num_instances, 9), box_dim=9
+            )
 
         if torch.cuda.is_available():
-
             model = model.cuda()
             # test simple_test
 

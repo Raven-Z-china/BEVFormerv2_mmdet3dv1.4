@@ -16,7 +16,8 @@ def test_paconv_sa_module_msg():
             radii=[0.2, 0.4],
             sample_nums=[4, 8],
             mlp_channels=[[12, 16], [12, 32]],
-            paconv_num_kernels=[[4]]).cuda()
+            paconv_num_kernels=[[4]],
+        ).cuda()
 
     # paconv_num_kernels inner num should match as mlp_channels
     with pytest.raises(AssertionError):
@@ -25,7 +26,8 @@ def test_paconv_sa_module_msg():
             radii=[0.2, 0.4],
             sample_nums=[4, 8],
             mlp_channels=[[12, 16], [12, 32]],
-            paconv_num_kernels=[[4, 4], [8, 8]]).cuda()
+            paconv_num_kernels=[[4, 4], [8, 8]],
+        ).cuda()
 
     self = PAConvSAModuleMSG(
         num_point=16,
@@ -36,7 +38,8 @@ def test_paconv_sa_module_msg():
         norm_cfg=dict(type='BN2d'),
         use_xyz=False,
         pool_mod='max',
-        paconv_kernel_input='w_neighbor').cuda()
+        paconv_kernel_input='w_neighbor',
+    ).cuda()
 
     assert self.mlps[0].layer0.in_channels == 12 * 2
     assert self.mlps[0].layer0.out_channels == 16
@@ -79,7 +82,8 @@ def test_paconv_sa_module_msg():
         norm_cfg=dict(type='BN2d'),
         use_xyz=False,
         pool_mod='max',
-        paconv_kernel_input='identity').cuda()
+        paconv_kernel_input='identity',
+    ).cuda()
 
     assert self.mlps[0].layer0.in_channels == 12 * 1
     assert self.mlps[0].layer0.out_channels == 16
@@ -106,6 +110,7 @@ def test_paconv_sa_module():
     if not torch.cuda.is_available():
         pytest.skip()
     from mmdet3d.models.layers import build_sa_module
+
     sa_cfg = dict(
         type='PAConvSAModule',
         num_point=16,
@@ -116,7 +121,8 @@ def test_paconv_sa_module():
         norm_cfg=dict(type='BN2d'),
         use_xyz=True,
         pool_mod='max',
-        paconv_kernel_input='w_neighbor')
+        paconv_kernel_input='w_neighbor',
+    )
     self = build_sa_module(sa_cfg).cuda()
 
     assert self.mlps[0].layer0.in_channels == 15 * 2
@@ -147,7 +153,8 @@ def test_paconv_sa_module():
         norm_cfg=dict(type='BN2d'),
         use_xyz=True,
         pool_mod='max',
-        paconv_kernel_input='identity')
+        paconv_kernel_input='identity',
+    )
     self = build_sa_module(sa_cfg).cuda()
     assert self.mlps[0].layer0.in_channels == 15 * 1
 
@@ -173,7 +180,8 @@ def test_paconv_cuda_sa_module_msg():
             radii=[0.2, 0.4],
             sample_nums=[4, 8],
             mlp_channels=[[12, 16], [12, 32]],
-            paconv_num_kernels=[[4]]).cuda()
+            paconv_num_kernels=[[4]],
+        ).cuda()
 
     # paconv_num_kernels inner num should match as mlp_channels
     with pytest.raises(AssertionError):
@@ -182,7 +190,8 @@ def test_paconv_cuda_sa_module_msg():
             radii=[0.2, 0.4],
             sample_nums=[4, 8],
             mlp_channels=[[12, 16], [12, 32]],
-            paconv_num_kernels=[[4, 4], [8, 8]]).cuda()
+            paconv_num_kernels=[[4, 4], [8, 8]],
+        ).cuda()
 
     self = PAConvCUDASAModuleMSG(
         num_point=16,
@@ -193,7 +202,8 @@ def test_paconv_cuda_sa_module_msg():
         norm_cfg=dict(type='BN2d'),
         use_xyz=False,
         pool_mod='max',
-        paconv_kernel_input='w_neighbor').cuda()
+        paconv_kernel_input='w_neighbor',
+    ).cuda()
 
     assert self.mlps[0][0].in_channels == 12 * 2
     assert self.mlps[0][0].out_channels == 16
@@ -239,13 +249,15 @@ def test_paconv_cuda_sa_module_msg():
             norm_cfg=dict(type='BN2d'),
             use_xyz=False,
             pool_mod='max',
-            paconv_kernel_input='identity').cuda()
+            paconv_kernel_input='identity',
+        ).cuda()
 
 
 def test_paconv_cuda_sa_module():
     if not torch.cuda.is_available():
         pytest.skip()
     from mmdet3d.models.layers import build_sa_module
+
     sa_cfg = dict(
         type='PAConvCUDASAModule',
         num_point=16,
@@ -256,7 +268,8 @@ def test_paconv_cuda_sa_module():
         norm_cfg=dict(type='BN2d'),
         use_xyz=True,
         pool_mod='max',
-        paconv_kernel_input='w_neighbor')
+        paconv_kernel_input='w_neighbor',
+    )
     self = build_sa_module(sa_cfg).cuda()
 
     assert self.mlps[0][0].in_channels == 15 * 2
@@ -287,7 +300,8 @@ def test_paconv_cuda_sa_module():
         norm_cfg=dict(type='BN2d'),
         use_xyz=True,
         pool_mod='max',
-        paconv_kernel_input='w_neighbor')
+        paconv_kernel_input='w_neighbor',
+    )
     self = build_sa_module(sa_cfg).cuda()
 
     xyz = np.fromfile('tests/data/sunrgbd/points/000001.bin', np.float32)

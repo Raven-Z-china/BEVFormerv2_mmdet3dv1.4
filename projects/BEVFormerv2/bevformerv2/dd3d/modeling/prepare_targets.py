@@ -1,21 +1,21 @@
 # Copyright 2021 Toyota Research Institute.  All rights reserved.
 import torch
-
 from detectron2.layers import cat
-
 from projects.BEVFormerv3.bevformerv2.dd3d.structures.boxes3d import Boxes3D
 
-INF = 100000000.
+INF = 100000000.0
 
 
-class DD3DTargetPreparer():
-    def __init__(self, 
-                 num_classes, 
-                 input_shape,
-                 box3d_on=True,
-                 center_sample=True,
-                 pos_radius=1.5,
-                 sizes_of_interest=None):
+class DD3DTargetPreparer:
+    def __init__(
+        self,
+        num_classes,
+        input_shape,
+        box3d_on=True,
+        center_sample=True,
+        pos_radius=1.5,
+        sizes_of_interest=None,
+    ):
         self.num_classes = num_classes
         self.center_sample = center_sample
         self.strides = [shape.stride for shape in input_shape]
@@ -38,52 +38,68 @@ class DD3DTargetPreparer():
         # compute locations to size ranges
         loc_to_size_range = []
         for l, loc_per_level in enumerate(locations):
-            loc_to_size_range_per_level = loc_per_level.new_tensor(self.sizes_of_interest[l])
-            loc_to_size_range.append(loc_to_size_range_per_level[None].expand(num_loc_list[l], -1))
+            loc_to_size_range_per_level = loc_per_level.new_tensor(
+                self.sizes_of_interest[l]
+            )
+            loc_to_size_range.append(
+                loc_to_size_range_per_level[None].expand(num_loc_list[l], -1)
+            )
 
         loc_to_size_range = torch.cat(loc_to_size_range, dim=0)
         locations = torch.cat(locations, dim=0)
 
-        training_targets = self.compute_targets_for_locations(locations, gt_instances, loc_to_size_range, num_loc_list)
+        training_targets = self.compute_targets_for_locations(
+            locations, gt_instances, loc_to_size_range, num_loc_list
+        )
 
-        training_targets["locations"] = [locations.clone() for _ in range(len(gt_instances))]
-        training_targets["im_inds"] = [
-            locations.new_ones(locations.size(0), dtype=torch.long) * i for i in range(len(gt_instances))
+        training_targets['locations'] = [
+            locations.clone() for _ in range(len(gt_instances))
+        ]
+        training_targets['im_inds'] = [
+            locations.new_ones(locations.size(0), dtype=torch.long) * i
+            for i in range(len(gt_instances))
         ]
 
-        box2d = training_targets.pop("box2d", None)
+        box2d = training_targets.pop('box2d', None)
 
         # transpose im first training_targets to level first ones
-        training_targets = {k: self._transpose(v, num_loc_list) for k, v in training_targets.items() if k != "box2d"}
+        training_targets = {
+            k: self._transpose(v, num_loc_list)
+            for k, v in training_targets.items()
+            if k != 'box2d'
+        }
 
-        training_targets["fpn_levels"] = [
-            loc.new_ones(len(loc), dtype=torch.long) * level for level, loc in enumerate(training_targets["locations"])
+        training_targets['fpn_levels'] = [
+            loc.new_ones(len(loc), dtype=torch.long) * level
+            for level, loc in enumerate(training_targets['locations'])
         ]
 
         # Flatten targets: (L x B x H x W, TARGET_SIZE)
-        labels = cat([x.reshape(-1) for x in training_targets["labels"]])
-        box2d_reg_targets = cat([x.reshape(-1, 4) for x in training_targets["box2d_reg"]])
+        labels = cat([x.reshape(-1) for x in training_targets['labels']])
+        box2d_reg_targets = cat(
+            [x.reshape(-1, 4) for x in training_targets['box2d_reg']]
+        )
 
-        target_inds = cat([x.reshape(-1) for x in training_targets["target_inds"]])
-        locations = cat([x.reshape(-1, 2) for x in training_targets["locations"]])
-        im_inds = cat([x.reshape(-1) for x in training_targets["im_inds"]])
-        fpn_levels = cat([x.reshape(-1) for x in training_targets["fpn_levels"]])
+        target_inds = cat([x.reshape(-1) for x in training_targets['target_inds']])
+        locations = cat([x.reshape(-1, 2) for x in training_targets['locations']])
+        im_inds = cat([x.reshape(-1) for x in training_targets['im_inds']])
+        fpn_levels = cat([x.reshape(-1) for x in training_targets['fpn_levels']])
 
         pos_inds = torch.nonzero(labels != self.num_classes).squeeze(1)
 
         targets = {
-            "labels": labels,
-            "box2d_reg_targets": box2d_reg_targets,
-            "locations": locations,
-            "target_inds": target_inds,
-            "im_inds": im_inds,
-            "fpn_levels": fpn_levels,
-            "pos_inds": pos_inds
+            'labels': labels,
+            'box2d_reg_targets': box2d_reg_targets,
+            'locations': locations,
+            'target_inds': target_inds,
+            'im_inds': im_inds,
+            'fpn_levels': fpn_levels,
+            'pos_inds': pos_inds,
         }
 
         if self.dd3d_enabled:
-            box3d_targets = Boxes3D.cat(training_targets["box3d"])
-            targets.update({"box3d_targets": box3d_targets})
+            box3d_targets = Boxes3D.cat(training_targets['box3d'])
+            targets.update({'box3d_targets': box3d_targets})
 
             if box2d is not None:
                 # Original format is B x L x (H x W, 4)
@@ -92,13 +108,17 @@ class DD3DTargetPreparer():
                 for lvl, per_lvl_box2d in enumerate(zip(*box2d)):
                     # B x (H x W, 4)
                     h, w = feature_shapes[lvl]
-                    batched_box2d_lvl = torch.stack([x.T.reshape(4, h, w) for x in per_lvl_box2d], dim=0)
+                    batched_box2d_lvl = torch.stack(
+                        [x.T.reshape(4, h, w) for x in per_lvl_box2d], dim=0
+                    )
                     batched_box2d.append(batched_box2d_lvl)
-                targets.update({"batched_box2d": batched_box2d})
+                targets.update({'batched_box2d': batched_box2d})
 
         return targets
 
-    def compute_targets_for_locations(self, locations, targets, size_ranges, num_loc_list):
+    def compute_targets_for_locations(
+        self, locations, targets, size_ranges, num_loc_list
+    ):
         labels = []
         box2d_reg = []
 
@@ -116,7 +136,9 @@ class DD3DTargetPreparer():
 
             # no gt
             if bboxes.numel() == 0:
-                labels.append(labels_per_im.new_zeros(locations.size(0)) + self.num_classes)
+                labels.append(
+                    labels_per_im.new_zeros(locations.size(0)) + self.num_classes
+                )
                 # reg_targets.append(locations.new_zeros((locations.size(0), 4)))
                 box2d_reg.append(locations.new_zeros((locations.size(0), 4)))
                 target_inds.append(labels_per_im.new_zeros(locations.size(0)) - 1)
@@ -149,9 +171,9 @@ class DD3DTargetPreparer():
 
             max_reg_targets_per_im = box2d_reg_per_im.max(dim=2)[0]
             # limit the regression range for each location
-            is_cared_in_the_level = \
-                (max_reg_targets_per_im >= size_ranges[:, [0]]) & \
-                (max_reg_targets_per_im <= size_ranges[:, [1]])
+            is_cared_in_the_level = (max_reg_targets_per_im >= size_ranges[:, [0]]) & (
+                max_reg_targets_per_im <= size_ranges[:, [1]]
+            )
 
             locations_to_gt_area = area[None].repeat(len(locations), 1)
             locations_to_gt_area[is_in_boxes == 0] = INF
@@ -159,9 +181,13 @@ class DD3DTargetPreparer():
 
             # if there are still more than one objects for a location,
             # we choose the one with minimal area
-            locations_to_min_area, locations_to_gt_inds = locations_to_gt_area.min(dim=1)
+            locations_to_min_area, locations_to_gt_inds = locations_to_gt_area.min(
+                dim=1
+            )
 
-            box2d_reg_per_im = box2d_reg_per_im[range(len(locations)), locations_to_gt_inds]
+            box2d_reg_per_im = box2d_reg_per_im[
+                range(len(locations)), locations_to_gt_inds
+            ]
             target_inds_per_im = locations_to_gt_inds + num_targets
             num_targets += len(targets_per_im)
 
@@ -177,9 +203,9 @@ class DD3DTargetPreparer():
                 box3d_per_im = targets_per_im.gt_boxes3d[locations_to_gt_inds]
                 box3d.append(box3d_per_im)
 
-        ret = {"labels": labels, "box2d_reg": box2d_reg, "target_inds": target_inds}
+        ret = {'labels': labels, 'box2d_reg': box2d_reg, 'target_inds': target_inds}
         if self.dd3d_enabled:
-            ret.update({"box3d": box3d})
+            ret.update({'box3d': box3d})
 
         return ret
 
@@ -205,10 +231,18 @@ class DD3DTargetPreparer():
             xmax = center_x[beg:end] + stride
             ymax = center_y[beg:end] + stride
             # limit sample region in gt
-            center_gt[beg:end, :, 0] = torch.where(xmin > boxes[beg:end, :, 0], xmin, boxes[beg:end, :, 0])
-            center_gt[beg:end, :, 1] = torch.where(ymin > boxes[beg:end, :, 1], ymin, boxes[beg:end, :, 1])
-            center_gt[beg:end, :, 2] = torch.where(xmax > boxes[beg:end, :, 2], boxes[beg:end, :, 2], xmax)
-            center_gt[beg:end, :, 3] = torch.where(ymax > boxes[beg:end, :, 3], boxes[beg:end, :, 3], ymax)
+            center_gt[beg:end, :, 0] = torch.where(
+                xmin > boxes[beg:end, :, 0], xmin, boxes[beg:end, :, 0]
+            )
+            center_gt[beg:end, :, 1] = torch.where(
+                ymin > boxes[beg:end, :, 1], ymin, boxes[beg:end, :, 1]
+            )
+            center_gt[beg:end, :, 2] = torch.where(
+                xmax > boxes[beg:end, :, 2], boxes[beg:end, :, 2], xmax
+            )
+            center_gt[beg:end, :, 3] = torch.where(
+                ymax > boxes[beg:end, :, 3], boxes[beg:end, :, 3], ymax
+            )
             beg = end
         left = loc_xs[:, None] - center_gt[..., 0]
         right = center_gt[..., 2] - loc_xs[:, None]
@@ -219,14 +253,14 @@ class DD3DTargetPreparer():
         return inside_gt_bbox_mask
 
     def _transpose(self, training_targets, num_loc_list):
-        '''
-        This function is used to transpose image first training targets to level first ones
-        :return: level first training targets
-        '''
+        """This function is used to transpose image first training targets to
+        level first ones :return: level first training targets."""
         if isinstance(training_targets[0], Boxes3D):
             for im_i in range(len(training_targets)):
                 # training_targets[im_i] = torch.split(training_targets[im_i], num_loc_list, dim=0)
-                training_targets[im_i] = training_targets[im_i].split(num_loc_list, dim=0)
+                training_targets[im_i] = training_targets[im_i].split(
+                    num_loc_list, dim=0
+                )
 
             targets_level_first = []
             for targets_per_level in zip(*training_targets):
@@ -234,7 +268,9 @@ class DD3DTargetPreparer():
             return targets_level_first
 
         for im_i in range(len(training_targets)):
-            training_targets[im_i] = torch.split(training_targets[im_i], num_loc_list, dim=0)
+            training_targets[im_i] = torch.split(
+                training_targets[im_i], num_loc_list, dim=0
+            )
 
         targets_level_first = []
         for targets_per_level in zip(*training_targets):

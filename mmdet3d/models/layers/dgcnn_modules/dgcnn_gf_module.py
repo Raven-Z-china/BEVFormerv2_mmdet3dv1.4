@@ -34,26 +34,28 @@ class BaseDGCNNGFModule(nn.Module):
             `QueryAndGroup`. Defaults to False.
     """
 
-    def __init__(self,
-                 radii: List[float],
-                 sample_nums: List[int],
-                 mlp_channels: List[List[int]],
-                 knn_modes: List[str] = ['F-KNN'],
-                 dilated_group: bool = False,
-                 use_xyz: bool = True,
-                 pool_mode: str = 'max',
-                 normalize_xyz: bool = False,
-                 grouper_return_grouped_xyz: bool = False,
-                 grouper_return_grouped_idx: bool = False) -> None:
+    def __init__(
+        self,
+        radii: List[float],
+        sample_nums: List[int],
+        mlp_channels: List[List[int]],
+        knn_modes: List[str] = ['F-KNN'],
+        dilated_group: bool = False,
+        use_xyz: bool = True,
+        pool_mode: str = 'max',
+        normalize_xyz: bool = False,
+        grouper_return_grouped_xyz: bool = False,
+        grouper_return_grouped_idx: bool = False,
+    ) -> None:
         super(BaseDGCNNGFModule, self).__init__()
 
         assert len(sample_nums) == len(
             mlp_channels
         ), 'Num_samples and mlp_channels should have the same length.'
-        assert pool_mode in ['max', 'avg'
-                             ], "Pool_mode should be one of ['max', 'avg']."
+        assert pool_mode in ['max', 'avg'], "Pool_mode should be one of ['max', 'avg']."
         assert isinstance(knn_modes, list) or isinstance(
-            knn_modes, tuple), 'The type of knn_modes should be list or tuple.'
+            knn_modes, tuple
+        ), 'The type of knn_modes should be list or tuple.'
 
         if isinstance(mlp_channels, tuple):
             mlp_channels = list(map(list, mlp_channels))
@@ -74,7 +76,8 @@ class BaseDGCNNGFModule(nn.Module):
                         use_xyz=use_xyz,
                         normalize_xyz=normalize_xyz,
                         return_grouped_xyz=grouper_return_grouped_xyz,
-                        return_grouped_idx=True)
+                        return_grouped_idx=True,
+                    )
                 else:
                     grouper = QueryAndGroup(
                         radii[i],
@@ -82,7 +85,8 @@ class BaseDGCNNGFModule(nn.Module):
                         use_xyz=use_xyz,
                         normalize_xyz=normalize_xyz,
                         return_grouped_xyz=grouper_return_grouped_xyz,
-                        return_grouped_idx=grouper_return_grouped_idx)
+                        return_grouped_idx=grouper_return_grouped_idx,
+                    )
             else:
                 grouper = GroupAll(use_xyz)
             self.groupers.append(grouper)
@@ -99,12 +103,10 @@ class BaseDGCNNGFModule(nn.Module):
         """
         if self.pool_mode == 'max':
             # (B, C, N, 1)
-            new_features = F.max_pool2d(
-                features, kernel_size=[1, features.size(3)])
+            new_features = F.max_pool2d(features, kernel_size=[1, features.size(3)])
         elif self.pool_mode == 'avg':
             # (B, C, N, 1)
-            new_features = F.avg_pool2d(
-                features, kernel_size=[1, features.size(3)])
+            new_features = F.avg_pool2d(features, kernel_size=[1, features.size(3)])
         else:
             raise NotImplementedError
 
@@ -123,25 +125,27 @@ class BaseDGCNNGFModule(nn.Module):
         new_points_list = [points]
 
         for i in range(len(self.groupers)):
-
             new_points = new_points_list[i]
-            new_points_trans = new_points.transpose(
-                1, 2).contiguous()  # (B, C, N)
+            new_points_trans = new_points.transpose(1, 2).contiguous()  # (B, C, N)
 
             if self.knn_modes[i] == 'D-KNN':
                 # (B, N, C) -> (B, N, K)
-                idx = self.groupers[i](new_points[..., -3:].contiguous(),
-                                       new_points[..., -3:].contiguous())[-1]
+                idx = self.groupers[i](
+                    new_points[..., -3:].contiguous(), new_points[..., -3:].contiguous()
+                )[-1]
 
                 grouped_results = grouping_operation(
-                    new_points_trans, idx)  # (B, C, N) -> (B, C, N, K)
+                    new_points_trans, idx
+                )  # (B, C, N) -> (B, C, N, K)
                 grouped_results -= new_points_trans.unsqueeze(-1)
             else:
                 grouped_results = self.groupers[i](
-                    new_points, new_points)  # (B, N, C) -> (B, C, N, K)
+                    new_points, new_points
+                )  # (B, N, C) -> (B, C, N, K)
 
             new_points = new_points_trans.unsqueeze(-1).repeat(
-                1, 1, 1, grouped_results.shape[-1])
+                1, 1, 1, grouped_results.shape[-1]
+            )
             new_points = torch.cat([grouped_results, new_points], dim=1)
 
             # (B, mlp[-1], N, K)
@@ -181,18 +185,20 @@ class DGCNNGFModule(BaseDGCNNGFModule):
             otherwise False. Defaults to 'auto'.
     """
 
-    def __init__(self,
-                 mlp_channels: List[int],
-                 num_sample: Optional[int] = None,
-                 knn_mode: str = 'F-KNN',
-                 radius: Optional[float] = None,
-                 dilated_group: bool = False,
-                 norm_cfg: ConfigType = dict(type='BN2d'),
-                 act_cfg: ConfigType = dict(type='ReLU'),
-                 use_xyz: bool = True,
-                 pool_mode: str = 'max',
-                 normalize_xyz: bool = False,
-                 bias: Union[bool, str] = 'auto') -> None:
+    def __init__(
+        self,
+        mlp_channels: List[int],
+        num_sample: Optional[int] = None,
+        knn_mode: str = 'F-KNN',
+        radius: Optional[float] = None,
+        dilated_group: bool = False,
+        norm_cfg: ConfigType = dict(type='BN2d'),
+        act_cfg: ConfigType = dict(type='ReLU'),
+        use_xyz: bool = True,
+        pool_mode: str = 'max',
+        normalize_xyz: bool = False,
+        bias: Union[bool, str] = 'auto',
+    ) -> None:
         super(DGCNNGFModule, self).__init__(
             mlp_channels=[mlp_channels],
             sample_nums=[num_sample],
@@ -201,7 +207,8 @@ class DGCNNGFModule(BaseDGCNNGFModule):
             use_xyz=use_xyz,
             pool_mode=pool_mode,
             normalize_xyz=normalize_xyz,
-            dilated_group=dilated_group)
+            dilated_group=dilated_group,
+        )
 
         for i in range(len(self.mlp_channels)):
             mlp_channel = self.mlp_channels[i]
@@ -218,5 +225,7 @@ class DGCNNGFModule(BaseDGCNNGFModule):
                         conv_cfg=dict(type='Conv2d'),
                         norm_cfg=norm_cfg,
                         act_cfg=act_cfg,
-                        bias=bias))
+                        bias=bias,
+                    ),
+                )
             self.mlps.append(mlp)

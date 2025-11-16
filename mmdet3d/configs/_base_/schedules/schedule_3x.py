@@ -22,12 +22,8 @@ test_cfg = dict(type=TestLoop)
 # learning rate
 param_scheduler = [
     dict(
-        type=MultiStepLR,
-        begin=0,
-        end=36,
-        by_epoch=True,
-        milestones=[24, 32],
-        gamma=0.1)
+        type=MultiStepLR, begin=0, end=36, by_epoch=True, milestones=[24, 32], gamma=0.1
+    )
 ]
 
 # Default setting for scaling LR automatically

@@ -9,10 +9,10 @@ from torch import Tensor
 from mmdet3d.utils import array_converter
 
 
-@array_converter(apply_to=('val', ))
-def limit_period(val: Union[np.ndarray, Tensor],
-                 offset: float = 0.5,
-                 period: float = np.pi) -> Union[np.ndarray, Tensor]:
+@array_converter(apply_to=('val',))
+def limit_period(
+    val: Union[np.ndarray, Tensor], offset: float = 0.5, period: float = np.pi
+) -> Union[np.ndarray, Tensor]:
     """Limit the value into a period for periodic function.
 
     Args:
@@ -34,9 +34,8 @@ def rotation_3d_in_axis(
     angles: Union[np.ndarray, Tensor, float],
     axis: int = 0,
     return_mat: bool = False,
-    clockwise: bool = False
-) -> Union[Tuple[np.ndarray, np.ndarray], Tuple[Tensor, Tensor], np.ndarray,
-           Tensor]:
+    clockwise: bool = False,
+) -> Union[Tuple[np.ndarray, np.ndarray], Tuple[Tensor, Tensor], np.ndarray, Tensor]:
     """Rotate points by angles according to axis.
 
     Args:
@@ -64,12 +63,16 @@ def rotation_3d_in_axis(
     if isinstance(angles, float) or len(angles.shape) == 0:
         angles = torch.full(points.shape[:1], angles)
 
-    assert len(points.shape) == 3 and len(angles.shape) == 1 and \
-        points.shape[0] == angles.shape[0], 'Incorrect shape of points ' \
-        f'angles: {points.shape}, {angles.shape}'
+    assert (
+        len(points.shape) == 3
+        and len(angles.shape) == 1
+        and points.shape[0] == angles.shape[0]
+    ), ('Incorrect shape of points ' f'angles: {points.shape}, {angles.shape}')
 
-    assert points.shape[-1] in [2, 3], \
-        f'Points size should be 2 or 3 instead of {points.shape[-1]}'
+    assert points.shape[-1] in [
+        2,
+        3,
+    ], f'Points size should be 2 or 3 instead of {points.shape[-1]}'
 
     rot_sin = torch.sin(angles)
     rot_cos = torch.cos(angles)
@@ -78,31 +81,35 @@ def rotation_3d_in_axis(
 
     if points.shape[-1] == 3:
         if axis == 1 or axis == -2:
-            rot_mat_T = torch.stack([
-                torch.stack([rot_cos, zeros, -rot_sin]),
-                torch.stack([zeros, ones, zeros]),
-                torch.stack([rot_sin, zeros, rot_cos])
-            ])
+            rot_mat_T = torch.stack(
+                [
+                    torch.stack([rot_cos, zeros, -rot_sin]),
+                    torch.stack([zeros, ones, zeros]),
+                    torch.stack([rot_sin, zeros, rot_cos]),
+                ]
+            )
         elif axis == 2 or axis == -1:
-            rot_mat_T = torch.stack([
-                torch.stack([rot_cos, rot_sin, zeros]),
-                torch.stack([-rot_sin, rot_cos, zeros]),
-                torch.stack([zeros, zeros, ones])
-            ])
+            rot_mat_T = torch.stack(
+                [
+                    torch.stack([rot_cos, rot_sin, zeros]),
+                    torch.stack([-rot_sin, rot_cos, zeros]),
+                    torch.stack([zeros, zeros, ones]),
+                ]
+            )
         elif axis == 0 or axis == -3:
-            rot_mat_T = torch.stack([
-                torch.stack([ones, zeros, zeros]),
-                torch.stack([zeros, rot_cos, rot_sin]),
-                torch.stack([zeros, -rot_sin, rot_cos])
-            ])
+            rot_mat_T = torch.stack(
+                [
+                    torch.stack([ones, zeros, zeros]),
+                    torch.stack([zeros, rot_cos, rot_sin]),
+                    torch.stack([zeros, -rot_sin, rot_cos]),
+                ]
+            )
         else:
-            raise ValueError(
-                f'axis should in range [-3, -2, -1, 0, 1, 2], got {axis}')
+            raise ValueError(f'axis should in range [-3, -2, -1, 0, 1, 2], got {axis}')
     else:
-        rot_mat_T = torch.stack([
-            torch.stack([rot_cos, rot_sin]),
-            torch.stack([-rot_sin, rot_cos])
-        ])
+        rot_mat_T = torch.stack(
+            [torch.stack([rot_cos, rot_sin]), torch.stack([-rot_sin, rot_cos])]
+        )
 
     if clockwise:
         rot_mat_T = rot_mat_T.transpose(0, 1)
@@ -124,9 +131,8 @@ def rotation_3d_in_axis(
         return points_new
 
 
-@array_converter(apply_to=('boxes_xywhr', ))
-def xywhr2xyxyr(
-        boxes_xywhr: Union[Tensor, np.ndarray]) -> Union[Tensor, np.ndarray]:
+@array_converter(apply_to=('boxes_xywhr',))
+def xywhr2xyxyr(boxes_xywhr: Union[Tensor, np.ndarray]) -> Union[Tensor, np.ndarray]:
     """Convert a rotated boxes in XYWHR format to XYXYR format.
 
     Args:
@@ -161,8 +167,13 @@ def get_box_type(box_type: str) -> Tuple[type, int]:
     Returns:
         tuple: Box type and box mode.
     """
-    from .box_3d_mode import (Box3DMode, CameraInstance3DBoxes,
-                              DepthInstance3DBoxes, LiDARInstance3DBoxes)
+    from .box_3d_mode import (
+        Box3DMode,
+        CameraInstance3DBoxes,
+        DepthInstance3DBoxes,
+        LiDARInstance3DBoxes,
+    )
+
     box_type_lower = box_type.lower()
     if box_type_lower == 'lidar':
         box_type_3d = LiDARInstance3DBoxes
@@ -174,16 +185,20 @@ def get_box_type(box_type: str) -> Tuple[type, int]:
         box_type_3d = DepthInstance3DBoxes
         box_mode_3d = Box3DMode.DEPTH
     else:
-        raise ValueError('Only "box_type" of "camera", "lidar", "depth" are '
-                         f'supported, got {box_type}')
+        raise ValueError(
+            'Only "box_type" of "camera", "lidar", "depth" are '
+            f'supported, got {box_type}'
+        )
 
     return box_type_3d, box_mode_3d
 
 
 @array_converter(apply_to=('points_3d', 'proj_mat'))
-def points_cam2img(points_3d: Union[Tensor, np.ndarray],
-                   proj_mat: Union[Tensor, np.ndarray],
-                   with_depth: bool = False) -> Union[Tensor, np.ndarray]:
+def points_cam2img(
+    points_3d: Union[Tensor, np.ndarray],
+    proj_mat: Union[Tensor, np.ndarray],
+    with_depth: bool = False,
+) -> Union[Tensor, np.ndarray]:
     """Project points in camera coordinates to image coordinates.
 
     Args:
@@ -200,16 +215,16 @@ def points_cam2img(points_3d: Union[Tensor, np.ndarray],
     points_shape = list(points_3d.shape)
     points_shape[-1] = 1
 
-    assert len(proj_mat.shape) == 2, \
-        'The dimension of the projection matrix should be 2 ' \
+    assert len(proj_mat.shape) == 2, (
+        'The dimension of the projection matrix should be 2 '
         f'instead of {len(proj_mat.shape)}.'
+    )
     d1, d2 = proj_mat.shape[:2]
-    assert (d1 == 3 and d2 == 3) or (d1 == 3 and d2 == 4) or \
-        (d1 == 4 and d2 == 4), 'The shape of the projection matrix ' \
-        f'({d1}*{d2}) is not supported.'
+    assert (d1 == 3 and d2 == 3) or (d1 == 3 and d2 == 4) or (d1 == 4 and d2 == 4), (
+        'The shape of the projection matrix ' f'({d1}*{d2}) is not supported.'
+    )
     if d1 == 3:
-        proj_mat_expanded = torch.eye(
-            4, device=proj_mat.device, dtype=proj_mat.dtype)
+        proj_mat_expanded = torch.eye(4, device=proj_mat.device, dtype=proj_mat.dtype)
         proj_mat_expanded[:d1, :d2] = proj_mat
         proj_mat = proj_mat_expanded
 
@@ -227,8 +242,8 @@ def points_cam2img(points_3d: Union[Tensor, np.ndarray],
 
 @array_converter(apply_to=('points', 'cam2img'))
 def points_img2cam(
-        points: Union[Tensor, np.ndarray],
-        cam2img: Union[Tensor, np.ndarray]) -> Union[Tensor, np.ndarray]:
+    points: Union[Tensor, np.ndarray], cam2img: Union[Tensor, np.ndarray]
+) -> Union[Tensor, np.ndarray]:
     """Project points in image coordinates to camera coordinates.
 
     Args:
@@ -250,7 +265,7 @@ def points_img2cam(
     unnormed_xys = torch.cat([xys * depths, depths], dim=1)
 
     pad_cam2img = torch.eye(4, dtype=xys.dtype, device=xys.device)
-    pad_cam2img[:cam2img.shape[0], :cam2img.shape[1]] = cam2img
+    pad_cam2img[: cam2img.shape[0], : cam2img.shape[1]] = cam2img
     inv_pad_cam2img = torch.inverse(pad_cam2img).transpose(0, 1)
 
     # Do operation in homogeneous coordinates.
@@ -279,12 +294,16 @@ def mono_cam_box2vis(cam_box):
     Returns:
         :obj:`CameraInstance3DBoxes`: Box after conversion.
     """
-    warning.warn('DeprecationWarning: The hack of yaw and dimension in the '
-                 'monocular 3D detection on nuScenes has been removed. The '
-                 'function mono_cam_box2vis will be deprecated.')
+    warning.warn(
+        'DeprecationWarning: The hack of yaw and dimension in the '
+        'monocular 3D detection on nuScenes has been removed. The '
+        'function mono_cam_box2vis will be deprecated.'
+    )
     from .cam_box3d import CameraInstance3DBoxes
-    assert isinstance(cam_box, CameraInstance3DBoxes), \
-        'input bbox should be CameraInstance3DBoxes!'
+
+    assert isinstance(
+        cam_box, CameraInstance3DBoxes
+    ), 'input bbox should be CameraInstance3DBoxes!'
     loc = cam_box.gravity_center
     dim = cam_box.dims
     yaw = cam_box.yaw
@@ -301,7 +320,8 @@ def mono_cam_box2vis(cam_box):
     yaw = -yaw - np.pi / 2
     cam_box = torch.cat([loc, dim, yaw[:, None], feats], dim=1)
     cam_box = CameraInstance3DBoxes(
-        cam_box, box_dim=cam_box.shape[-1], origin=(0.5, 0.5, 0.5))
+        cam_box, box_dim=cam_box.shape[-1], origin=(0.5, 0.5, 0.5)
+    )
 
     return cam_box
 

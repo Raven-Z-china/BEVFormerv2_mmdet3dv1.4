@@ -15,7 +15,8 @@ lr = 1e-4
 optim_wrapper = dict(
     type=OptimWrapper,
     optimizer=dict(type=AdamW, lr=lr, weight_decay=0.01),
-    clip_grad=dict(max_norm=35, norm_type=2))
+    clip_grad=dict(max_norm=35, norm_type=2),
+)
 # learning rate
 param_scheduler = [
     # learning rate scheduler
@@ -29,7 +30,8 @@ param_scheduler = [
         begin=0,
         end=8,
         by_epoch=True,
-        convert_to_iter_based=True),
+        convert_to_iter_based=True,
+    ),
     dict(
         type=CosineAnnealingLR,
         T_max=12,
@@ -37,7 +39,8 @@ param_scheduler = [
         begin=8,
         end=20,
         by_epoch=True,
-        convert_to_iter_based=True),
+        convert_to_iter_based=True,
+    ),
     # momentum scheduler
     # During the first 8 epochs, momentum increases from 0 to 0.85 / 0.95
     # during the next 12 epochs, momentum increases from 0.85 / 0.95 to 1
@@ -48,7 +51,8 @@ param_scheduler = [
         begin=0,
         end=8,
         by_epoch=True,
-        convert_to_iter_based=True),
+        convert_to_iter_based=True,
+    ),
     dict(
         type=CosineAnnealingMomentum,
         T_max=12,
@@ -56,7 +60,8 @@ param_scheduler = [
         begin=8,
         end=20,
         by_epoch=True,
-        convert_to_iter_based=True)
+        convert_to_iter_based=True,
+    ),
 ]
 
 # runtime settings

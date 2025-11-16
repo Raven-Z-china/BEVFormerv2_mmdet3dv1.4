@@ -43,17 +43,19 @@ class Cylinder3D(EncoderDecoder3D):
             Defaults to None.
     """
 
-    def __init__(self,
-                 voxel_encoder: ConfigType,
-                 backbone: ConfigType,
-                 decode_head: ConfigType,
-                 neck: OptConfigType = None,
-                 auxiliary_head: OptConfigType = None,
-                 loss_regularization: OptConfigType = None,
-                 train_cfg: OptConfigType = None,
-                 test_cfg: OptConfigType = None,
-                 data_preprocessor: OptConfigType = None,
-                 init_cfg: OptMultiConfig = None) -> None:
+    def __init__(
+        self,
+        voxel_encoder: ConfigType,
+        backbone: ConfigType,
+        decode_head: ConfigType,
+        neck: OptConfigType = None,
+        auxiliary_head: OptConfigType = None,
+        loss_regularization: OptConfigType = None,
+        train_cfg: OptConfigType = None,
+        test_cfg: OptConfigType = None,
+        data_preprocessor: OptConfigType = None,
+        init_cfg: OptMultiConfig = None,
+    ) -> None:
         super(Cylinder3D, self).__init__(
             backbone=backbone,
             decode_head=decode_head,
@@ -63,23 +65,27 @@ class Cylinder3D(EncoderDecoder3D):
             train_cfg=train_cfg,
             test_cfg=test_cfg,
             data_preprocessor=data_preprocessor,
-            init_cfg=init_cfg)
+            init_cfg=init_cfg,
+        )
 
         self.voxel_encoder = MODELS.build(voxel_encoder)
 
     def extract_feat(self, batch_inputs: dict) -> Tensor:
         """Extract features from points."""
-        encoded_feats = self.voxel_encoder(batch_inputs['voxels']['voxels'],
-                                           batch_inputs['voxels']['coors'])
+        encoded_feats = self.voxel_encoder(
+            batch_inputs['voxels']['voxels'], batch_inputs['voxels']['coors']
+        )
         batch_inputs['voxels']['voxel_coors'] = encoded_feats[1]
-        x = self.backbone(encoded_feats[0], encoded_feats[1],
-                          len(batch_inputs['points']))
+        x = self.backbone(
+            encoded_feats[0], encoded_feats[1], len(batch_inputs['points'])
+        )
         if self.with_neck:
             x = self.neck(x)
         return x
 
-    def loss(self, batch_inputs_dict: dict,
-             batch_data_samples: SampleList) -> Dict[str, Tensor]:
+    def loss(
+        self, batch_inputs_dict: dict, batch_data_samples: SampleList
+    ) -> Dict[str, Tensor]:
         """Calculate losses from a batch of inputs and data samples.
 
         Args:
@@ -104,10 +110,12 @@ class Cylinder3D(EncoderDecoder3D):
 
         return losses
 
-    def predict(self,
-                batch_inputs_dict: dict,
-                batch_data_samples: SampleList,
-                rescale: bool = True) -> SampleList:
+    def predict(
+        self,
+        batch_inputs_dict: dict,
+        batch_data_samples: SampleList,
+        rescale: bool = True,
+    ) -> SampleList:
         """Simple test with single scene.
 
         Args:
@@ -136,8 +144,9 @@ class Cylinder3D(EncoderDecoder3D):
         # to use down-sampling to get a batch of scenes with same num_points
         # therefore, we only support testing one scene every time
         x = self.extract_feat(batch_inputs_dict)
-        seg_logits_list = self.decode_head.predict(x, batch_inputs_dict,
-                                                   batch_data_samples)
+        seg_logits_list = self.decode_head.predict(
+            x, batch_inputs_dict, batch_data_samples
+        )
         for i in range(len(seg_logits_list)):
             seg_logits_list[i] = seg_logits_list[i].transpose(0, 1)
 

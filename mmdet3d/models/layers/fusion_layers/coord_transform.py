@@ -8,10 +8,9 @@ from torch import Tensor
 from mmdet3d.structures.points import get_points_type
 
 
-def apply_3d_transformation(pcd: Tensor,
-                            coord_type: str,
-                            img_meta: dict,
-                            reverse: bool = False) -> Tensor:
+def apply_3d_transformation(
+    pcd: Tensor, coord_type: str, img_meta: dict, reverse: bool = False
+) -> Tensor:
     """Apply transformation to input point cloud.
 
     Args:
@@ -38,35 +37,47 @@ def apply_3d_transformation(pcd: Tensor,
 
     pcd_rotate_mat = (
         torch.tensor(img_meta['pcd_rotation'], dtype=dtype, device=device)
-        if 'pcd_rotation' in img_meta else torch.eye(
-            3, dtype=dtype, device=device))
+        if 'pcd_rotation' in img_meta
+        else torch.eye(3, dtype=dtype, device=device)
+    )
 
     pcd_scale_factor = (
-        img_meta['pcd_scale_factor'] if 'pcd_scale_factor' in img_meta else 1.)
+        img_meta['pcd_scale_factor'] if 'pcd_scale_factor' in img_meta else 1.0
+    )
 
     pcd_trans_factor = (
         torch.tensor(img_meta['pcd_trans'], dtype=dtype, device=device)
-        if 'pcd_trans' in img_meta else torch.zeros(
-            (3), dtype=dtype, device=device))
+        if 'pcd_trans' in img_meta
+        else torch.zeros((3), dtype=dtype, device=device)
+    )
 
-    pcd_horizontal_flip = img_meta[
-        'pcd_horizontal_flip'] if 'pcd_horizontal_flip' in \
-        img_meta else False
+    pcd_horizontal_flip = (
+        img_meta['pcd_horizontal_flip'] if 'pcd_horizontal_flip' in img_meta else False
+    )
 
-    pcd_vertical_flip = img_meta[
-        'pcd_vertical_flip'] if 'pcd_vertical_flip' in \
-        img_meta else False
+    pcd_vertical_flip = (
+        img_meta['pcd_vertical_flip'] if 'pcd_vertical_flip' in img_meta else False
+    )
 
-    flow = img_meta['transformation_3d_flow'] \
-        if 'transformation_3d_flow' in img_meta else []
+    flow = (
+        img_meta['transformation_3d_flow']
+        if 'transformation_3d_flow' in img_meta
+        else []
+    )
 
     pcd = pcd.clone()  # prevent inplace modification
     pcd = get_points_type(coord_type)(pcd)
 
-    horizontal_flip_func = partial(pcd.flip, bev_direction='horizontal') \
-        if pcd_horizontal_flip else lambda: None
-    vertical_flip_func = partial(pcd.flip, bev_direction='vertical') \
-        if pcd_vertical_flip else lambda: None
+    horizontal_flip_func = (
+        partial(pcd.flip, bev_direction='horizontal')
+        if pcd_horizontal_flip
+        else lambda: None
+    )
+    vertical_flip_func = (
+        partial(pcd.flip, bev_direction='vertical')
+        if pcd_vertical_flip
+        else lambda: None
+    )
     if reverse:
         scale_func = partial(pcd.scale, scale_factor=1.0 / pcd_scale_factor)
         translate_func = partial(pcd.translate, trans_vector=-pcd_trans_factor)
@@ -87,11 +98,12 @@ def apply_3d_transformation(pcd: Tensor,
         'S': scale_func,
         'R': rotate_func,
         'HF': horizontal_flip_func,
-        'VF': vertical_flip_func
+        'VF': vertical_flip_func,
     }
     for op in flow:
-        assert op in flow_mapping, f'This 3D data '\
-            f'transformation op ({op}) is not supported'
+        assert op in flow_mapping, (
+            f'This 3D data ' f'transformation op ({op}) is not supported'
+        )
         func = flow_mapping[op]
         func()
 
@@ -99,8 +111,8 @@ def apply_3d_transformation(pcd: Tensor,
 
 
 def extract_2d_info(
-        img_meta: dict,
-        tensor: Tensor) -> Tuple[int, int, int, int, Tensor, bool, Tensor]:
+    img_meta: dict, tensor: Tensor
+) -> Tuple[int, int, int, int, Tensor, bool, Tensor]:
     """Extract image augmentation information from img_meta.
 
     Args:
@@ -118,18 +130,20 @@ def extract_2d_info(
 
     img_scale_factor = (
         tensor.new_tensor(img_meta['scale_factor'][:2])
-        if 'scale_factor' in img_meta else tensor.new_tensor([1.0, 1.0]))
+        if 'scale_factor' in img_meta
+        else tensor.new_tensor([1.0, 1.0])
+    )
     img_flip = img_meta['flip'] if 'flip' in img_meta else False
     img_crop_offset = (
         tensor.new_tensor(img_meta['img_crop_offset'])
-        if 'img_crop_offset' in img_meta else tensor.new_tensor([0.0, 0.0]))
+        if 'img_crop_offset' in img_meta
+        else tensor.new_tensor([0.0, 0.0])
+    )
 
-    return (img_h, img_w, ori_h, ori_w, img_scale_factor, img_flip,
-            img_crop_offset)
+    return (img_h, img_w, ori_h, ori_w, img_scale_factor, img_flip, img_crop_offset)
 
 
-def bbox_2d_transform(img_meta: dict, bbox_2d: Tensor,
-                      ori2new: bool) -> Tensor:
+def bbox_2d_transform(img_meta: dict, bbox_2d: Tensor, ori2new: bool) -> Tensor:
     """Transform 2d bbox according to img_meta.
 
     Args:
@@ -141,8 +155,15 @@ def bbox_2d_transform(img_meta: dict, bbox_2d: Tensor,
         Tensor: The transformed 2d bboxes.
     """
 
-    img_h, img_w, ori_h, ori_w, img_scale_factor, img_flip, \
-        img_crop_offset = extract_2d_info(img_meta, bbox_2d)
+    (
+        img_h,
+        img_w,
+        ori_h,
+        ori_w,
+        img_scale_factor,
+        img_flip,
+        img_crop_offset,
+    ) = extract_2d_info(img_meta, bbox_2d)
 
     bbox_2d_new = bbox_2d.clone()
 
@@ -182,8 +203,7 @@ def bbox_2d_transform(img_meta: dict, bbox_2d: Tensor,
     return bbox_2d_new
 
 
-def coord_2d_transform(img_meta: dict, coord_2d: Tensor,
-                       ori2new: bool) -> Tensor:
+def coord_2d_transform(img_meta: dict, coord_2d: Tensor, ori2new: bool) -> Tensor:
     """Transform 2d pixel coordinates according to img_meta.
 
     Args:
@@ -195,8 +215,15 @@ def coord_2d_transform(img_meta: dict, coord_2d: Tensor,
         Tensor: The transformed 2d coordinates.
     """
 
-    img_h, img_w, ori_h, ori_w, img_scale_factor, img_flip, \
-        img_crop_offset = extract_2d_info(img_meta, coord_2d)
+    (
+        img_h,
+        img_w,
+        ori_h,
+        ori_w,
+        img_scale_factor,
+        img_flip,
+        img_crop_offset,
+    ) = extract_2d_info(img_meta, coord_2d)
 
     coord_2d_new = coord_2d.clone()
 

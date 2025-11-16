@@ -39,14 +39,16 @@ class Anchor3DRangeGenerator(object):
             Defaults to True.
     """
 
-    def __init__(self,
-                 ranges: List[List[float]],
-                 sizes: List[List[float]] = [[3.9, 1.6, 1.56]],
-                 scales: List[int] = [1],
-                 rotations: List[float] = [0, 1.5707963],
-                 custom_values: Tuple[float] = (),
-                 reshape_out: bool = True,
-                 size_per_range: bool = True) -> None:
+    def __init__(
+        self,
+        ranges: List[List[float]],
+        sizes: List[List[float]] = [[3.9, 1.6, 1.56]],
+        scales: List[int] = [1],
+        rotations: List[float] = [0, 1.5707963],
+        custom_values: Tuple[float] = (),
+        reshape_out: bool = True,
+        size_per_range: bool = True,
+    ) -> None:
         assert mmengine.is_list_of(ranges, list)
         if size_per_range:
             if len(sizes) != len(ranges):
@@ -90,9 +92,8 @@ class Anchor3DRangeGenerator(object):
         return len(self.scales)
 
     def grid_anchors(
-            self,
-            featmap_sizes: List[Tuple[int]],
-            device: Union[str, torch.device] = 'cuda') -> List[Tensor]:
+        self, featmap_sizes: List[Tuple[int]], device: Union[str, torch.device] = 'cuda'
+    ) -> List[Tensor]:
         """Generate grid anchors in multiple feature levels.
 
         Args:
@@ -112,17 +113,19 @@ class Anchor3DRangeGenerator(object):
         multi_level_anchors = []
         for i in range(self.num_levels):
             anchors = self.single_level_grid_anchors(
-                featmap_sizes[i], self.scales[i], device=device)
+                featmap_sizes[i], self.scales[i], device=device
+            )
             if self.reshape_out:
                 anchors = anchors.reshape(-1, anchors.size(-1))
             multi_level_anchors.append(anchors)
         return multi_level_anchors
 
     def single_level_grid_anchors(
-            self,
-            featmap_size: Tuple[int],
-            scale: int,
-            device: Union[str, torch.device] = 'cuda') -> Tensor:
+        self,
+        featmap_size: Tuple[int],
+        scale: int,
+        device: Union[str, torch.device] = 'cuda',
+    ) -> Tensor:
         """Generate grid anchors of a single level feature map.
 
         This function is usually called by method ``self.grid_anchors``.
@@ -147,7 +150,8 @@ class Anchor3DRangeGenerator(object):
                 scale,
                 self.sizes,
                 self.rotations,
-                device=device)
+                device=device,
+            )
 
         mr_anchors = []
         for anchor_range, anchor_size in zip(self.ranges, self.sizes):
@@ -158,18 +162,21 @@ class Anchor3DRangeGenerator(object):
                     scale,
                     anchor_size,
                     self.rotations,
-                    device=device))
+                    device=device,
+                )
+            )
         mr_anchors = torch.cat(mr_anchors, dim=-3)
         return mr_anchors
 
     def anchors_single_range(
-            self,
-            feature_size: Tuple[int],
-            anchor_range: Union[Tensor, List[float]],
-            scale: int = 1,
-            sizes: Union[List[List[float]], List[float]] = [[3.9, 1.6, 1.56]],
-            rotations: List[float] = [0, 1.5707963],
-            device: Union[str, torch.device] = 'cuda') -> Tensor:
+        self,
+        feature_size: Tuple[int],
+        anchor_range: Union[Tensor, List[float]],
+        scale: int = 1,
+        sizes: Union[List[List[float]], List[float]] = [[3.9, 1.6, 1.56]],
+        rotations: List[float] = [0, 1.5707963],
+        device: Union[str, torch.device] = 'cuda',
+    ) -> Tensor:
         """Generate anchors in a single range.
 
         Args:
@@ -197,11 +204,14 @@ class Anchor3DRangeGenerator(object):
             feature_size = [1, feature_size[0], feature_size[1]]
         anchor_range = torch.tensor(anchor_range, device=device)
         z_centers = torch.linspace(
-            anchor_range[2], anchor_range[5], feature_size[0], device=device)
+            anchor_range[2], anchor_range[5], feature_size[0], device=device
+        )
         y_centers = torch.linspace(
-            anchor_range[1], anchor_range[4], feature_size[1], device=device)
+            anchor_range[1], anchor_range[4], feature_size[1], device=device
+        )
         x_centers = torch.linspace(
-            anchor_range[0], anchor_range[3], feature_size[2], device=device)
+            anchor_range[0], anchor_range[3], feature_size[2], device=device
+        )
         sizes = torch.tensor(sizes, device=device).reshape(-1, 3) * scale
         rotations = torch.tensor(rotations, device=device)
 
@@ -264,13 +274,14 @@ class AlignedAnchor3DRangeGenerator(Anchor3DRangeGenerator):
         self.align_corner = align_corner
 
     def anchors_single_range(
-            self,
-            feature_size: List[int],
-            anchor_range: List[float],
-            scale: int,
-            sizes: Union[List[List[float]], List[float]] = [[3.9, 1.6, 1.56]],
-            rotations: List[float] = [0, 1.5707963],
-            device: Union[str, torch.device] = 'cuda') -> Tensor:
+        self,
+        feature_size: List[int],
+        anchor_range: List[float],
+        scale: int,
+        sizes: Union[List[List[float]], List[float]] = [[3.9, 1.6, 1.56]],
+        rotations: List[float] = [0, 1.5707963],
+        device: Union[str, torch.device] = 'cuda',
+    ) -> Tensor:
         """Generate anchors in a single range.
 
         Args:
@@ -297,20 +308,14 @@ class AlignedAnchor3DRangeGenerator(Anchor3DRangeGenerator):
             feature_size = [1, feature_size[0], feature_size[1]]
         anchor_range = torch.tensor(anchor_range, device=device)
         z_centers = torch.linspace(
-            anchor_range[2],
-            anchor_range[5],
-            feature_size[0] + 1,
-            device=device)
+            anchor_range[2], anchor_range[5], feature_size[0] + 1, device=device
+        )
         y_centers = torch.linspace(
-            anchor_range[1],
-            anchor_range[4],
-            feature_size[1] + 1,
-            device=device)
+            anchor_range[1], anchor_range[4], feature_size[1] + 1, device=device
+        )
         x_centers = torch.linspace(
-            anchor_range[0],
-            anchor_range[3],
-            feature_size[2] + 1,
-            device=device)
+            anchor_range[0], anchor_range[3], feature_size[2] + 1, device=device
+        )
         sizes = torch.tensor(sizes, device=device).reshape(-1, 3) * scale
         rotations = torch.tensor(rotations, device=device)
 
@@ -324,9 +329,12 @@ class AlignedAnchor3DRangeGenerator(Anchor3DRangeGenerator):
             x_centers += x_shift
 
         # torch.meshgrid default behavior is 'id', np's default is 'xy'
-        rets = torch.meshgrid(x_centers[:feature_size[2]],
-                              y_centers[:feature_size[1]],
-                              z_centers[:feature_size[0]], rotations)
+        rets = torch.meshgrid(
+            x_centers[: feature_size[2]],
+            y_centers[: feature_size[1]],
+            z_centers[: feature_size[0]],
+            rotations,
+        )
 
         # torch.meshgrid returns a tuple rather than list
         rets = list(rets)
@@ -366,13 +374,14 @@ class AlignedAnchor3DRangeGeneratorPerCls(AlignedAnchor3DRangeGenerator):
 
     def __init__(self, **kwargs) -> None:
         super(AlignedAnchor3DRangeGeneratorPerCls, self).__init__(**kwargs)
-        assert len(self.scales) == 1, 'Multi-scale feature map levels are' + \
-            ' not supported currently in this kind of anchor generator.'
+        assert len(self.scales) == 1, (
+            'Multi-scale feature map levels are'
+            + ' not supported currently in this kind of anchor generator.'
+        )
 
     def grid_anchors(
-            self,
-            featmap_sizes: List[Tuple[int]],
-            device: Union[str, torch.device] = 'cuda') -> List[List[Tensor]]:
+        self, featmap_sizes: List[Tuple[int]], device: Union[str, torch.device] = 'cuda'
+    ) -> List[List[Tensor]]:
         """Generate grid anchors in multiple feature levels.
 
         Args:
@@ -390,15 +399,17 @@ class AlignedAnchor3DRangeGeneratorPerCls(AlignedAnchor3DRangeGenerator):
         """
         multi_level_anchors = []
         anchors = self.multi_cls_grid_anchors(
-            featmap_sizes, self.scales[0], device=device)
+            featmap_sizes, self.scales[0], device=device
+        )
         multi_level_anchors.append(anchors)
         return multi_level_anchors
 
     def multi_cls_grid_anchors(
-            self,
-            featmap_sizes: List[Tuple[int]],
-            scale: int,
-            device: Union[str, torch.device] = 'cuda') -> List[Tensor]:
+        self,
+        featmap_sizes: List[Tuple[int]],
+        scale: int,
+        device: Union[str, torch.device] = 'cuda',
+    ) -> List[Tensor]:
         """Generate grid anchors of a single level feature map for multi-class
         with different feature map sizes.
 
@@ -414,9 +425,10 @@ class AlignedAnchor3DRangeGeneratorPerCls(AlignedAnchor3DRangeGenerator):
         Returns:
             torch.Tensor: Anchors in the overall feature map.
         """
-        assert len(featmap_sizes) == len(self.sizes) == len(self.ranges), \
-            'The number of different feature map sizes anchor sizes and ' + \
-            'ranges should be the same.'
+        assert len(featmap_sizes) == len(self.sizes) == len(self.ranges), (
+            'The number of different feature map sizes anchor sizes and '
+            + 'ranges should be the same.'
+        )
 
         multi_cls_anchors = []
         for i in range(len(featmap_sizes)):
@@ -426,7 +438,8 @@ class AlignedAnchor3DRangeGeneratorPerCls(AlignedAnchor3DRangeGenerator):
                 scale,
                 self.sizes[i],
                 self.rotations,
-                device=device)
+                device=device,
+            )
             # [*featmap_size, num_sizes/ranges, num_rots, box_code_size]
             ndim = len(featmap_sizes[i])
             anchors = anchors.view(*featmap_sizes[i], -1, anchors.size(-1))

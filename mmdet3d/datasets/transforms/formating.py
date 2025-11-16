@@ -14,8 +14,8 @@ from mmdet3d.structures.points import BasePoints
 
 
 def to_tensor(
-    data: Union[torch.Tensor, np.ndarray, Sequence, int,
-                float]) -> torch.Tensor:
+    data: Union[torch.Tensor, np.ndarray, Sequence, int, float]
+) -> torch.Tensor:
     """Convert objects of various python types to :obj:`torch.Tensor`.
 
     Supported types are: :class:`numpy.ndarray`, :class:`torch.Tensor`,
@@ -49,7 +49,11 @@ def to_tensor(
 class Pack3DDetInputs(BaseTransform):
     INPUTS_KEYS = ['points', 'img']
     INSTANCEDATA_3D_KEYS = [
-        'gt_bboxes_3d', 'gt_labels_3d', 'attr_labels', 'depths', 'centers_2d'
+        'gt_bboxes_3d',
+        'gt_labels_3d',
+        'attr_labels',
+        'depths',
+        'centers_2d',
     ]
     INSTANCEDATA_2D_KEYS = [
         'gt_bboxes',
@@ -57,26 +61,53 @@ class Pack3DDetInputs(BaseTransform):
     ]
 
     SEG_KEYS = [
-        'gt_seg_map', 'pts_instance_mask', 'pts_semantic_mask',
-        'gt_semantic_seg'
+        'gt_seg_map',
+        'pts_instance_mask',
+        'pts_semantic_mask',
+        'gt_semantic_seg',
     ]
 
     def __init__(
         self,
         keys: tuple,
-        meta_keys: tuple = ('img_path', 'ori_shape', 'img_shape', 'lidar2img',
-                            'depth2img', 'cam2img', 'pad_shape',
-                            'scale_factor', 'flip', 'pcd_horizontal_flip',
-                            'pcd_vertical_flip', 'box_mode_3d', 'box_type_3d',
-                            'img_norm_cfg', 'num_pts_feats', 'pcd_trans',
-                            'sample_idx', 'pcd_scale_factor', 'pcd_rotation',
-                            'pcd_rotation_angle', 'lidar_path',
-                            'transformation_3d_flow', 'trans_mat',
-                            'affine_aug', 'sweep_img_metas', 'ori_cam2img',
-                            'cam2global', 'crop_offset', 'img_crop_offset',
-                            'resize_img_shape', 'lidar2cam', 'ori_lidar2img',
-                            'num_ref_frames', 'num_views', 'ego2global',
-                            'axis_align_matrix')
+        meta_keys: tuple = (
+            'img_path',
+            'ori_shape',
+            'img_shape',
+            'lidar2img',
+            'depth2img',
+            'cam2img',
+            'pad_shape',
+            'scale_factor',
+            'flip',
+            'pcd_horizontal_flip',
+            'pcd_vertical_flip',
+            'box_mode_3d',
+            'box_type_3d',
+            'img_norm_cfg',
+            'num_pts_feats',
+            'pcd_trans',
+            'sample_idx',
+            'pcd_scale_factor',
+            'pcd_rotation',
+            'pcd_rotation_angle',
+            'lidar_path',
+            'transformation_3d_flow',
+            'trans_mat',
+            'affine_aug',
+            'sweep_img_metas',
+            'ori_cam2img',
+            'cam2global',
+            'crop_offset',
+            'img_crop_offset',
+            'resize_img_shape',
+            'lidar2cam',
+            'ori_lidar2img',
+            'num_ref_frames',
+            'num_views',
+            'ego2global',
+            'axis_align_matrix',
+        ),
     ) -> None:
         self.keys = keys
         self.meta_keys = meta_keys
@@ -86,8 +117,7 @@ class Pack3DDetInputs(BaseTransform):
             key = key[3:]
         return key
 
-    def transform(self, results: Union[dict,
-                                       List[dict]]) -> Union[dict, List[dict]]:
+    def transform(self, results: Union[dict, List[dict]]) -> Union[dict, List[dict]]:
         """Method to pack the input data. when the value in this dict is a
         list, it usually is in Augmentations Testing.
 
@@ -153,8 +183,7 @@ class Pack3DDetInputs(BaseTransform):
                 if imgs.flags.c_contiguous:
                     imgs = to_tensor(imgs).permute(0, 3, 1, 2).contiguous()
                 else:
-                    imgs = to_tensor(
-                        np.ascontiguousarray(imgs.transpose(0, 3, 1, 2)))
+                    imgs = to_tensor(np.ascontiguousarray(imgs.transpose(0, 3, 1, 2)))
                 results['img'] = imgs
             else:
                 img = results['img']
@@ -167,14 +196,21 @@ class Pack3DDetInputs(BaseTransform):
                 if img.flags.c_contiguous:
                     img = to_tensor(img).permute(2, 0, 1).contiguous()
                 else:
-                    img = to_tensor(
-                        np.ascontiguousarray(img.transpose(2, 0, 1)))
+                    img = to_tensor(np.ascontiguousarray(img.transpose(2, 0, 1)))
                 results['img'] = img
 
         for key in [
-                'proposals', 'gt_bboxes', 'gt_bboxes_ignore', 'gt_labels',
-                'gt_bboxes_labels', 'attr_labels', 'pts_instance_mask',
-                'pts_semantic_mask', 'centers_2d', 'depths', 'gt_labels_3d'
+            'proposals',
+            'gt_bboxes',
+            'gt_bboxes_ignore',
+            'gt_labels',
+            'gt_bboxes_labels',
+            'attr_labels',
+            'pts_instance_mask',
+            'pts_semantic_mask',
+            'centers_2d',
+            'depths',
+            'gt_labels_3d',
         ]:
             if key not in results:
                 continue
@@ -187,8 +223,7 @@ class Pack3DDetInputs(BaseTransform):
                 results['gt_bboxes_3d'] = to_tensor(results['gt_bboxes_3d'])
 
         if 'gt_semantic_seg' in results:
-            results['gt_semantic_seg'] = to_tensor(
-                results['gt_semantic_seg'][None])
+            results['gt_semantic_seg'] = to_tensor(results['gt_semantic_seg'][None])
         if 'gt_seg_map' in results:
             results['gt_seg_map'] = results['gt_seg_map'][None, ...]
 
@@ -236,10 +271,12 @@ class Pack3DDetInputs(BaseTransform):
                 elif key in self.SEG_KEYS:
                     gt_pts_seg[self._remove_prefix(key)] = results[key]
                 else:
-                    raise NotImplementedError(f'Please modified '
-                                              f'`Pack3DDetInputs` '
-                                              f'to put {key} to '
-                                              f'corresponding field')
+                    raise NotImplementedError(
+                        f'Please modified '
+                        f'`Pack3DDetInputs` '
+                        f'to put {key} to '
+                        f'corresponding field'
+                    )
 
         data_sample.gt_instances_3d = gt_instances_3d
         data_sample.gt_instances = gt_instances

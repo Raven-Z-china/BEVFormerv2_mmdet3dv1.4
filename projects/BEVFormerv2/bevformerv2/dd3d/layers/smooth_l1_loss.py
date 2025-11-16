@@ -6,7 +6,9 @@
 import torch
 
 
-def smooth_l1_loss(input: torch.Tensor, target: torch.Tensor, beta: float, reduction: str = "none") -> torch.Tensor:
+def smooth_l1_loss(
+    input: torch.Tensor, target: torch.Tensor, beta: float, reduction: str = 'none'
+) -> torch.Tensor:
     """
     Smooth L1 loss defined in the Fast R-CNN paper as:
 
@@ -54,7 +56,7 @@ def smooth_l1_loss(input: torch.Tensor, target: torch.Tensor, beta: float, reduc
         implement Smooth L1 loss, nor does it implement Huber loss. It implements
         the special case of both in which they are equal (beta=1).
         See: https://pytorch.org/docs/stable/nn.html#torch.nn.SmoothL1Loss.
-     """
+    """
     # (dennis.park) Make it work with mixed precision training.
     beta = torch.as_tensor(beta).to(input.dtype)
     if beta < 1e-5:
@@ -73,8 +75,8 @@ def smooth_l1_loss(input: torch.Tensor, target: torch.Tensor, beta: float, reduc
         loss = torch.where(cond, a, b)
         # loss = torch.where(cond, 0.5 * n ** 2 / beta, n - 0.5 * beta)
 
-    if reduction == "mean":
+    if reduction == 'mean':
         loss = loss.mean()
-    elif reduction == "sum":
+    elif reduction == 'sum':
         loss = loss.sum()
     return loss

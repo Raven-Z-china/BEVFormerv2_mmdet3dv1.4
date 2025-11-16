@@ -35,18 +35,20 @@ class PointVoxelRCNN(TwoStage3DDetector):
             config of :class:`Det3DDataPreprocessor`. Defaults to None.
     """
 
-    def __init__(self,
-                 voxel_encoder: dict,
-                 middle_encoder: dict,
-                 backbone: dict,
-                 neck: Optional[dict] = None,
-                 rpn_head: Optional[dict] = None,
-                 points_encoder: Optional[dict] = None,
-                 roi_head: Optional[dict] = None,
-                 train_cfg: Optional[dict] = None,
-                 test_cfg: Optional[dict] = None,
-                 init_cfg: Optional[dict] = None,
-                 data_preprocessor: Optional[dict] = None) -> None:
+    def __init__(
+        self,
+        voxel_encoder: dict,
+        middle_encoder: dict,
+        backbone: dict,
+        neck: Optional[dict] = None,
+        rpn_head: Optional[dict] = None,
+        points_encoder: Optional[dict] = None,
+        roi_head: Optional[dict] = None,
+        train_cfg: Optional[dict] = None,
+        test_cfg: Optional[dict] = None,
+        init_cfg: Optional[dict] = None,
+        data_preprocessor: Optional[dict] = None,
+    ) -> None:
         super().__init__(
             backbone=backbone,
             neck=neck,
@@ -55,13 +57,15 @@ class PointVoxelRCNN(TwoStage3DDetector):
             train_cfg=train_cfg,
             test_cfg=test_cfg,
             init_cfg=init_cfg,
-            data_preprocessor=data_preprocessor)
+            data_preprocessor=data_preprocessor,
+        )
         self.voxel_encoder = MODELS.build(voxel_encoder)
         self.middle_encoder = MODELS.build(middle_encoder)
         self.points_encoder = MODELS.build(points_encoder)
 
-    def predict(self, batch_inputs_dict: dict, batch_data_samples: SampleList,
-                **kwargs) -> SampleList:
+    def predict(
+        self, batch_inputs_dict: dict, batch_data_samples: SampleList, **kwargs
+    ) -> SampleList:
         """Predict results from a batch of inputs and data samples with post-
         processing.
 
@@ -91,25 +95,23 @@ class PointVoxelRCNN(TwoStage3DDetector):
         """
         feats_dict = self.extract_feat(batch_inputs_dict)
         if self.with_rpn:
-            rpn_results_list = self.rpn_head.predict(feats_dict,
-                                                     batch_data_samples)
+            rpn_results_list = self.rpn_head.predict(feats_dict, batch_data_samples)
         else:
             rpn_results_list = [
                 data_sample.proposals for data_sample in batch_data_samples
             ]
 
         # extrack points feats by points_encoder
-        points_feats_dict = self.extract_points_feat(batch_inputs_dict,
-                                                     feats_dict,
-                                                     rpn_results_list)
+        points_feats_dict = self.extract_points_feat(
+            batch_inputs_dict, feats_dict, rpn_results_list
+        )
 
-        results_list_3d = self.roi_head.predict(points_feats_dict,
-                                                rpn_results_list,
-                                                batch_data_samples)
+        results_list_3d = self.roi_head.predict(
+            points_feats_dict, rpn_results_list, batch_data_samples
+        )
 
         # connvert to Det3DDataSample
-        results_list = self.add_pred_to_datasample(batch_data_samples,
-                                                   results_list_3d)
+        results_list = self.add_pred_to_datasample(batch_data_samples, results_list_3d)
 
         return results_list
 
@@ -135,21 +137,23 @@ class PointVoxelRCNN(TwoStage3DDetector):
         """
         feats_dict = dict()
         voxel_dict = batch_inputs_dict['voxels']
-        voxel_features = self.voxel_encoder(voxel_dict['voxels'],
-                                            voxel_dict['num_points'],
-                                            voxel_dict['coors'])
+        voxel_features = self.voxel_encoder(
+            voxel_dict['voxels'], voxel_dict['num_points'], voxel_dict['coors']
+        )
         batch_size = voxel_dict['coors'][-1, 0].item() + 1
-        feats_dict['spatial_feats'], feats_dict[
-            'multi_scale_3d_feats'] = self.middle_encoder(
-                voxel_features, voxel_dict['coors'], batch_size)
+        (
+            feats_dict['spatial_feats'],
+            feats_dict['multi_scale_3d_feats'],
+        ) = self.middle_encoder(voxel_features, voxel_dict['coors'], batch_size)
         x = self.backbone(feats_dict['spatial_feats'])
         if self.with_neck:
             neck_feats = self.neck(x)
             feats_dict['neck_feats'] = neck_feats
         return feats_dict
 
-    def extract_points_feat(self, batch_inputs_dict: dict, feats_dict: dict,
-                            rpn_results_list: InstanceList) -> dict:
+    def extract_points_feat(
+        self, batch_inputs_dict: dict, feats_dict: dict, rpn_results_list: InstanceList
+    ) -> dict:
         """Extract point-wise features from the raw points and voxel features.
 
         Args:
@@ -170,11 +174,9 @@ class PointVoxelRCNN(TwoStage3DDetector):
                 - fusion_keypoint_features (torch.Tensor): Fusion
                     keypoint_features by point_feature_fusion_layer.
         """
-        return self.points_encoder(batch_inputs_dict, feats_dict,
-                                   rpn_results_list)
+        return self.points_encoder(batch_inputs_dict, feats_dict, rpn_results_list)
 
-    def loss(self, batch_inputs_dict: dict, batch_data_samples: SampleList,
-             **kwargs):
+    def loss(self, batch_inputs_dict: dict, batch_data_samples: SampleList, **kwargs):
         """Calculate losses from a batch of inputs and data samples.
 
         Args:
@@ -197,15 +199,12 @@ class PointVoxelRCNN(TwoStage3DDetector):
 
         # RPN forward and loss
         if self.with_rpn:
-            proposal_cfg = self.train_cfg.get('rpn_proposal',
-                                              self.test_cfg.rpn)
+            proposal_cfg = self.train_cfg.get('rpn_proposal', self.test_cfg.rpn)
             rpn_data_samples = copy.deepcopy(batch_data_samples)
 
             rpn_losses, rpn_results_list = self.rpn_head.loss_and_predict(
-                feats_dict,
-                rpn_data_samples,
-                proposal_cfg=proposal_cfg,
-                **kwargs)
+                feats_dict, rpn_data_samples, proposal_cfg=proposal_cfg, **kwargs
+            )
             # avoid get same name with roi_head loss
             keys = rpn_losses.keys()
             for key in keys:
@@ -221,12 +220,13 @@ class PointVoxelRCNN(TwoStage3DDetector):
                 data_sample.proposals for data_sample in batch_data_samples
             ]
 
-        points_feats_dict = self.extract_points_feat(batch_inputs_dict,
-                                                     feats_dict,
-                                                     rpn_results_list)
+        points_feats_dict = self.extract_points_feat(
+            batch_inputs_dict, feats_dict, rpn_results_list
+        )
 
-        roi_losses = self.roi_head.loss(points_feats_dict, rpn_results_list,
-                                        batch_data_samples)
+        roi_losses = self.roi_head.loss(
+            points_feats_dict, rpn_results_list, batch_data_samples
+        )
         losses.update(roi_losses)
 
         return losses

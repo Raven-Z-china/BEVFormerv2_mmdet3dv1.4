@@ -8,14 +8,17 @@ from mmdet3d.structures import Det3DDataSample, PointData
 
 
 class TestPAConvHead(TestCase):
-
     def test_paconv_head_loss(self):
         """Tests PAConv head loss."""
 
         if torch.cuda.is_available():
             paconv_head = PAConvHead(
-                fp_channels=((768, 256, 256), (384, 256, 256), (320, 256, 128),
-                             (128 + 6, 128, 128, 128)),
+                fp_channels=(
+                    (768, 256, 256),
+                    (384, 256, 256),
+                    (320, 256, 128),
+                    (128 + 6, 128, 128, 128),
+                ),
                 channels=128,
                 num_classes=20,
                 dropout_ratio=0.5,
@@ -26,8 +29,10 @@ class TestPAConvHead(TestCase):
                     type='mmdet.CrossEntropyLoss',
                     use_sigmoid=False,
                     class_weight=None,
-                    loss_weight=1.0),
-                ignore_index=20)
+                    loss_weight=1.0,
+                ),
+                ignore_index=20,
+            )
 
             paconv_head.cuda()
             # PAConv head expects dict format features
@@ -54,7 +59,7 @@ class TestPAConvHead(TestCase):
 
             # When truth is non-empty then losses
             # should be nonzero for random inputs
-            pts_semantic_mask = torch.randint(0, 20, (4096, )).long().cuda()
+            pts_semantic_mask = torch.randint(0, 20, (4096,)).long().cuda()
             gt_pts_seg = PointData(pts_semantic_mask=pts_semantic_mask)
 
             datasample = Det3DDataSample()
@@ -64,5 +69,6 @@ class TestPAConvHead(TestCase):
 
             gt_sem_seg_loss = gt_losses['loss_sem_seg'].item()
 
-            self.assertGreater(gt_sem_seg_loss, 0,
-                               'semantic seg loss should be positive')
+            self.assertGreater(
+                gt_sem_seg_loss, 0, 'semantic seg loss should be positive'
+            )

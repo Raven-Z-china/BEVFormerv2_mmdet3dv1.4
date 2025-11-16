@@ -8,7 +8,6 @@ from mmdet3d.structures import Det3DDataSample, PointData
 
 
 class TestDGCNNHead(TestCase):
-
     def test_dgcnn_head_loss(self):
         """Tests DGCNN head loss."""
 
@@ -24,8 +23,10 @@ class TestDGCNNHead(TestCase):
                 type='mmdet.CrossEntropyLoss',
                 use_sigmoid=False,
                 class_weight=None,
-                loss_weight=1.0),
-            ignore_index=13)
+                loss_weight=1.0,
+            ),
+            ignore_index=13,
+        )
 
         # DGCNN head expects dict format features
         fa_points = torch.rand(1, 4096, 1024).float()
@@ -38,7 +39,7 @@ class TestDGCNNHead(TestCase):
 
         # When truth is non-empty then losses
         # should be nonzero for random inputs
-        pts_semantic_mask = torch.randint(0, 13, (4096, )).long()
+        pts_semantic_mask = torch.randint(0, 13, (4096,)).long()
         gt_pts_seg = PointData(pts_semantic_mask=pts_semantic_mask)
 
         datasample = Det3DDataSample()
@@ -48,5 +49,4 @@ class TestDGCNNHead(TestCase):
 
         gt_sem_seg_loss = gt_losses['loss_sem_seg'].item()
 
-        self.assertGreater(gt_sem_seg_loss, 0,
-                           'semantic seg loss should be positive')
+        self.assertGreater(gt_sem_seg_loss, 0, 'semantic seg loss should be positive')

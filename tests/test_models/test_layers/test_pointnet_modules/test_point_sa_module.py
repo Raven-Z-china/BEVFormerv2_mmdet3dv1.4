@@ -16,7 +16,8 @@ def test_pointnet_sa_module_msg():
         mlp_channels=[[12, 16], [12, 32]],
         norm_cfg=dict(type='BN2d'),
         use_xyz=False,
-        pool_mod='max').cuda()
+        pool_mod='max',
+    ).cuda()
 
     assert self.mlps[0].layer0.conv.in_channels == 12
     assert self.mlps[0].layer0.conv.out_channels == 16
@@ -46,7 +47,8 @@ def test_pointnet_sa_module_msg():
         use_xyz=False,
         pool_mod='max',
         fps_mod=['D-FPS'],
-        fps_sample_range_list=[-1]).cuda()
+        fps_sample_range_list=[-1],
+    ).cuda()
 
     # test forward
     new_xyz, new_features, inds = self(xyz, features)
@@ -64,7 +66,8 @@ def test_pointnet_sa_module_msg():
         use_xyz=False,
         pool_mod='max',
         fps_mod=['F-FPS'],
-        fps_sample_range_list=[-1]).cuda()
+        fps_sample_range_list=[-1],
+    ).cuda()
 
     # test forward
     new_xyz, new_features, inds = self(xyz, features)
@@ -82,7 +85,8 @@ def test_pointnet_sa_module_msg():
         use_xyz=False,
         pool_mod='max',
         fps_mod=['FS'],
-        fps_sample_range_list=[-1]).cuda()
+        fps_sample_range_list=[-1],
+    ).cuda()
 
     # test forward
     new_xyz, new_features, inds = self(xyz, features)
@@ -100,7 +104,8 @@ def test_pointnet_sa_module_msg():
         use_xyz=False,
         pool_mod='max',
         fps_mod=['F-FPS', 'D-FPS'],
-        fps_sample_range_list=[64, -1]).cuda()
+        fps_sample_range_list=[64, -1],
+    ).cuda()
 
     # test forward
     new_xyz, new_features, inds = self(xyz, features)
@@ -116,7 +121,8 @@ def test_pointnet_sa_module_msg():
         mlp_channels=[[12, 16], [12, 32]],
         norm_cfg=dict(type='BN2d'),
         use_xyz=False,
-        pool_mod='max').cuda()
+        pool_mod='max',
+    ).cuda()
 
     # test forward
     new_xyz, new_features, inds = self(xyz, features)
@@ -133,7 +139,8 @@ def test_pointnet_sa_module_msg():
             use_xyz=False,
             pool_mod='max',
             fps_mod=['F-FPS', 'D-FPS'],
-            fps_sample_range_list=[-1]).cuda()
+            fps_sample_range_list=[-1],
+        ).cuda()
 
     # length of 'num_point' should be same as 'fps_sample_range_list'
     with pytest.raises(AssertionError):
@@ -146,13 +153,15 @@ def test_pointnet_sa_module_msg():
             use_xyz=False,
             pool_mod='max',
             fps_mod=['F-FPS'],
-            fps_sample_range_list=[-1]).cuda()
+            fps_sample_range_list=[-1],
+        ).cuda()
 
 
 def test_pointnet_sa_module():
     if not torch.cuda.is_available():
         pytest.skip()
     from mmdet3d.models.layers import build_sa_module
+
     sa_cfg = dict(
         type='PointSAModule',
         num_point=16,
@@ -161,7 +170,8 @@ def test_pointnet_sa_module():
         mlp_channels=[12, 32],
         norm_cfg=dict(type='BN2d'),
         use_xyz=True,
-        pool_mod='max')
+        pool_mod='max',
+    )
     self = build_sa_module(sa_cfg).cuda()
 
     assert self.mlps[0].layer0.conv.in_channels == 15
@@ -191,7 +201,8 @@ def test_pointnet_sa_module():
             norm_cfg=dict(type='BN2d'),
             use_xyz=True,
             pool_mod='max',
-            normalize_xyz=True)
+            normalize_xyz=True,
+        )
         self = build_sa_module(sa_cfg)
 
     # test kNN sampling when radius is None

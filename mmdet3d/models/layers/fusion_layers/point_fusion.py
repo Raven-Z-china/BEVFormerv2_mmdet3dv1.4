@@ -9,26 +9,31 @@ from torch import nn as nn
 from torch.nn import functional as F
 
 from mmdet3d.registry import MODELS
-from mmdet3d.structures.bbox_3d import (get_proj_mat_by_coord_type,
-                                        points_cam2img, points_img2cam)
+from mmdet3d.structures.bbox_3d import (
+    get_proj_mat_by_coord_type,
+    points_cam2img,
+    points_img2cam,
+)
 from mmdet3d.utils import OptConfigType, OptMultiConfig
 from . import apply_3d_transformation
 
 
-def point_sample(img_meta: dict,
-                 img_features: Tensor,
-                 points: Tensor,
-                 proj_mat: Tensor,
-                 coord_type: str,
-                 img_scale_factor: Tensor,
-                 img_crop_offset: Tensor,
-                 img_flip: bool,
-                 img_pad_shape: Tuple[int],
-                 img_shape: Tuple[int],
-                 aligned: bool = True,
-                 padding_mode: str = 'zeros',
-                 align_corners: bool = True,
-                 valid_flag: bool = False) -> Tensor:
+def point_sample(
+    img_meta: dict,
+    img_features: Tensor,
+    points: Tensor,
+    proj_mat: Tensor,
+    coord_type: str,
+    img_scale_factor: Tensor,
+    img_crop_offset: Tensor,
+    img_flip: bool,
+    img_pad_shape: Tuple[int],
+    img_shape: Tuple[int],
+    aligned: bool = True,
+    padding_mode: str = 'zeros',
+    align_corners: bool = True,
+    valid_flag: bool = False,
+) -> Tensor:
     """Obtain image features using points.
 
     Args:
@@ -60,8 +65,7 @@ def point_sample(img_meta: dict,
     """
 
     # apply transformation based on info in img_meta
-    points = apply_3d_transformation(
-        points, coord_type, img_meta, reverse=True)
+    points = apply_3d_transformation(points, coord_type, img_meta, reverse=True)
 
     # project points to image coordinate
     if valid_flag:
@@ -88,8 +92,9 @@ def point_sample(img_meta: dict,
     h, w = img_pad_shape
     norm_coor_y = coor_y / h * 2 - 1
     norm_coor_x = coor_x / w * 2 - 1
-    grid = torch.cat([norm_coor_x, norm_coor_y],
-                     dim=1).unsqueeze(0).unsqueeze(0)  # Nx2 -> 1x1xNx2
+    grid = (
+        torch.cat([norm_coor_x, norm_coor_y], dim=1).unsqueeze(0).unsqueeze(0)
+    )  # Nx2 -> 1x1xNx2
 
     # align_corner=True provides higher performance
     mode = 'bilinear' if aligned else 'nearest'
@@ -98,13 +103,18 @@ def point_sample(img_meta: dict,
         grid,
         mode=mode,
         padding_mode=padding_mode,
-        align_corners=align_corners)  # 1xCx1xN feats
+        align_corners=align_corners,
+    )  # 1xCx1xN feats
 
     if valid_flag:
         # (N, )
-        valid = (coor_x.squeeze() < w) & (coor_x.squeeze() > 0) & (
-            coor_y.squeeze() < h) & (coor_y.squeeze() > 0) & (
-                depths > 0)
+        valid = (
+            (coor_x.squeeze() < w)
+            & (coor_x.squeeze() > 0)
+            & (coor_y.squeeze() < h)
+            & (coor_y.squeeze() > 0)
+            & (depths > 0)
+        )
         valid_features = point_features.squeeze().t()
         valid_features[~valid] = 0
         return valid_features, valid  # (N, C), (N,)
@@ -148,24 +158,26 @@ class PointFusion(BaseModule):
             Defaults to True.
     """
 
-    def __init__(self,
-                 img_channels: Union[List[int], int],
-                 pts_channels: int,
-                 mid_channels: int,
-                 out_channels: int,
-                 img_levels: Union[List[int], int] = 3,
-                 coord_type: str = 'LIDAR',
-                 conv_cfg: OptConfigType = None,
-                 norm_cfg: OptConfigType = None,
-                 act_cfg: OptConfigType = None,
-                 init_cfg: OptMultiConfig = None,
-                 activate_out: bool = True,
-                 fuse_out: bool = False,
-                 dropout_ratio: Union[int, float] = 0,
-                 aligned: bool = True,
-                 align_corners: bool = True,
-                 padding_mode: str = 'zeros',
-                 lateral_conv: bool = True) -> None:
+    def __init__(
+        self,
+        img_channels: Union[List[int], int],
+        pts_channels: int,
+        mid_channels: int,
+        out_channels: int,
+        img_levels: Union[List[int], int] = 3,
+        coord_type: str = 'LIDAR',
+        conv_cfg: OptConfigType = None,
+        norm_cfg: OptConfigType = None,
+        act_cfg: OptConfigType = None,
+        init_cfg: OptMultiConfig = None,
+        activate_out: bool = True,
+        fuse_out: bool = False,
+        dropout_ratio: Union[int, float] = 0,
+        aligned: bool = True,
+        align_corners: bool = True,
+        padding_mode: str = 'zeros',
+        lateral_conv: bool = True,
+    ) -> None:
         super(PointFusion, self).__init__(init_cfg=init_cfg)
         if isinstance(img_levels, int):
             img_levels = [img_levels]
@@ -198,7 +210,8 @@ class PointFusion(BaseModule):
                     conv_cfg=conv_cfg,
                     norm_cfg=norm_cfg,
                     act_cfg=self.act_cfg,
-                    inplace=False)
+                    inplace=False,
+                )
                 self.lateral_convs.append(l_conv)
             self.img_transform = nn.Sequential(
                 nn.Linear(mid_channels * len(img_channels), out_channels),
@@ -220,16 +233,22 @@ class PointFusion(BaseModule):
                 # For pts the BN is initialized differently by default
                 # TODO: check whether this is necessary
                 nn.BatchNorm1d(out_channels, eps=1e-3, momentum=0.01),
-                nn.ReLU(inplace=False))
+                nn.ReLU(inplace=False),
+            )
 
         if init_cfg is None:
             self.init_cfg = [
                 dict(type='Xavier', layer='Conv2d', distribution='uniform'),
-                dict(type='Xavier', layer='Linear', distribution='uniform')
+                dict(type='Xavier', layer='Linear', distribution='uniform'),
             ]
 
-    def forward(self, img_feats: List[Tensor], pts: List[Tensor],
-                pts_feats: Tensor, img_metas: List[dict]) -> Tensor:
+    def forward(
+        self,
+        img_feats: List[Tensor],
+        pts: List[Tensor],
+        pts_feats: Tensor,
+        img_metas: List[dict],
+    ) -> Tensor:
         """Forward function.
 
         Args:
@@ -256,8 +275,9 @@ class PointFusion(BaseModule):
 
         return fuse_out
 
-    def obtain_mlvl_feats(self, img_feats: List[Tensor], pts: List[Tensor],
-                          img_metas: List[dict]) -> Tensor:
+    def obtain_mlvl_feats(
+        self, img_feats: List[Tensor], pts: List[Tensor], img_metas: List[dict]
+    ) -> Tensor:
         """Obtain multi-level features for each point.
 
         Args:
@@ -282,16 +302,17 @@ class PointFusion(BaseModule):
             mlvl_img_feats = []
             for level in range(len(self.img_levels)):
                 mlvl_img_feats.append(
-                    self.sample_single(img_ins[level][i:i + 1], pts[i][:, :3],
-                                       img_metas[i]))
+                    self.sample_single(
+                        img_ins[level][i : i + 1], pts[i][:, :3], img_metas[i]
+                    )
+                )
             mlvl_img_feats = torch.cat(mlvl_img_feats, dim=-1)
             img_feats_per_point.append(mlvl_img_feats)
 
         img_pts = torch.cat(img_feats_per_point, dim=0)
         return img_pts
 
-    def sample_single(self, img_feats: Tensor, pts: Tensor,
-                      img_meta: dict) -> Tensor:
+    def sample_single(self, img_feats: Tensor, pts: Tensor, img_meta: dict) -> Tensor:
         """Sample features from single level image feature map.
 
         Args:
@@ -305,11 +326,15 @@ class PointFusion(BaseModule):
         # TODO: image transformation also extracted
         img_scale_factor = (
             pts.new_tensor(img_meta['scale_factor'][:2])
-            if 'scale_factor' in img_meta.keys() else 1)
+            if 'scale_factor' in img_meta.keys()
+            else 1
+        )
         img_flip = img_meta['flip'] if 'flip' in img_meta.keys() else False
         img_crop_offset = (
             pts.new_tensor(img_meta['img_crop_offset'])
-            if 'img_crop_offset' in img_meta.keys() else 0)
+            if 'img_crop_offset' in img_meta.keys()
+            else 0
+        )
         proj_mat = get_proj_mat_by_coord_type(img_meta, self.coord_type)
         img_pts = point_sample(
             img_meta=img_meta,
@@ -329,20 +354,22 @@ class PointFusion(BaseModule):
         return img_pts
 
 
-def voxel_sample(voxel_features: Tensor,
-                 voxel_range: List[float],
-                 voxel_size: List[float],
-                 depth_samples: Tensor,
-                 proj_mat: Tensor,
-                 downsample_factor: int,
-                 img_scale_factor: Tensor,
-                 img_crop_offset: Tensor,
-                 img_flip: bool,
-                 img_pad_shape: Tuple[int],
-                 img_shape: Tuple[int],
-                 aligned: bool = True,
-                 padding_mode: str = 'zeros',
-                 align_corners: bool = True) -> Tensor:
+def voxel_sample(
+    voxel_features: Tensor,
+    voxel_range: List[float],
+    voxel_size: List[float],
+    depth_samples: Tensor,
+    proj_mat: Tensor,
+    downsample_factor: int,
+    img_scale_factor: Tensor,
+    img_crop_offset: Tensor,
+    img_flip: bool,
+    img_pad_shape: Tuple[int],
+    img_shape: Tuple[int],
+    aligned: bool = True,
+    padding_mode: str = 'zeros',
+    align_corners: bool = True,
+) -> Tensor:
     """Obtain image features using points.
 
     Args:
@@ -413,6 +440,7 @@ def voxel_sample(voxel_features: Tensor,
         grid3d,
         mode=mode,
         padding_mode=padding_mode,
-        align_corners=align_corners)  # 1xCxDxHxW feats
+        align_corners=align_corners,
+    )  # 1xCxDxHxW feats
 
     return frustum_features

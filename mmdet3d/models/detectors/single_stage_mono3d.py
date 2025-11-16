@@ -58,18 +58,14 @@ class SingleStageMono3DDetector(SingleStageDetector):
               (num_instances, 4).
         """
 
-        assert (data_instances_2d is not None) or \
-               (data_instances_3d is not None),\
-               'please pass at least one type of data_samples'
+        assert (data_instances_2d is not None) or (
+            data_instances_3d is not None
+        ), 'please pass at least one type of data_samples'
 
         if data_instances_2d is None:
-            data_instances_2d = [
-                InstanceData() for _ in range(len(data_instances_3d))
-            ]
+            data_instances_2d = [InstanceData() for _ in range(len(data_instances_3d))]
         if data_instances_3d is None:
-            data_instances_3d = [
-                InstanceData() for _ in range(len(data_instances_2d))
-            ]
+            data_instances_3d = [InstanceData() for _ in range(len(data_instances_2d))]
 
         for i, data_sample in enumerate(data_samples):
             data_sample.pred_instances_3d = data_instances_3d[i]

@@ -8,14 +8,16 @@ import mmcv
 import numpy as np
 import torch
 from mmcv.transforms import BaseTransform, Compose, RandomResize, Resize
-from mmdet.datasets.transforms import (PhotoMetricDistortion, RandomCrop,
-                                       RandomFlip)
+from mmdet.datasets.transforms import PhotoMetricDistortion, RandomCrop, RandomFlip
 from mmengine import is_list_of, is_tuple_of
 
 from mmdet3d.models.task_modules import VoxelGenerator
 from mmdet3d.registry import TRANSFORMS
-from mmdet3d.structures import (CameraInstance3DBoxes, DepthInstance3DBoxes,
-                                LiDARInstance3DBoxes)
+from mmdet3d.structures import (
+    CameraInstance3DBoxes,
+    DepthInstance3DBoxes,
+    LiDARInstance3DBoxes,
+)
 from mmdet3d.structures.ops import box_np_ops
 from mmdet3d.structures.points import BasePoints
 from .data_augment_utils import noise_per_object_v3_
@@ -35,8 +37,9 @@ class RandomDropPointsColor(BaseTransform):
     """
 
     def __init__(self, drop_ratio: float = 0.2) -> None:
-        assert isinstance(drop_ratio, (int, float)) and 0 <= drop_ratio <= 1, \
-            f'invalid drop_ratio value {drop_ratio}'
+        assert (
+            isinstance(drop_ratio, (int, float)) and 0 <= drop_ratio <= 1
+        ), f'invalid drop_ratio value {drop_ratio}'
         self.drop_ratio = drop_ratio
 
     def transform(self, input_dict: dict) -> dict:
@@ -50,9 +53,9 @@ class RandomDropPointsColor(BaseTransform):
             in the result dict.
         """
         points = input_dict['points']
-        assert points.attribute_dims is not None and \
-            'color' in points.attribute_dims, \
-            'Expect points have color attribute'
+        assert (
+            points.attribute_dims is not None and 'color' in points.attribute_dims
+        ), 'Expect points have color attribute'
 
         # this if-expression is a bit strange
         # `RandomDropPointsColor` is used in training 3D segmentor PAConv
@@ -112,33 +115,38 @@ class RandomFlip3D(RandomFlip):
             box. Defaults to True.
     """
 
-    def __init__(self,
-                 sync_2d: bool = True,
-                 flip_ratio_bev_horizontal: float = 0.0,
-                 flip_ratio_bev_vertical: float = 0.0,
-                 flip_box3d: bool = True,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        sync_2d: bool = True,
+        flip_ratio_bev_horizontal: float = 0.0,
+        flip_ratio_bev_vertical: float = 0.0,
+        flip_box3d: bool = True,
+        **kwargs,
+    ) -> None:
         # `flip_ratio_bev_horizontal` is equal to
         # for flip prob of 2d image when
         # `sync_2d` is True
         super(RandomFlip3D, self).__init__(
-            prob=flip_ratio_bev_horizontal, direction='horizontal', **kwargs)
+            prob=flip_ratio_bev_horizontal, direction='horizontal', **kwargs
+        )
         self.sync_2d = sync_2d
         self.flip_ratio_bev_horizontal = flip_ratio_bev_horizontal
         self.flip_ratio_bev_vertical = flip_ratio_bev_vertical
         self.flip_box3d = flip_box3d
         if flip_ratio_bev_horizontal is not None:
-            assert isinstance(
-                flip_ratio_bev_horizontal,
-                (int, float)) and 0 <= flip_ratio_bev_horizontal <= 1
+            assert (
+                isinstance(flip_ratio_bev_horizontal, (int, float))
+                and 0 <= flip_ratio_bev_horizontal <= 1
+            )
         if flip_ratio_bev_vertical is not None:
-            assert isinstance(
-                flip_ratio_bev_vertical,
-                (int, float)) and 0 <= flip_ratio_bev_vertical <= 1
+            assert (
+                isinstance(flip_ratio_bev_vertical, (int, float))
+                and 0 <= flip_ratio_bev_vertical <= 1
+            )
 
-    def random_flip_data_3d(self,
-                            input_dict: dict,
-                            direction: str = 'horizontal') -> None:
+    def random_flip_data_3d(
+        self, input_dict: dict, direction: str = 'horizontal'
+    ) -> None:
         """Flip 3D data randomly.
 
         `random_flip_data_3d` should take these situations into consideration:
@@ -161,7 +169,8 @@ class RandomFlip3D(RandomFlip):
             if 'gt_bboxes_3d' in input_dict:
                 if 'points' in input_dict:
                     input_dict['points'] = input_dict['gt_bboxes_3d'].flip(
-                        direction, points=input_dict['points'])
+                        direction, points=input_dict['points']
+                    )
                 else:
                     # vision-only detection
                     input_dict['gt_bboxes_3d'].flip(direction)
@@ -169,11 +178,11 @@ class RandomFlip3D(RandomFlip):
                 input_dict['points'].flip(direction)
 
         if 'centers_2d' in input_dict:
-            assert self.sync_2d is True and direction == 'horizontal', \
-                'Only support sync_2d=True and horizontal flip with images'
+            assert (
+                self.sync_2d is True and direction == 'horizontal'
+            ), 'Only support sync_2d=True and horizontal flip with images'
             w = input_dict['img_shape'][1]
-            input_dict['centers_2d'][..., 0] = \
-                w - input_dict['centers_2d'][..., 0]
+            input_dict['centers_2d'][..., 0] = w - input_dict['centers_2d'][..., 0]
             # need to modify the horizontal position of camera center
             # along u-axis in the image (flip like centers2d)
             # ['cam2img'][0][2] = c_u
@@ -229,12 +238,14 @@ class RandomFlip3D(RandomFlip):
             input_dict['pcd_vertical_flip'] = False
         else:
             if 'pcd_horizontal_flip' not in input_dict:
-                flip_horizontal = True if np.random.rand(
-                ) < self.flip_ratio_bev_horizontal else False
+                flip_horizontal = (
+                    True if np.random.rand() < self.flip_ratio_bev_horizontal else False
+                )
                 input_dict['pcd_horizontal_flip'] = flip_horizontal
             if 'pcd_vertical_flip' not in input_dict:
-                flip_vertical = True if np.random.rand(
-                ) < self.flip_ratio_bev_vertical else False
+                flip_vertical = (
+                    True if np.random.rand() < self.flip_ratio_bev_vertical else False
+                )
                 input_dict['pcd_vertical_flip'] = flip_vertical
 
         if 'transformation_3d_flow' not in input_dict:
@@ -278,20 +289,24 @@ class RandomJitterPoints(BaseTransform):
         For similar transform in detection task, please refer to `ObjectNoise`.
     """
 
-    def __init__(self,
-                 jitter_std: List[float] = [0.01, 0.01, 0.01],
-                 clip_range: List[float] = [-0.05, 0.05]) -> None:
+    def __init__(
+        self,
+        jitter_std: List[float] = [0.01, 0.01, 0.01],
+        clip_range: List[float] = [-0.05, 0.05],
+    ) -> None:
         seq_types = (list, tuple, np.ndarray)
         if not isinstance(jitter_std, seq_types):
-            assert isinstance(jitter_std, (int, float)), \
-                f'unsupported jitter_std type {type(jitter_std)}'
+            assert isinstance(
+                jitter_std, (int, float)
+            ), f'unsupported jitter_std type {type(jitter_std)}'
             jitter_std = [jitter_std, jitter_std, jitter_std]
         self.jitter_std = jitter_std
 
         if clip_range is not None:
             if not isinstance(clip_range, seq_types):
-                assert isinstance(clip_range, (int, float)), \
-                    f'unsupported clip_range type {type(clip_range)}'
+                assert isinstance(
+                    clip_range, (int, float)
+                ), f'unsupported clip_range type {type(clip_range)}'
                 clip_range = [-clip_range, clip_range]
         self.clip_range = clip_range
 
@@ -307,11 +322,9 @@ class RandomJitterPoints(BaseTransform):
         """
         points = input_dict['points']
         jitter_std = np.array(self.jitter_std, dtype=np.float32)
-        jitter_noise = \
-            np.random.randn(points.shape[0], 3) * jitter_std[None, :]
+        jitter_noise = np.random.randn(points.shape[0], 3) * jitter_std[None, :]
         if self.clip_range is not None:
-            jitter_noise = np.clip(jitter_noise, self.clip_range[0],
-                                   self.clip_range[1])
+            jitter_noise = np.clip(jitter_noise, self.clip_range[0], self.clip_range[1])
 
         points.translate(jitter_noise)
         return input_dict
@@ -358,10 +371,9 @@ class ObjectSample(BaseTransform):
             3D labels. Defaults to False.
     """
 
-    def __init__(self,
-                 db_sampler: dict,
-                 sample_2d: bool = False,
-                 use_ground_plane: bool = False) -> None:
+    def __init__(
+        self, db_sampler: dict, sample_2d: bool = False, use_ground_plane: bool = False
+    ) -> None:
         self.sampler_cfg = db_sampler
         self.sample_2d = sample_2d
         if 'type' not in db_sampler.keys():
@@ -371,8 +383,7 @@ class ObjectSample(BaseTransform):
         self.disabled = False
 
     @staticmethod
-    def remove_points_in_boxes(points: BasePoints,
-                               boxes: np.ndarray) -> np.ndarray:
+    def remove_points_in_boxes(points: BasePoints, boxes: np.ndarray) -> np.ndarray:
         """Remove the points in the sampled bounding boxes.
 
         Args:
@@ -405,8 +416,9 @@ class ObjectSample(BaseTransform):
 
         if self.use_ground_plane:
             ground_plane = input_dict.get('plane', None)
-            assert ground_plane is not None, '`use_ground_plane` is True ' \
-                                             'but find plane is None'
+            assert ground_plane is not None, (
+                '`use_ground_plane` is True ' 'but find plane is None'
+            )
         else:
             ground_plane = None
         # change to float for blending operation
@@ -416,26 +428,22 @@ class ObjectSample(BaseTransform):
             gt_bboxes_2d = input_dict['gt_bboxes']
             # Assume for now 3D & 2D bboxes are the same
             sampled_dict = self.db_sampler.sample_all(
-                gt_bboxes_3d.numpy(),
-                gt_labels_3d,
-                gt_bboxes_2d=gt_bboxes_2d,
-                img=img)
+                gt_bboxes_3d.numpy(), gt_labels_3d, gt_bboxes_2d=gt_bboxes_2d, img=img
+            )
         else:
             sampled_dict = self.db_sampler.sample_all(
-                gt_bboxes_3d.numpy(),
-                gt_labels_3d,
-                img=None,
-                ground_plane=ground_plane)
+                gt_bboxes_3d.numpy(), gt_labels_3d, img=None, ground_plane=ground_plane
+            )
 
         if sampled_dict is not None:
             sampled_gt_bboxes_3d = sampled_dict['gt_bboxes_3d']
             sampled_points = sampled_dict['points']
             sampled_gt_labels = sampled_dict['gt_labels_3d']
 
-            gt_labels_3d = np.concatenate([gt_labels_3d, sampled_gt_labels],
-                                          axis=0)
+            gt_labels_3d = np.concatenate([gt_labels_3d, sampled_gt_labels], axis=0)
             gt_bboxes_3d = gt_bboxes_3d.new_box(
-                np.concatenate([gt_bboxes_3d.numpy(), sampled_gt_bboxes_3d]))
+                np.concatenate([gt_bboxes_3d.numpy(), sampled_gt_bboxes_3d])
+            )
 
             points = self.remove_points_in_boxes(points, sampled_gt_bboxes_3d)
             # check the points dimension
@@ -444,7 +452,8 @@ class ObjectSample(BaseTransform):
             if self.sample_2d:
                 sampled_gt_bboxes_2d = sampled_dict['gt_bboxes_2d']
                 gt_bboxes_2d = np.concatenate(
-                    [gt_bboxes_2d, sampled_gt_bboxes_2d]).astype(np.float32)
+                    [gt_bboxes_2d, sampled_gt_bboxes_2d]
+                ).astype(np.float32)
 
                 input_dict['gt_bboxes'] = gt_bboxes_2d
                 input_dict['img'] = sampled_dict['img']
@@ -490,11 +499,13 @@ class ObjectNoise(BaseTransform):
             Defaults to 100.
     """
 
-    def __init__(self,
-                 translation_std: List[float] = [0.25, 0.25, 0.25],
-                 global_rot_range: List[float] = [0.0, 0.0],
-                 rot_range: List[float] = [-0.15707963267, 0.15707963267],
-                 num_try: int = 100) -> None:
+    def __init__(
+        self,
+        translation_std: List[float] = [0.25, 0.25, 0.25],
+        global_rot_range: List[float] = [0.0, 0.0],
+        rot_range: List[float] = [-0.15707963267, 0.15707963267],
+        num_try: int = 100,
+    ) -> None:
         self.translation_std = translation_std
         self.global_rot_range = global_rot_range
         self.rot_range = rot_range
@@ -523,7 +534,8 @@ class ObjectNoise(BaseTransform):
             rotation_perturb=self.rot_range,
             center_noise_std=self.translation_std,
             global_random_rot_range=self.global_rot_range,
-            num_try=self.num_try)
+            num_try=self.num_try,
+        )
 
         input_dict['gt_bboxes_3d'] = gt_bboxes_3d.new_box(numpy_box)
         input_dict['points'] = points.new_point(numpy_points)
@@ -605,12 +617,15 @@ class GlobalAlignment(BaseTransform):
             dict: Results after global alignment, 'points' and keys in
             input_dict['bbox3d_fields'] are updated in the result dict.
         """
-        assert 'axis_align_matrix' in results, \
-            'axis_align_matrix is not provided in GlobalAlignment'
+        assert (
+            'axis_align_matrix' in results
+        ), 'axis_align_matrix is not provided in GlobalAlignment'
 
         axis_align_matrix = results['axis_align_matrix']
-        assert axis_align_matrix.shape == (4, 4), \
-            f'invalid shape {axis_align_matrix.shape} for axis_align_matrix'
+        assert axis_align_matrix.shape == (
+            4,
+            4,
+        ), f'invalid shape {axis_align_matrix.shape} for axis_align_matrix'
         rot_mat = axis_align_matrix[:3, :3]
         trans_vec = axis_align_matrix[:3, -1]
 
@@ -663,31 +678,35 @@ class GlobalRotScaleTrans(BaseTransform):
             Defaults to False.
     """
 
-    def __init__(self,
-                 rot_range: List[float] = [-0.78539816, 0.78539816],
-                 scale_ratio_range: List[float] = [0.95, 1.05],
-                 translation_std: List[int] = [0, 0, 0],
-                 shift_height: bool = False) -> None:
+    def __init__(
+        self,
+        rot_range: List[float] = [-0.78539816, 0.78539816],
+        scale_ratio_range: List[float] = [0.95, 1.05],
+        translation_std: List[int] = [0, 0, 0],
+        shift_height: bool = False,
+    ) -> None:
         seq_types = (list, tuple, np.ndarray)
         if not isinstance(rot_range, seq_types):
-            assert isinstance(rot_range, (int, float)), \
-                f'unsupported rot_range type {type(rot_range)}'
+            assert isinstance(
+                rot_range, (int, float)
+            ), f'unsupported rot_range type {type(rot_range)}'
             rot_range = [-rot_range, rot_range]
         self.rot_range = rot_range
 
-        assert isinstance(scale_ratio_range, seq_types), \
-            f'unsupported scale_ratio_range type {type(scale_ratio_range)}'
+        assert isinstance(
+            scale_ratio_range, seq_types
+        ), f'unsupported scale_ratio_range type {type(scale_ratio_range)}'
 
         self.scale_ratio_range = scale_ratio_range
 
         if not isinstance(translation_std, seq_types):
-            assert isinstance(translation_std, (int, float)), \
-                f'unsupported translation_std type {type(translation_std)}'
-            translation_std = [
-                translation_std, translation_std, translation_std
-            ]
-        assert all([std >= 0 for std in translation_std]), \
-            'translation_std should be positive'
+            assert isinstance(
+                translation_std, (int, float)
+            ), f'unsupported translation_std type {type(translation_std)}'
+            translation_std = [translation_std, translation_std, translation_std]
+        assert all(
+            [std >= 0 for std in translation_std]
+        ), 'translation_std should be positive'
         self.translation_std = translation_std
         self.shift_height = shift_height
 
@@ -722,11 +741,11 @@ class GlobalRotScaleTrans(BaseTransform):
         rotation = self.rot_range
         noise_rotation = np.random.uniform(rotation[0], rotation[1])
 
-        if 'gt_bboxes_3d' in input_dict and \
-                len(input_dict['gt_bboxes_3d'].tensor) != 0:
+        if 'gt_bboxes_3d' in input_dict and len(input_dict['gt_bboxes_3d'].tensor) != 0:
             # rotate points with bboxes
             points, rot_mat_T = input_dict['gt_bboxes_3d'].rotate(
-                noise_rotation, input_dict['points'])
+                noise_rotation, input_dict['points']
+            )
             input_dict['points'] = points
         else:
             # if no bbox in input_dict, only rotate points
@@ -749,13 +768,13 @@ class GlobalRotScaleTrans(BaseTransform):
         points = input_dict['points']
         points.scale(scale)
         if self.shift_height:
-            assert 'height' in points.attribute_dims.keys(), \
-                'setting shift_height=True but points have no height attribute'
+            assert (
+                'height' in points.attribute_dims.keys()
+            ), 'setting shift_height=True but points have no height attribute'
             points.tensor[:, points.attribute_dims['height']] *= scale
         input_dict['points'] = points
 
-        if 'gt_bboxes_3d' in input_dict and \
-                len(input_dict['gt_bboxes_3d'].tensor) != 0:
+        if 'gt_bboxes_3d' in input_dict and len(input_dict['gt_bboxes_3d'].tensor) != 0:
             input_dict['gt_bboxes_3d'].scale(scale)
 
     def _random_scale(self, input_dict: dict) -> None:
@@ -768,8 +787,9 @@ class GlobalRotScaleTrans(BaseTransform):
             dict: Results after scaling, 'pcd_scale_factor'
             are updated in the result dict.
         """
-        scale_factor = np.random.uniform(self.scale_ratio_range[0],
-                                         self.scale_ratio_range[1])
+        scale_factor = np.random.uniform(
+            self.scale_ratio_range[0], self.scale_ratio_range[1]
+        )
         input_dict['pcd_scale_factor'] = scale_factor
 
     def transform(self, input_dict: dict) -> dict:
@@ -871,8 +891,9 @@ class ObjectRangeFilter(BaseTransform):
             keys are updated in the result dict.
         """
         # Check points instance type and initialise bev_range
-        if isinstance(input_dict['gt_bboxes_3d'],
-                      (LiDARInstance3DBoxes, DepthInstance3DBoxes)):
+        if isinstance(
+            input_dict['gt_bboxes_3d'], (LiDARInstance3DBoxes, DepthInstance3DBoxes)
+        ):
             bev_range = self.pcd_range[[0, 1, 3, 4]]
         elif isinstance(input_dict['gt_bboxes_3d'], CameraInstance3DBoxes):
             bev_range = self.pcd_range[[0, 2, 3, 5]]
@@ -987,8 +1008,7 @@ class ObjectNameFilter(BaseTransform):
             keys are updated in the result dict.
         """
         gt_labels_3d = input_dict['gt_labels_3d']
-        gt_bboxes_mask = np.array([n in self.labels for n in gt_labels_3d],
-                                  dtype=bool)
+        gt_bboxes_mask = np.array([n in self.labels for n in gt_labels_3d], dtype=bool)
         input_dict['gt_bboxes_3d'] = input_dict['gt_bboxes_3d'][gt_bboxes_mask]
         input_dict['gt_labels_3d'] = input_dict['gt_labels_3d'][gt_bboxes_mask]
 
@@ -1028,10 +1048,12 @@ class PointSample(BaseTransform):
             Defaults to False.
     """
 
-    def __init__(self,
-                 num_points: int,
-                 sample_range: Optional[float] = None,
-                 replace: bool = False) -> None:
+    def __init__(
+        self,
+        num_points: int,
+        sample_range: Optional[float] = None,
+        replace: bool = False,
+    ) -> None:
         self.num_points = num_points
         self.sample_range = sample_range
         self.replace = replace
@@ -1042,7 +1064,7 @@ class PointSample(BaseTransform):
         num_samples: Union[int, float],
         sample_range: Optional[float] = None,
         replace: bool = False,
-        return_choices: bool = False
+        return_choices: bool = False,
     ) -> Union[Tuple[BasePoints, np.ndarray], BasePoints]:
         """Points random sampling.
 
@@ -1067,11 +1089,10 @@ class PointSample(BaseTransform):
         """
         if isinstance(num_samples, float):
             assert num_samples < 1
-            num_samples = int(
-                np.random.uniform(self.num_points, 1.) * points.shape[0])
+            num_samples = int(np.random.uniform(self.num_points, 1.0) * points.shape[0])
 
         if not replace:
-            replace = (points.shape[0] < num_samples)
+            replace = points.shape[0] < num_samples
         point_range = range(len(points))
         if sample_range is not None and not replace:
             # Only sampling the near points when len(points) >= num_samples
@@ -1080,8 +1101,7 @@ class PointSample(BaseTransform):
             near_inds = np.where(dist < sample_range)[0]
             # in case there are too many far points
             if len(far_inds) > num_samples:
-                far_inds = np.random.choice(
-                    far_inds, num_samples, replace=False)
+                far_inds = np.random.choice(far_inds, num_samples, replace=False)
             point_range = near_inds
             num_samples -= len(far_inds)
         choices = np.random.choice(point_range, num_samples, replace=replace)
@@ -1110,7 +1130,8 @@ class PointSample(BaseTransform):
             self.num_points,
             self.sample_range,
             self.replace,
-            return_choices=True)
+            return_choices=True,
+        )
         input_dict['points'] = points
 
         pts_instance_mask = input_dict.get('pts_instance_mask', None)
@@ -1148,8 +1169,7 @@ class IndoorPointSample(PointSample):
     """
 
     def __init__(self, *args, **kwargs):
-        warnings.warn(
-            'IndoorPointSample is deprecated in favor of PointSample')
+        warnings.warn('IndoorPointSample is deprecated in favor of PointSample')
         super(IndoorPointSample, self).__init__(*args, **kwargs)
 
 
@@ -1192,16 +1212,18 @@ class IndoorPatchPointSample(BaseTransform):
         function of `EncoderDecoder3D` class.
     """
 
-    def __init__(self,
-                 num_points: int,
-                 block_size: float = 1.5,
-                 sample_rate: Optional[float] = None,
-                 ignore_index: Optional[int] = None,
-                 use_normalized_coord: bool = False,
-                 num_try: int = 10,
-                 enlarge_size: float = 0.2,
-                 min_unique_num: Optional[int] = None,
-                 eps: float = 1e-2) -> None:
+    def __init__(
+        self,
+        num_points: int,
+        block_size: float = 1.5,
+        sample_rate: Optional[float] = None,
+        ignore_index: Optional[int] = None,
+        use_normalized_coord: bool = False,
+        num_try: int = 10,
+        enlarge_size: float = 0.2,
+        min_unique_num: Optional[int] = None,
+        eps: float = 1e-2,
+    ) -> None:
         self.num_points = num_points
         self.block_size = block_size
         self.ignore_index = ignore_index
@@ -1214,12 +1236,18 @@ class IndoorPatchPointSample(BaseTransform):
         if sample_rate is not None:
             warnings.warn(
                 "'sample_rate' has been deprecated and will be removed in "
-                'the future. Please remove them from your code.')
+                'the future. Please remove them from your code.'
+            )
 
-    def _input_generation(self, coords: np.ndarray, patch_center: np.ndarray,
-                          coord_max: np.ndarray, attributes: np.ndarray,
-                          attribute_dims: dict,
-                          point_type: type) -> BasePoints:
+    def _input_generation(
+        self,
+        coords: np.ndarray,
+        patch_center: np.ndarray,
+        coord_max: np.ndarray,
+        attributes: np.ndarray,
+        attribute_dims: dict,
+        point_type: type,
+    ) -> BasePoints:
         """Generating model input.
 
         Generate input by subtracting patch center and adding additional
@@ -1248,20 +1276,25 @@ class IndoorPatchPointSample(BaseTransform):
             if attribute_dims is None:
                 attribute_dims = dict()
             attribute_dims.update(
-                dict(normalized_coord=[
-                    attributes.shape[1], attributes.shape[1] +
-                    1, attributes.shape[1] + 2
-                ]))
+                dict(
+                    normalized_coord=[
+                        attributes.shape[1],
+                        attributes.shape[1] + 1,
+                        attributes.shape[1] + 2,
+                    ]
+                )
+            )
 
         points = np.concatenate([centered_coords, attributes], axis=1)
         points = point_type(
-            points, points_dim=points.shape[1], attribute_dims=attribute_dims)
+            points, points_dim=points.shape[1], attribute_dims=attribute_dims
+        )
 
         return points
 
     def _patch_points_sampling(
-            self, points: BasePoints,
-            sem_mask: np.ndarray) -> Tuple[BasePoints, np.ndarray]:
+        self, points: BasePoints, sem_mask: np.ndarray
+    ) -> Tuple[BasePoints, np.ndarray]:
         """Patch points sampling.
 
         First sample a valid patch.
@@ -1292,15 +1325,21 @@ class IndoorPatchPointSample(BaseTransform):
             # boundary of a patch, which would be enlarged by
             # `self.enlarge_size` as an augmentation
             cur_max = cur_center + np.array(
-                [self.block_size / 2.0, self.block_size / 2.0, 0.0])
+                [self.block_size / 2.0, self.block_size / 2.0, 0.0]
+            )
             cur_min = cur_center - np.array(
-                [self.block_size / 2.0, self.block_size / 2.0, 0.0])
+                [self.block_size / 2.0, self.block_size / 2.0, 0.0]
+            )
             cur_max[2] = coord_max[2]
             cur_min[2] = coord_min[2]
-            cur_choice = np.sum(
-                (coords >= (cur_min - self.enlarge_size)) *
-                (coords <= (cur_max + self.enlarge_size)),
-                axis=1) == 3
+            cur_choice = (
+                np.sum(
+                    (coords >= (cur_min - self.enlarge_size))
+                    * (coords <= (cur_max + self.enlarge_size)),
+                    axis=1,
+                )
+                == 3
+            )
 
             if not cur_choice.any():  # no points in this patch
                 continue
@@ -1308,10 +1347,14 @@ class IndoorPatchPointSample(BaseTransform):
             cur_coords = coords[cur_choice, :]
             cur_sem_mask = sem_mask[cur_choice]
             point_idxs = np.where(cur_choice)[0]
-            mask = np.sum(
-                (cur_coords >= (cur_min - self.eps)) * (cur_coords <=
-                                                        (cur_max + self.eps)),
-                axis=1) == 3
+            mask = (
+                np.sum(
+                    (cur_coords >= (cur_min - self.eps))
+                    * (cur_coords <= (cur_max + self.eps)),
+                    axis=1,
+                )
+                == 3
+            )
 
             # two criteria for patch sampling, adopted from PointNet++
             # 1. selected patch should contain enough unique points
@@ -1321,10 +1364,13 @@ class IndoorPatchPointSample(BaseTransform):
                 # coords from 3d array to 1d and then check their uniqueness
                 # this is used in all the ScanNet code following PointNet++
                 vidx = np.ceil(
-                    (cur_coords[mask, :] - cur_min) / (cur_max - cur_min) *
-                    np.array([31.0, 31.0, 62.0]))
-                vidx = np.unique(vidx[:, 0] * 31.0 * 62.0 + vidx[:, 1] * 62.0 +
-                                 vidx[:, 2])
+                    (cur_coords[mask, :] - cur_min)
+                    / (cur_max - cur_min)
+                    * np.array([31.0, 31.0, 62.0])
+                )
+                vidx = np.unique(
+                    vidx[:, 0] * 31.0 * 62.0 + vidx[:, 1] * 62.0 + vidx[:, 2]
+                )
                 flag1 = len(vidx) / 31.0 / 31.0 / 62.0 >= 0.02
             else:
                 # if `min_unique_num` is provided, directly compare with it
@@ -1334,8 +1380,9 @@ class IndoorPatchPointSample(BaseTransform):
             if self.ignore_index is None:
                 flag2 = True
             else:
-                flag2 = np.sum(cur_sem_mask != self.ignore_index) / \
-                               len(cur_sem_mask) >= 0.7
+                flag2 = (
+                    np.sum(cur_sem_mask != self.ignore_index) / len(cur_sem_mask) >= 0.7
+                )
 
             if flag1 and flag2:
                 break
@@ -1343,21 +1390,22 @@ class IndoorPatchPointSample(BaseTransform):
         # sample idx to `self.num_points`
         if point_idxs.size >= self.num_points:
             # no duplicate in sub-sampling
-            choices = np.random.choice(
-                point_idxs, self.num_points, replace=False)
+            choices = np.random.choice(point_idxs, self.num_points, replace=False)
         else:
             # do not use random choice here to avoid some points not counted
-            dup = np.random.choice(point_idxs.size,
-                                   self.num_points - point_idxs.size)
-            idx_dup = np.concatenate(
-                [np.arange(point_idxs.size),
-                 np.array(dup)], 0)
+            dup = np.random.choice(point_idxs.size, self.num_points - point_idxs.size)
+            idx_dup = np.concatenate([np.arange(point_idxs.size), np.array(dup)], 0)
             choices = point_idxs[idx_dup]
 
         # construct model input
-        points = self._input_generation(coords[choices], cur_center, coord_max,
-                                        attributes[choices], attribute_dims,
-                                        point_type)
+        points = self._input_generation(
+            coords[choices],
+            cur_center,
+            coord_max,
+            attributes[choices],
+            attribute_dims,
+            point_type,
+        )
 
         return points, choices
 
@@ -1373,20 +1421,21 @@ class IndoorPatchPointSample(BaseTransform):
         """
         points = input_dict['points']
 
-        assert 'pts_semantic_mask' in input_dict.keys(), \
-            'semantic mask should be provided in training and evaluation'
+        assert (
+            'pts_semantic_mask' in input_dict.keys()
+        ), 'semantic mask should be provided in training and evaluation'
         pts_semantic_mask = input_dict['pts_semantic_mask']
 
-        points, choices = self._patch_points_sampling(points,
-                                                      pts_semantic_mask)
+        points, choices = self._patch_points_sampling(points, pts_semantic_mask)
 
         input_dict['points'] = points
         input_dict['pts_semantic_mask'] = pts_semantic_mask[choices]
 
         # 'eval_ann_info' will be passed to evaluator
         if 'eval_ann_info' in input_dict:
-            input_dict['eval_ann_info']['pts_semantic_mask'] = \
-                pts_semantic_mask[choices]
+            input_dict['eval_ann_info']['pts_semantic_mask'] = pts_semantic_mask[
+                choices
+            ]
 
         pts_instance_mask = input_dict.get('pts_instance_mask', None)
 
@@ -1394,8 +1443,9 @@ class IndoorPatchPointSample(BaseTransform):
             input_dict['pts_instance_mask'] = pts_instance_mask[choices]
             # 'eval_ann_info' will be passed to evaluator
             if 'eval_ann_info' in input_dict:
-                input_dict['eval_ann_info']['pts_instance_mask'] = \
-                    pts_instance_mask[choices]
+                input_dict['eval_ann_info']['pts_instance_mask'] = pts_instance_mask[
+                    choices
+                ]
 
         return input_dict
 
@@ -1422,15 +1472,17 @@ class BackgroundPointsFilter(BaseTransform):
     """
 
     def __init__(self, bbox_enlarge_range: Union[Tuple[float], float]) -> None:
-        assert (is_tuple_of(bbox_enlarge_range, float)
-                and len(bbox_enlarge_range) == 3) \
-            or isinstance(bbox_enlarge_range, float), \
-            f'Invalid arguments bbox_enlarge_range {bbox_enlarge_range}'
+        assert (
+            is_tuple_of(bbox_enlarge_range, float) and len(bbox_enlarge_range) == 3
+        ) or isinstance(
+            bbox_enlarge_range, float
+        ), f'Invalid arguments bbox_enlarge_range {bbox_enlarge_range}'
 
         if isinstance(bbox_enlarge_range, float):
             bbox_enlarge_range = [bbox_enlarge_range] * 3
-        self.bbox_enlarge_range = np.array(
-            bbox_enlarge_range, dtype=np.float32)[np.newaxis, :]
+        self.bbox_enlarge_range = np.array(bbox_enlarge_range, dtype=np.float32)[
+            np.newaxis, :
+        ]
 
     def transform(self, input_dict: dict) -> dict:
         """Call function to filter points by the range.
@@ -1453,13 +1505,14 @@ class BackgroundPointsFilter(BaseTransform):
         enlarged_gt_bboxes_3d[:, 3:6] += self.bbox_enlarge_range
         points_numpy = points.tensor.clone().numpy()
         foreground_masks = box_np_ops.points_in_rbbox(
-            points_numpy, gt_bboxes_3d_np, origin=(0.5, 0.5, 0.5))
+            points_numpy, gt_bboxes_3d_np, origin=(0.5, 0.5, 0.5)
+        )
         enlarge_foreground_masks = box_np_ops.points_in_rbbox(
-            points_numpy, enlarged_gt_bboxes_3d, origin=(0.5, 0.5, 0.5))
+            points_numpy, enlarged_gt_bboxes_3d, origin=(0.5, 0.5, 0.5)
+        )
         foreground_masks = foreground_masks.max(1)
         enlarge_foreground_masks = enlarge_foreground_masks.max(1)
-        valid_masks = ~np.logical_and(~foreground_masks,
-                                      enlarge_foreground_masks)
+        valid_masks = ~np.logical_and(~foreground_masks, enlarge_foreground_masks)
 
         input_dict['points'] = points[valid_masks]
         pts_instance_mask = input_dict.get('pts_instance_mask', None)
@@ -1492,24 +1545,26 @@ class VoxelBasedPointSampler(BaseTransform):
             for input points. Defaults to 3.
     """
 
-    def __init__(self,
-                 cur_sweep_cfg: dict,
-                 prev_sweep_cfg: Optional[dict] = None,
-                 time_dim: int = 3) -> None:
+    def __init__(
+        self,
+        cur_sweep_cfg: dict,
+        prev_sweep_cfg: Optional[dict] = None,
+        time_dim: int = 3,
+    ) -> None:
         self.cur_voxel_generator = VoxelGenerator(**cur_sweep_cfg)
         self.cur_voxel_num = self.cur_voxel_generator._max_voxels
         self.time_dim = time_dim
         if prev_sweep_cfg is not None:
-            assert prev_sweep_cfg['max_num_points'] == \
-                cur_sweep_cfg['max_num_points']
+            assert prev_sweep_cfg['max_num_points'] == cur_sweep_cfg['max_num_points']
             self.prev_voxel_generator = VoxelGenerator(**prev_sweep_cfg)
             self.prev_voxel_num = self.prev_voxel_generator._max_voxels
         else:
             self.prev_voxel_generator = None
             self.prev_voxel_num = 0
 
-    def _sample_points(self, points: np.ndarray, sampler: VoxelGenerator,
-                       point_dim: int) -> np.ndarray:
+    def _sample_points(
+        self, points: np.ndarray, sampler: VoxelGenerator, point_dim: int
+    ) -> np.ndarray:
         """Sample points for each points subset.
 
         Args:
@@ -1523,11 +1578,14 @@ class VoxelBasedPointSampler(BaseTransform):
         """
         voxels, coors, num_points_per_voxel = sampler.generate(points)
         if voxels.shape[0] < sampler._max_voxels:
-            padding_points = np.zeros([
-                sampler._max_voxels - voxels.shape[0], sampler._max_num_points,
-                point_dim
-            ],
-                                      dtype=points.dtype)
+            padding_points = np.zeros(
+                [
+                    sampler._max_voxels - voxels.shape[0],
+                    sampler._max_num_points,
+                    point_dim,
+                ],
+                dtype=points.dtype,
+            )
             padding_points[:] = voxels[0]
             sample_points = np.concatenate([voxels, padding_points], axis=0)
         else:
@@ -1570,7 +1628,7 @@ class VoxelBasedPointSampler(BaseTransform):
         # previous sweeps points.
         # TODO: support different sampling methods for next sweeps points
         # and previous sweeps points.
-        cur_points_flag = (points_numpy[:, self.time_dim] == 0)
+        cur_points_flag = points_numpy[:, self.time_dim] == 0
         cur_sweep_points = points_numpy[cur_points_flag]
         prev_sweeps_points = points_numpy[~cur_points_flag]
         if prev_sweeps_points.shape[0] == 0:
@@ -1580,16 +1638,15 @@ class VoxelBasedPointSampler(BaseTransform):
         np.random.shuffle(cur_sweep_points)
         np.random.shuffle(prev_sweeps_points)
 
-        cur_sweep_points = self._sample_points(cur_sweep_points,
-                                               self.cur_voxel_generator,
-                                               points_numpy.shape[1])
+        cur_sweep_points = self._sample_points(
+            cur_sweep_points, self.cur_voxel_generator, points_numpy.shape[1]
+        )
         if self.prev_voxel_generator is not None:
-            prev_sweeps_points = self._sample_points(prev_sweeps_points,
-                                                     self.prev_voxel_generator,
-                                                     points_numpy.shape[1])
+            prev_sweeps_points = self._sample_points(
+                prev_sweeps_points, self.prev_voxel_generator, points_numpy.shape[1]
+            )
 
-            points_numpy = np.concatenate(
-                [cur_sweep_points, prev_sweeps_points], 0)
+            points_numpy = np.concatenate([cur_sweep_points, prev_sweeps_points], 0)
         else:
             points_numpy = cur_sweep_points
 
@@ -1643,11 +1700,9 @@ class AffineResize(BaseTransform):
             outside the border of the image. Defaults to True.
     """
 
-    def __init__(self,
-                 img_scale: Tuple,
-                 down_ratio: int,
-                 bbox_clip_border: bool = True) -> None:
-
+    def __init__(
+        self, img_scale: Tuple, down_ratio: int, bbox_clip_border: bool = True
+    ) -> None:
         self.img_scale = img_scale
         self.down_ratio = down_ratio
         self.bbox_clip_border = bbox_clip_border
@@ -1683,14 +1738,21 @@ class AffineResize(BaseTransform):
         if isinstance(self.down_ratio, tuple):
             trans_mat = [
                 self._get_transform_matrix(
-                    center, size,
-                    (self.img_scale[0] // ratio, self.img_scale[1] // ratio))
+                    center,
+                    size,
+                    (self.img_scale[0] // ratio, self.img_scale[1] // ratio),
+                )
                 for ratio in self.down_ratio
             ]  # (3, 3)
         else:
             trans_mat = self._get_transform_matrix(
-                center, size, (self.img_scale[0] // self.down_ratio,
-                               self.img_scale[1] // self.down_ratio))
+                center,
+                size,
+                (
+                    self.img_scale[0] // self.down_ratio,
+                    self.img_scale[1] // self.down_ratio,
+                ),
+            )
 
         results['img'] = img
         results['img_shape'] = img.shape
@@ -1701,29 +1763,30 @@ class AffineResize(BaseTransform):
             self._affine_bboxes(results, trans_affine)
 
         if 'centers_2d' in results:
-            centers2d = self._affine_transform(results['centers_2d'],
-                                               trans_affine)
-            valid_index = (centers2d[:, 0] >
-                           0) & (centers2d[:, 0] <
-                                 self.img_scale[0]) & (centers2d[:, 1] > 0) & (
-                                     centers2d[:, 1] < self.img_scale[1])
+            centers2d = self._affine_transform(results['centers_2d'], trans_affine)
+            valid_index = (
+                (centers2d[:, 0] > 0)
+                & (centers2d[:, 0] < self.img_scale[0])
+                & (centers2d[:, 1] > 0)
+                & (centers2d[:, 1] < self.img_scale[1])
+            )
             results['centers_2d'] = centers2d[valid_index]
 
             if 'gt_bboxes' in results:
                 results['gt_bboxes'] = results['gt_bboxes'][valid_index]
                 if 'gt_bboxes_labels' in results:
                     results['gt_bboxes_labels'] = results['gt_bboxes_labels'][
-                        valid_index]
+                        valid_index
+                    ]
                 if 'gt_masks' in results:
-                    raise NotImplementedError(
-                        'AffineResize only supports bbox.')
+                    raise NotImplementedError('AffineResize only supports bbox.')
 
             if 'gt_bboxes_3d' in results:
-                results['gt_bboxes_3d'].tensor = results[
-                    'gt_bboxes_3d'].tensor[valid_index]
+                results['gt_bboxes_3d'].tensor = results['gt_bboxes_3d'].tensor[
+                    valid_index
+                ]
                 if 'gt_labels_3d' in results:
-                    results['gt_labels_3d'] = results['gt_labels_3d'][
-                        valid_index]
+                    results['gt_labels_3d'] = results['gt_labels_3d'][valid_index]
 
             results['depths'] = results['depths'][valid_index]
 
@@ -1743,14 +1806,11 @@ class AffineResize(BaseTransform):
         bboxes[:, :2] = self._affine_transform(bboxes[:, :2], matrix)
         bboxes[:, 2:] = self._affine_transform(bboxes[:, 2:], matrix)
         if self.bbox_clip_border:
-            bboxes[:, [0, 2]] = bboxes[:, [0, 2]].clip(0,
-                                                       self.img_scale[0] - 1)
-            bboxes[:, [1, 3]] = bboxes[:, [1, 3]].clip(0,
-                                                       self.img_scale[1] - 1)
+            bboxes[:, [0, 2]] = bboxes[:, [0, 2]].clip(0, self.img_scale[0] - 1)
+            bboxes[:, [1, 3]] = bboxes[:, [1, 3]].clip(0, self.img_scale[1] - 1)
         results['gt_bboxes'] = bboxes
 
-    def _affine_transform(self, points: np.ndarray,
-                          matrix: np.ndarray) -> np.ndarray:
+    def _affine_transform(self, points: np.ndarray, matrix: np.ndarray) -> np.ndarray:
         """Affine transform bbox points to input image.
 
         Args:
@@ -1763,14 +1823,14 @@ class AffineResize(BaseTransform):
             np.ndarray: Transformed points.
         """
         num_points = points.shape[0]
-        hom_points_2d = np.concatenate((points, np.ones((num_points, 1))),
-                                       axis=1)
+        hom_points_2d = np.concatenate((points, np.ones((num_points, 1))), axis=1)
         hom_points_2d = hom_points_2d.T
         affined_points = np.matmul(matrix, hom_points_2d).T
         return affined_points[:, :2]
 
-    def _get_transform_matrix(self, center: Tuple, scale: Tuple,
-                              output_scale: Tuple[float]) -> np.ndarray:
+    def _get_transform_matrix(
+        self, center: Tuple, scale: Tuple, output_scale: Tuple[float]
+    ) -> np.ndarray:
         """Get affine transform matrix.
 
         Args:
@@ -1801,12 +1861,13 @@ class AffineResize(BaseTransform):
 
         get_matrix = cv2.getAffineTransform(src, dst)
 
-        matrix = np.concatenate((get_matrix, [[0., 0., 1.]]))
+        matrix = np.concatenate((get_matrix, [[0.0, 0.0, 1.0]]))
 
         return matrix.astype(np.float32)
 
-    def _get_ref_point(self, ref_point1: np.ndarray,
-                       ref_point2: np.ndarray) -> np.ndarray:
+    def _get_ref_point(
+        self, ref_point1: np.ndarray, ref_point2: np.ndarray
+    ) -> np.ndarray:
         """Get reference point to calculate affine transform matrix.
 
         While using opencv to calculate the affine matrix, we need at least
@@ -1840,7 +1901,6 @@ class RandomShiftScale(BaseTransform):
     """
 
     def __init__(self, shift_scale: Tuple[float], aug_prob: float) -> None:
-
         self.shift_scale = shift_scale
         self.aug_prob = aug_prob
 
@@ -1887,7 +1947,6 @@ class RandomShiftScale(BaseTransform):
 
 @TRANSFORMS.register_module()
 class Resize3D(Resize):
-
     def _resize_3d(self, results: dict) -> None:
         """Resize centers_2d and modify camera intrinisc with
         ``results['scale']``."""
@@ -2027,24 +2086,24 @@ class RandomCrop3D(RandomCrop):
         allow_negative_crop: bool = False,
         recompute_bbox: bool = False,
         bbox_clip_border: bool = True,
-        rel_offset_h: tuple = (0., 1.),
-        rel_offset_w: tuple = (0., 1.)
+        rel_offset_h: tuple = (0.0, 1.0),
+        rel_offset_w: tuple = (0.0, 1.0),
     ) -> None:
         super().__init__(
             crop_size=crop_size,
             crop_type=crop_type,
             allow_negative_crop=allow_negative_crop,
             recompute_bbox=recompute_bbox,
-            bbox_clip_border=bbox_clip_border)
+            bbox_clip_border=bbox_clip_border,
+        )
         # rel_offset specifies the relative offset range of cropping origin
         # [0., 1.] means starting from 0*margin to 1*margin + 1
         self.rel_offset_h = rel_offset_h
         self.rel_offset_w = rel_offset_w
 
-    def _crop_data(self,
-                   results: dict,
-                   crop_size: tuple,
-                   allow_negative_crop: bool = False) -> dict:
+    def _crop_data(
+        self, results: dict, crop_size: tuple, allow_negative_crop: bool = False
+    ) -> dict:
         """Function to randomly crop images, bounding boxes, masks, semantic
         segmentation maps.
 
@@ -2066,11 +2125,11 @@ class RandomCrop3D(RandomCrop):
                 margin_w = max(img.shape[1] - crop_size[1], 0)
                 # TOCHECK: a little different from LIGA implementation
                 offset_h = np.random.randint(
-                    self.rel_offset_h[0] * margin_h,
-                    self.rel_offset_h[1] * margin_h + 1)
+                    self.rel_offset_h[0] * margin_h, self.rel_offset_h[1] * margin_h + 1
+                )
                 offset_w = np.random.randint(
-                    self.rel_offset_w[0] * margin_w,
-                    self.rel_offset_w[1] * margin_w + 1)
+                    self.rel_offset_w[0] * margin_w, self.rel_offset_w[1] * margin_w + 1
+                )
             else:
                 offset_w, offset_h = results['img_crop_offset']
 
@@ -2088,18 +2147,17 @@ class RandomCrop3D(RandomCrop):
         # crop bboxes accordingly and clip to the image boundary
         for key in results.get('bbox_fields', []):
             # e.g. gt_bboxes and gt_bboxes_ignore
-            bbox_offset = np.array([offset_w, offset_h, offset_w, offset_h],
-                                   dtype=np.float32)
+            bbox_offset = np.array(
+                [offset_w, offset_h, offset_w, offset_h], dtype=np.float32
+            )
             bboxes = results[key] - bbox_offset
             if self.bbox_clip_border:
                 bboxes[:, 0::2] = np.clip(bboxes[:, 0::2], 0, img_shape[1])
                 bboxes[:, 1::2] = np.clip(bboxes[:, 1::2], 0, img_shape[0])
-            valid_inds = (bboxes[:, 2] > bboxes[:, 0]) & (
-                bboxes[:, 3] > bboxes[:, 1])
+            valid_inds = (bboxes[:, 2] > bboxes[:, 0]) & (bboxes[:, 3] > bboxes[:, 1])
             # If the crop does not contain any gt-bbox area and
             # allow_negative_crop is False, skip this image.
-            if (key == 'gt_bboxes' and not valid_inds.any()
-                    and not allow_negative_crop):
+            if key == 'gt_bboxes' and not valid_inds.any() and not allow_negative_crop:
                 return None
             results[key] = bboxes[valid_inds, :]
             # label fields. e.g. gt_labels and gt_labels_ignore
@@ -2110,9 +2168,9 @@ class RandomCrop3D(RandomCrop):
             # mask fields, e.g. gt_masks and gt_masks_ignore
             mask_key = self.bbox2mask.get(key)
             if mask_key in results:
-                results[mask_key] = results[mask_key][
-                    valid_inds.nonzero()[0]].crop(
-                        np.asarray([crop_x1, crop_y1, crop_x2, crop_y2]))
+                results[mask_key] = results[mask_key][valid_inds.nonzero()[0]].crop(
+                    np.asarray([crop_x1, crop_y1, crop_x2, crop_y2])
+                )
                 if self.recompute_bbox:
                     results[key] = results[mask_key].get_bboxes()
 
@@ -2132,8 +2190,9 @@ class RandomCrop3D(RandomCrop):
             K[0, 2] -= crop_x1
             K[1, 2] -= crop_y1
             offset_cam2img = np.matmul(K, T)
-            results['cam2img'][:offset_cam2img.shape[0], :offset_cam2img.
-                               shape[1]] = offset_cam2img
+            results['cam2img'][
+                : offset_cam2img.shape[0], : offset_cam2img.shape[1]
+            ] = offset_cam2img
 
         results['img_crop_offset'] = [offset_w, offset_h]
 
@@ -2222,9 +2281,19 @@ class PhotoMetricDistortion3D(PhotoMetricDistortion):
         else:
             photometric_param = results['photometric_param']
 
-        (mode, brightness_flag, contrast_flag, saturation_flag, hue_flag,
-         swap_flag, delta_value, alpha_value, saturation_value, hue_value,
-         swap_value) = photometric_param
+        (
+            mode,
+            brightness_flag,
+            contrast_flag,
+            saturation_flag,
+            hue_flag,
+            swap_flag,
+            delta_value,
+            alpha_value,
+            saturation_value,
+            hue_value,
+            swap_value,
+        ) = photometric_param
 
         # random brightness
         if brightness_flag:
@@ -2303,14 +2372,28 @@ class MultiViewWrapper(BaseTransform):
         override_aug_config: bool = True,
         process_fields: list = ['img', 'cam2img', 'lidar2cam'],
         collected_keys: list = [
-            'scale', 'scale_factor', 'crop', 'img_crop_offset', 'ori_shape',
-            'pad_shape', 'img_shape', 'pad_fixed_size', 'pad_size_divisor',
-            'flip', 'flip_direction', 'rotate'
+            'scale',
+            'scale_factor',
+            'crop',
+            'img_crop_offset',
+            'ori_shape',
+            'pad_shape',
+            'img_shape',
+            'pad_fixed_size',
+            'pad_size_divisor',
+            'flip',
+            'flip_direction',
+            'rotate',
         ],
         randomness_keys: list = [
-            'scale', 'scale_factor', 'crop_size', 'img_crop_offset', 'flip',
-            'flip_direction', 'photometric_param'
-        ]
+            'scale',
+            'scale_factor',
+            'crop_size',
+            'img_crop_offset',
+            'flip',
+            'flip_direction',
+            'photometric_param',
+        ],
     ) -> None:
         self.transforms = Compose(transforms)
         self.override_aug_config = override_aug_config
@@ -2329,8 +2412,7 @@ class MultiViewWrapper(BaseTransform):
         """
         # store the augmentation related keys for each image.
         for key in self.collected_keys:
-            if key not in input_dict or \
-                    not isinstance(input_dict[key], list):
+            if key not in input_dict or not isinstance(input_dict[key], list):
                 input_dict[key] = []
         prev_process_dict = {}
         for img_id in range(len(input_dict['img'])):
@@ -2402,14 +2484,17 @@ class PolarMix(BaseTransform):
         prob (float): The transformation probability. Defaults to 1.0.
     """
 
-    def __init__(self,
-                 instance_classes: List[int],
-                 swap_ratio: float = 0.5,
-                 rotate_paste_ratio: float = 1.0,
-                 pre_transform: Optional[Sequence[dict]] = None,
-                 prob: float = 1.0) -> None:
-        assert is_list_of(instance_classes, int), \
-            'instance_classes should be a list of int'
+    def __init__(
+        self,
+        instance_classes: List[int],
+        swap_ratio: float = 0.5,
+        rotate_paste_ratio: float = 1.0,
+        pre_transform: Optional[Sequence[dict]] = None,
+        prob: float = 1.0,
+    ) -> None:
+        assert is_list_of(
+            instance_classes, int
+        ), 'instance_classes should be a list of int'
         self.instance_classes = instance_classes
         self.swap_ratio = swap_ratio
         self.rotate_paste_ratio = rotate_paste_ratio
@@ -2442,8 +2527,7 @@ class PolarMix(BaseTransform):
             end_angle = start_angle + np.pi
             # calculate horizontal angle for each point
             yaw = -torch.atan2(points.coord[:, 1], points.coord[:, 0])
-            mix_yaw = -torch.atan2(mix_points.coord[:, 1], mix_points.coord[:,
-                                                                            0])
+            mix_yaw = -torch.atan2(mix_points.coord[:, 1], mix_points.coord[:, 0])
 
             # select points in sector
             idx = (yaw <= start_angle) | (yaw >= end_angle)
@@ -2452,9 +2536,12 @@ class PolarMix(BaseTransform):
             # swap
             points = points.cat([points[idx], mix_points[mix_idx]])
             pts_semantic_mask = np.concatenate(
-                (pts_semantic_mask[idx.numpy()],
-                 mix_pts_semantic_mask[mix_idx.numpy()]),
-                axis=0)
+                (
+                    pts_semantic_mask[idx.numpy()],
+                    mix_pts_semantic_mask[mix_idx.numpy()],
+                ),
+                axis=0,
+            )
 
         # 2. rotate-pasting
         if np.random.random() < self.rotate_paste_ratio:
@@ -2463,18 +2550,18 @@ class PolarMix(BaseTransform):
             for instance_class in self.instance_classes:
                 mix_idx = mix_pts_semantic_mask == instance_class
                 instance_points.append(mix_points[mix_idx])
-                instance_pts_semantic_mask.append(
-                    mix_pts_semantic_mask[mix_idx])
+                instance_pts_semantic_mask.append(mix_pts_semantic_mask[mix_idx])
             instance_points = mix_points.cat(instance_points)
             instance_pts_semantic_mask = np.concatenate(
-                instance_pts_semantic_mask, axis=0)
+                instance_pts_semantic_mask, axis=0
+            )
 
             # rotate-copy
             copy_points = [instance_points]
             copy_pts_semantic_mask = [instance_pts_semantic_mask]
             angle_list = [
                 np.random.random() * np.pi * 2 / 3,
-                (np.random.random() + 1) * np.pi * 2 / 3
+                (np.random.random() + 1) * np.pi * 2 / 3,
             ]
             for angle in angle_list:
                 new_points = instance_points.clone()
@@ -2482,12 +2569,12 @@ class PolarMix(BaseTransform):
                 copy_points.append(new_points)
                 copy_pts_semantic_mask.append(instance_pts_semantic_mask)
             copy_points = instance_points.cat(copy_points)
-            copy_pts_semantic_mask = np.concatenate(
-                copy_pts_semantic_mask, axis=0)
+            copy_pts_semantic_mask = np.concatenate(copy_pts_semantic_mask, axis=0)
 
             points = points.cat([points, copy_points])
             pts_semantic_mask = np.concatenate(
-                (pts_semantic_mask, copy_pts_semantic_mask), axis=0)
+                (pts_semantic_mask, copy_pts_semantic_mask), axis=0
+            )
 
         input_dict['points'] = points
         input_dict['pts_semantic_mask'] = pts_semantic_mask
@@ -2505,8 +2592,9 @@ class PolarMix(BaseTransform):
         if np.random.rand() > self.prob:
             return input_dict
 
-        assert 'dataset' in input_dict, \
-            '`dataset` is needed to pass through PolarMix, while not found.'
+        assert (
+            'dataset' in input_dict
+        ), '`dataset` is needed to pass through PolarMix, while not found.'
         dataset = input_dict['dataset']
 
         # get index of other point cloud
@@ -2566,20 +2654,22 @@ class LaserMix(BaseTransform):
         prob (float): The transformation probability. Defaults to 1.0.
     """
 
-    def __init__(self,
-                 num_areas: List[int],
-                 pitch_angles: Sequence[float],
-                 pre_transform: Optional[Sequence[dict]] = None,
-                 prob: float = 1.0) -> None:
-        assert is_list_of(num_areas, int), \
-            'num_areas should be a list of int.'
+    def __init__(
+        self,
+        num_areas: List[int],
+        pitch_angles: Sequence[float],
+        pre_transform: Optional[Sequence[dict]] = None,
+        prob: float = 1.0,
+    ) -> None:
+        assert is_list_of(num_areas, int), 'num_areas should be a list of int.'
         self.num_areas = num_areas
 
-        assert len(pitch_angles) == 2, \
-            'The length of pitch_angles should be 2, ' \
-            f'but got {len(pitch_angles)}.'
-        assert pitch_angles[1] > pitch_angles[0], \
-            'pitch_angles[1] should be larger than pitch_angles[0].'
+        assert len(pitch_angles) == 2, (
+            'The length of pitch_angles should be 2, ' f'but got {len(pitch_angles)}.'
+        )
+        assert (
+            pitch_angles[1] > pitch_angles[0]
+        ), 'pitch_angles[1] should be larger than pitch_angles[0].'
         self.pitch_angles = pitch_angles
 
         self.prob = prob
@@ -2608,20 +2698,18 @@ class LaserMix(BaseTransform):
         pitch_angle_down = self.pitch_angles[0] / 180 * np.pi
         pitch_angle_up = self.pitch_angles[1] / 180 * np.pi
 
-        rho = torch.sqrt(points.coord[:, 0]**2 + points.coord[:, 1]**2)
+        rho = torch.sqrt(points.coord[:, 0] ** 2 + points.coord[:, 1] ** 2)
         pitch = torch.atan2(points.coord[:, 2], rho)
-        pitch = torch.clamp(pitch, pitch_angle_down + 1e-5,
-                            pitch_angle_up - 1e-5)
+        pitch = torch.clamp(pitch, pitch_angle_down + 1e-5, pitch_angle_up - 1e-5)
 
-        mix_rho = torch.sqrt(mix_points.coord[:, 0]**2 +
-                             mix_points.coord[:, 1]**2)
+        mix_rho = torch.sqrt(mix_points.coord[:, 0] ** 2 + mix_points.coord[:, 1] ** 2)
         mix_pitch = torch.atan2(mix_points.coord[:, 2], mix_rho)
-        mix_pitch = torch.clamp(mix_pitch, pitch_angle_down + 1e-5,
-                                pitch_angle_up - 1e-5)
+        mix_pitch = torch.clamp(
+            mix_pitch, pitch_angle_down + 1e-5, pitch_angle_up - 1e-5
+        )
 
         num_areas = np.random.choice(self.num_areas, size=1)[0]
-        angle_list = np.linspace(pitch_angle_up, pitch_angle_down,
-                                 num_areas + 1)
+        angle_list = np.linspace(pitch_angle_up, pitch_angle_down, num_areas + 1)
         out_points = []
         out_pts_semantic_mask = []
         for i in range(num_areas):
@@ -2634,8 +2722,7 @@ class LaserMix(BaseTransform):
             else:  # pickle from mixed point cloud
                 idx = (mix_pitch > start_angle) & (mix_pitch <= end_angle)
                 out_points.append(mix_points[idx])
-                out_pts_semantic_mask.append(
-                    mix_pts_semantic_mask[idx.numpy()])
+                out_pts_semantic_mask.append(mix_pts_semantic_mask[idx.numpy()])
         out_points = points.cat(out_points)
         out_pts_semantic_mask = np.concatenate(out_pts_semantic_mask, axis=0)
         input_dict['points'] = out_points
@@ -2654,8 +2741,9 @@ class LaserMix(BaseTransform):
         if np.random.rand() > self.prob:
             return input_dict
 
-        assert 'dataset' in input_dict, \
-            '`dataset` is needed to pass through LaserMix, while not found.'
+        assert (
+            'dataset' in input_dict
+        ), '`dataset` is needed to pass through LaserMix, while not found.'
         dataset = input_dict['dataset']
 
         # get index of other point cloud

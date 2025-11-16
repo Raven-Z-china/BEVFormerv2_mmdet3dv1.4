@@ -24,11 +24,13 @@ class FCOS3DBBoxCoder(BaseBBoxCoder):
             box 2D attributes. Defaults to True.
     """
 
-    def __init__(self,
-                 base_depths: Optional[Tuple[Tuple[float]]] = None,
-                 base_dims: Optional[Tuple[Tuple[float]]] = None,
-                 code_size: int = 7,
-                 norm_on_bbox: bool = True) -> None:
+    def __init__(
+        self,
+        base_depths: Optional[Tuple[Tuple[float]]] = None,
+        base_dims: Optional[Tuple[Tuple[float]]] = None,
+        code_size: int = 7,
+        norm_on_bbox: bool = True,
+    ) -> None:
         super(FCOS3DBBoxCoder, self).__init__()
         self.base_depths = base_depths
         self.base_dims = base_dims
@@ -39,12 +41,14 @@ class FCOS3DBBoxCoder(BaseBBoxCoder):
         # TODO: refactor the encoder in the FCOS3D and PGD head
         pass
 
-    def decode(self,
-               bbox: Tensor,
-               scale: tuple,
-               stride: int,
-               training: bool,
-               cls_score: Optional[Tensor] = None) -> Tensor:
+    def decode(
+        self,
+        bbox: Tensor,
+        scale: tuple,
+        stride: int,
+        training: bool,
+        cls_score: Optional[Tensor] = None,
+    ) -> Tensor:
         """Decode regressed results into 3D predictions.
 
         Note that offsets are not transformed to the projected 3D centers.
@@ -78,28 +82,34 @@ class FCOS3DBBoxCoder(BaseBBoxCoder):
             std = self.base_depths[0][1]
             bbox[:, 2] = mean + bbox.clone()[:, 2] * std
         else:  # multi-class priors
-            assert len(self.base_depths) == cls_score.shape[1], \
-                'The number of multi-class depth priors should be equal to ' \
+            assert len(self.base_depths) == cls_score.shape[1], (
+                'The number of multi-class depth priors should be equal to '
                 'the number of categories.'
+            )
             indices = cls_score.max(dim=1)[1]
-            depth_priors = cls_score.new_tensor(
-                self.base_depths)[indices, :].permute(0, 3, 1, 2)
+            depth_priors = cls_score.new_tensor(self.base_depths)[indices, :].permute(
+                0, 3, 1, 2
+            )
             mean = depth_priors[:, 0]
             std = depth_priors[:, 1]
             bbox[:, 2] = mean + bbox.clone()[:, 2] * std
 
         bbox[:, 3:6] = bbox[:, 3:6].exp()
         if self.base_dims is not None:
-            assert len(self.base_dims) == cls_score.shape[1], \
-                'The number of anchor sizes should be equal to the number ' \
+            assert len(self.base_dims) == cls_score.shape[1], (
+                'The number of anchor sizes should be equal to the number '
                 'of categories.'
+            )
             indices = cls_score.max(dim=1)[1]
-            size_priors = cls_score.new_tensor(
-                self.base_dims)[indices, :].permute(0, 3, 1, 2)
+            size_priors = cls_score.new_tensor(self.base_dims)[indices, :].permute(
+                0, 3, 1, 2
+            )
             bbox[:, 3:6] = size_priors * bbox.clone()[:, 3:6]
 
-        assert self.norm_on_bbox is True, 'Setting norm_on_bbox to False '\
+        assert self.norm_on_bbox is True, (
+            'Setting norm_on_bbox to False '
             'has not been thoroughly tested for FCOS3D.'
+        )
         if self.norm_on_bbox:
             if not training:
                 # Note that this line is conducted only when testing
@@ -108,8 +118,13 @@ class FCOS3DBBoxCoder(BaseBBoxCoder):
         return bbox
 
     @staticmethod
-    def decode_yaw(bbox: Tensor, centers2d: Tensor, dir_cls: Tensor,
-                   dir_offset: float, cam2img: Tensor) -> Tensor:
+    def decode_yaw(
+        bbox: Tensor,
+        centers2d: Tensor,
+        dir_cls: Tensor,
+        dir_offset: float,
+        cam2img: Tensor,
+    ) -> Tensor:
         """Decode yaw angle and change it from local to global.i.
 
         Args:
@@ -127,10 +142,10 @@ class FCOS3DBBoxCoder(BaseBBoxCoder):
         """
         if bbox.shape[0] > 0:
             dir_rot = limit_period(bbox[..., 6] - dir_offset, 0, np.pi)
-            bbox[..., 6] = \
-                dir_rot + dir_offset + np.pi * dir_cls.to(bbox.dtype)
+            bbox[..., 6] = dir_rot + dir_offset + np.pi * dir_cls.to(bbox.dtype)
 
-        bbox[:, 6] = torch.atan2(centers2d[:, 0] - cam2img[0, 2],
-                                 cam2img[0, 0]) + bbox[:, 6]
+        bbox[:, 6] = (
+            torch.atan2(centers2d[:, 0] - cam2img[0, 2], cam2img[0, 0]) + bbox[:, 6]
+        )
 
         return bbox

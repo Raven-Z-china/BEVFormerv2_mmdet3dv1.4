@@ -11,16 +11,23 @@ from mmcv.transforms.wrappers import RandomChoice
 from mmengine.hooks.checkpoint_hook import CheckpointHook
 
 from mmdet3d.datasets.transforms.formating import Pack3DDetInputs
-from mmdet3d.datasets.transforms.loading import (LoadAnnotations3D,
-                                                 LoadPointsFromFile,
-                                                 PointSegClassMapping)
-from mmdet3d.datasets.transforms.transforms_3d import (GlobalRotScaleTrans,
-                                                       LaserMix, PolarMix)
+from mmdet3d.datasets.transforms.loading import (
+    LoadAnnotations3D,
+    LoadPointsFromFile,
+    PointSegClassMapping,
+)
+from mmdet3d.datasets.transforms.transforms_3d import (
+    GlobalRotScaleTrans,
+    LaserMix,
+    PolarMix,
+)
 
 model.update(
     dict(
         data_preprocessor=dict(max_voxels=None),
-        backbone=dict(encoder_blocks=[2, 3, 4, 6])))
+        backbone=dict(encoder_blocks=[2, 3, 4, 6]),
+    )
+)
 
 train_pipeline = [
     dict(type=LoadPointsFromFile, coord_type='LIDAR', load_dim=4, use_dim=4),
@@ -31,7 +38,8 @@ train_pipeline = [
         with_seg_3d=True,
         seg_3d_dtype='np.int32',
         seg_offset=2**16,
-        dataset_type='semantickitti'),
+        dataset_type='semantickitti',
+    ),
     dict(type=PointSegClassMapping),
     dict(
         type=RandomChoice,
@@ -46,7 +54,8 @@ train_pipeline = [
                             type=LoadPointsFromFile,
                             coord_type='LIDAR',
                             load_dim=4,
-                            use_dim=4),
+                            use_dim=4,
+                        ),
                         dict(
                             type=LoadAnnotations3D,
                             with_bbox_3d=False,
@@ -54,10 +63,12 @@ train_pipeline = [
                             with_seg_3d=True,
                             seg_3d_dtype='np.int32',
                             seg_offset=2**16,
-                            dataset_type='semantickitti'),
-                        dict(type=PointSegClassMapping)
+                            dataset_type='semantickitti',
+                        ),
+                        dict(type=PointSegClassMapping),
                     ],
-                    prob=1)
+                    prob=1,
+                )
             ],
             [
                 dict(
@@ -70,7 +81,8 @@ train_pipeline = [
                             type=LoadPointsFromFile,
                             coord_type='LIDAR',
                             load_dim=4,
-                            use_dim=4),
+                            use_dim=4,
+                        ),
                         dict(
                             type=LoadAnnotations3D,
                             with_bbox_3d=False,
@@ -78,20 +90,23 @@ train_pipeline = [
                             with_seg_3d=True,
                             seg_3d_dtype='np.int32',
                             seg_offset=2**16,
-                            dataset_type='semantickitti'),
-                        dict(type=PointSegClassMapping)
+                            dataset_type='semantickitti',
+                        ),
+                        dict(type=PointSegClassMapping),
                     ],
-                    prob=1)
+                    prob=1,
+                )
             ],
         ],
-        prob=[0.5, 0.5]),
+        prob=[0.5, 0.5],
+    ),
     dict(
         type=GlobalRotScaleTrans,
-        rot_range=[0., 6.28318531],
+        rot_range=[0.0, 6.28318531],
         scale_ratio_range=[0.95, 1.05],
         translation_std=[0, 0, 0],
     ),
-    dict(type=Pack3DDetInputs, keys=['points', 'pts_semantic_mask'])
+    dict(type=Pack3DDetInputs, keys=['points', 'pts_semantic_mask']),
 ]
 
 train_dataloader.update(dict(dataset=dict(pipeline=train_pipeline)))

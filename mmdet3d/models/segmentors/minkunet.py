@@ -41,8 +41,7 @@ class MinkUNet(EncoderDecoder3D):
         losses = self.decode_head.loss(x, data_samples, self.train_cfg)
         return losses
 
-    def predict(self, inputs: dict,
-                batch_data_samples: SampleList) -> SampleList:
+    def predict(self, inputs: dict, batch_data_samples: SampleList) -> SampleList:
         """Simple test with single scene.
 
         Args:
@@ -71,9 +70,9 @@ class MinkUNet(EncoderDecoder3D):
 
         return self.postprocess_result(seg_logits_list, batch_data_samples)
 
-    def _forward(self,
-                 batch_inputs_dict: dict,
-                 batch_data_samples: OptSampleList = None) -> Tensor:
+    def _forward(
+        self, batch_inputs_dict: dict, batch_data_samples: OptSampleList = None
+    ) -> Tensor:
         """Network forward process.
 
         Args:

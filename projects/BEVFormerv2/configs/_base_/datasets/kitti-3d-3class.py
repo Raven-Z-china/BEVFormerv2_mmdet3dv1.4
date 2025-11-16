@@ -10,9 +10,11 @@ db_sampler = dict(
     rate=1.0,
     prepare=dict(
         filter_by_difficulty=[-1],
-        filter_by_min_points=dict(Car=5, Pedestrian=10, Cyclist=10)),
+        filter_by_min_points=dict(Car=5, Pedestrian=10, Cyclist=10),
+    ),
     classes=class_names,
-    sample_groups=dict(Car=12, Pedestrian=6, Cyclist=6))
+    sample_groups=dict(Car=12, Pedestrian=6, Cyclist=6),
+)
 
 file_client_args = dict(backend='disk')
 # Uncomment the following if use ceph or other file clients.
@@ -27,29 +29,33 @@ train_pipeline = [
         coord_type='LIDAR',
         load_dim=4,
         use_dim=4,
-        file_client_args=file_client_args),
+        file_client_args=file_client_args,
+    ),
     dict(
         type='LoadAnnotations3D',
         with_bbox_3d=True,
         with_label_3d=True,
-        file_client_args=file_client_args),
+        file_client_args=file_client_args,
+    ),
     dict(type='ObjectSample', db_sampler=db_sampler),
     dict(
         type='ObjectNoise',
         num_try=100,
         translation_std=[1.0, 1.0, 0.5],
         global_rot_range=[0.0, 0.0],
-        rot_range=[-0.78539816, 0.78539816]),
+        rot_range=[-0.78539816, 0.78539816],
+    ),
     dict(type='RandomFlip3D', flip_ratio_bev_horizontal=0.5),
     dict(
         type='GlobalRotScaleTrans',
         rot_range=[-0.78539816, 0.78539816],
-        scale_ratio_range=[0.95, 1.05]),
+        scale_ratio_range=[0.95, 1.05],
+    ),
     dict(type='PointsRangeFilter', point_cloud_range=point_cloud_range),
     dict(type='ObjectRangeFilter', point_cloud_range=point_cloud_range),
     dict(type='PointShuffle'),
     dict(type='DefaultFormatBundle3D', class_names=class_names),
-    dict(type='Collect3D', keys=['points', 'gt_bboxes_3d', 'gt_labels_3d'])
+    dict(type='Collect3D', keys=['points', 'gt_bboxes_3d', 'gt_labels_3d']),
 ]
 test_pipeline = [
     dict(
@@ -57,7 +63,8 @@ test_pipeline = [
         coord_type='LIDAR',
         load_dim=4,
         use_dim=4,
-        file_client_args=file_client_args),
+        file_client_args=file_client_args,
+    ),
     dict(
         type='MultiScaleFlipAug3D',
         img_scale=(1333, 800),
@@ -67,17 +74,17 @@ test_pipeline = [
             dict(
                 type='GlobalRotScaleTrans',
                 rot_range=[0, 0],
-                scale_ratio_range=[1., 1.],
-                translation_std=[0, 0, 0]),
+                scale_ratio_range=[1.0, 1.0],
+                translation_std=[0, 0, 0],
+            ),
             dict(type='RandomFlip3D'),
+            dict(type='PointsRangeFilter', point_cloud_range=point_cloud_range),
             dict(
-                type='PointsRangeFilter', point_cloud_range=point_cloud_range),
-            dict(
-                type='DefaultFormatBundle3D',
-                class_names=class_names,
-                with_label=False),
-            dict(type='Collect3D', keys=['points'])
-        ])
+                type='DefaultFormatBundle3D', class_names=class_names, with_label=False
+            ),
+            dict(type='Collect3D', keys=['points']),
+        ],
+    ),
 ]
 # construct a pipeline for data and gt loading in show function
 # please keep its loading function consistent with test_pipeline (e.g. client)
@@ -87,12 +94,10 @@ eval_pipeline = [
         coord_type='LIDAR',
         load_dim=4,
         use_dim=4,
-        file_client_args=file_client_args),
-    dict(
-        type='DefaultFormatBundle3D',
-        class_names=class_names,
-        with_label=False),
-    dict(type='Collect3D', keys=['points'])
+        file_client_args=file_client_args,
+    ),
+    dict(type='DefaultFormatBundle3D', class_names=class_names, with_label=False),
+    dict(type='Collect3D', keys=['points']),
 ]
 
 data = dict(
@@ -113,7 +118,9 @@ data = dict(
             test_mode=False,
             # we use box_type_3d='LiDAR' in kitti and nuscenes dataset
             # and box_type_3d='Depth' in sunrgbd and scannet dataset.
-            box_type_3d='LiDAR')),
+            box_type_3d='LiDAR',
+        ),
+    ),
     val=dict(
         type=dataset_type,
         data_root=data_root,
@@ -124,7 +131,8 @@ data = dict(
         modality=input_modality,
         classes=class_names,
         test_mode=True,
-        box_type_3d='LiDAR'),
+        box_type_3d='LiDAR',
+    ),
     test=dict(
         type=dataset_type,
         data_root=data_root,
@@ -135,6 +143,8 @@ data = dict(
         modality=input_modality,
         classes=class_names,
         test_mode=True,
-        box_type_3d='LiDAR'))
+        box_type_3d='LiDAR',
+    ),
+)
 
 evaluation = dict(interval=1, pipeline=eval_pipeline)

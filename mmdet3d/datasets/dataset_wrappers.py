@@ -23,9 +23,9 @@ class CBGSDataset:
             Defaults to False.
     """
 
-    def __init__(self,
-                 dataset: Union[BaseDataset, dict],
-                 lazy_init: bool = False) -> None:
+    def __init__(
+        self, dataset: Union[BaseDataset, dict], lazy_init: bool = False
+    ) -> None:
         self.dataset: BaseDataset
         if isinstance(dataset, dict):
             self.dataset = DATASETS.build(dataset)
@@ -34,7 +34,8 @@ class CBGSDataset:
         else:
             raise TypeError(
                 'elements in datasets sequence should be config or '
-                f'`BaseDataset` instance, but got {type(dataset)}')
+                f'`BaseDataset` instance, but got {type(dataset)}'
+            )
         self._metainfo = self.dataset.metainfo
 
         self._fully_initialized = False
@@ -80,11 +81,9 @@ class CBGSDataset:
                     # Filter categories that do not need to be cared.
                     # -1 indicates dontcare in MMDet3D.
                     class_sample_idxs[cat_id].append(idx)
-        duplicated_samples = sum(
-            [len(v) for _, v in class_sample_idxs.items()])
+        duplicated_samples = sum([len(v) for _, v in class_sample_idxs.items()])
         class_distribution = {
-            k: len(v) / duplicated_samples
-            for k, v in class_sample_idxs.items()
+            k: len(v) / duplicated_samples for k, v in class_sample_idxs.items()
         }
 
         sample_indices = []
@@ -92,9 +91,9 @@ class CBGSDataset:
         frac = 1.0 / len(classes)
         ratios = [frac / v for v in class_distribution.values()]
         for cls_inds, ratio in zip(list(class_sample_idxs.values()), ratios):
-            sample_indices += np.random.choice(cls_inds,
-                                               int(len(cls_inds) *
-                                                   ratio)).tolist()
+            sample_indices += np.random.choice(
+                cls_inds, int(len(cls_inds) * ratio)
+            ).tolist()
         return sample_indices
 
     @force_full_init
@@ -145,8 +144,9 @@ class CBGSDataset:
             dict: Data dictionary of the corresponding index.
         """
         if not self._fully_initialized:
-            warnings.warn('Please call `full_init` method manually to '
-                          'accelerate the speed.')
+            warnings.warn(
+                'Please call `full_init` method manually to ' 'accelerate the speed.'
+            )
             self.full_init()
 
         ori_index = self._get_ori_dataset_idx(idx)
@@ -169,7 +169,8 @@ class CBGSDataset:
             '`get_subset_` interfaces because this will lead to ambiguous '
             'implementation of some methods. If you want to use `get_subset` '
             'or `get_subset_` interfaces, please use them in the wrapped '
-            'dataset first and then use `CBGSDataset`.')
+            'dataset first and then use `CBGSDataset`.'
+        )
 
     def get_subset(self, indices: Union[List[int], int]) -> BaseDataset:
         """Not supported in ``CBGSDataset`` for the ambiguous meaning of sub-
@@ -179,4 +180,5 @@ class CBGSDataset:
             '`get_subset_` interfaces because this will lead to ambiguous '
             'implementation of some methods. If you want to use `get_subset` '
             'or `get_subset_` interfaces, please use them in the wrapped '
-            'dataset first and then use `CBGSDataset`.')
+            'dataset first and then use `CBGSDataset`.'
+        )

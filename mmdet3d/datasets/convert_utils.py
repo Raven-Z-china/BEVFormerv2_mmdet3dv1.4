@@ -13,19 +13,43 @@ from shapely.geometry.polygon import Polygon
 from mmdet3d.structures import Box3DMode, CameraInstance3DBoxes, points_cam2img
 from mmdet3d.structures.ops import box_np_ops
 
-kitti_categories = ('Pedestrian', 'Cyclist', 'Car', 'Van', 'Truck',
-                    'Person_sitting', 'Tram', 'Misc')
+kitti_categories = (
+    'Pedestrian',
+    'Cyclist',
+    'Car',
+    'Van',
+    'Truck',
+    'Person_sitting',
+    'Tram',
+    'Misc',
+)
 
 waymo_categories = ('Car', 'Pedestrian', 'Cyclist')
 
-nus_categories = ('car', 'truck', 'trailer', 'bus', 'construction_vehicle',
-                  'bicycle', 'motorcycle', 'pedestrian', 'traffic_cone',
-                  'barrier')
+nus_categories = (
+    'car',
+    'truck',
+    'trailer',
+    'bus',
+    'construction_vehicle',
+    'bicycle',
+    'motorcycle',
+    'pedestrian',
+    'traffic_cone',
+    'barrier',
+)
 
-nus_attributes = ('cycle.with_rider', 'cycle.without_rider',
-                  'pedestrian.moving', 'pedestrian.standing',
-                  'pedestrian.sitting_lying_down', 'vehicle.moving',
-                  'vehicle.parked', 'vehicle.stopped', 'None')
+nus_attributes = (
+    'cycle.with_rider',
+    'cycle.without_rider',
+    'pedestrian.moving',
+    'pedestrian.standing',
+    'pedestrian.sitting_lying_down',
+    'vehicle.moving',
+    'vehicle.parked',
+    'vehicle.stopped',
+    'None',
+)
 NuScenesNameMapping = {
     'movable_object.barrier': 'barrier',
     'vehicle.bicycle': 'bicycle',
@@ -40,7 +64,7 @@ NuScenesNameMapping = {
     'human.pedestrian.police_officer': 'pedestrian',
     'movable_object.trafficcone': 'traffic_cone',
     'vehicle.trailer': 'trailer',
-    'vehicle.truck': 'truck'
+    'vehicle.truck': 'truck',
 }
 LyftNameMapping = {
     'bicycle': 'bicycle',
@@ -51,12 +75,13 @@ LyftNameMapping = {
     'other_vehicle': 'other_vehicle',
     'pedestrian': 'pedestrian',
     'truck': 'truck',
-    'animal': 'animal'
+    'animal': 'animal',
 }
 
 
-def get_nuscenes_2d_boxes(nusc: NuScenes, sample_data_token: str,
-                          visibilities: List[str]) -> List[dict]:
+def get_nuscenes_2d_boxes(
+    nusc: NuScenes, sample_data_token: str, visibilities: List[str]
+) -> List[dict]:
     """Get the 2d / mono3d annotation records for a given `sample_data_token`
     of nuscenes dataset.
 
@@ -74,12 +99,11 @@ def get_nuscenes_2d_boxes(nusc: NuScenes, sample_data_token: str,
     # Get the sample data and the sample corresponding to that sample data.
     sd_rec = nusc.get('sample_data', sample_data_token)
 
-    assert sd_rec[
-        'sensor_modality'] == 'camera', 'Error: get_2d_boxes only works' \
-        ' for camera sample_data!'
+    assert sd_rec['sensor_modality'] == 'camera', (
+        'Error: get_2d_boxes only works' ' for camera sample_data!'
+    )
     if not sd_rec['is_key_frame']:
-        raise ValueError(
-            'The 2D re-projections are available only for keyframes.')
+        raise ValueError('The 2D re-projections are available only for keyframes.')
 
     s_rec = nusc.get('sample', sd_rec['sample_token'])
 
@@ -90,12 +114,9 @@ def get_nuscenes_2d_boxes(nusc: NuScenes, sample_data_token: str,
     camera_intrinsic = np.array(cs_rec['camera_intrinsic'])
 
     # Get all the annotation with the specified visibilties.
+    ann_recs = [nusc.get('sample_annotation', token) for token in s_rec['anns']]
     ann_recs = [
-        nusc.get('sample_annotation', token) for token in s_rec['anns']
-    ]
-    ann_recs = [
-        ann_rec for ann_rec in ann_recs
-        if (ann_rec['visibility_token'] in visibilities)
+        ann_rec for ann_rec in ann_recs if (ann_rec['visibility_token'] in visibilities)
     ]
 
     repro_recs = []
@@ -123,8 +144,9 @@ def get_nuscenes_2d_boxes(nusc: NuScenes, sample_data_token: str,
         corners_3d = corners_3d[:, in_front]
 
         # Project 3d box to 2d.
-        corner_coords = view_points(corners_3d, camera_intrinsic,
-                                    True).T[:, :2].tolist()
+        corner_coords = (
+            view_points(corners_3d, camera_intrinsic, True).T[:, :2].tolist()
+        )
 
         # Keep only corners that fall within the image.
         final_coords = post_process_coords(corner_coords)
@@ -137,8 +159,7 @@ def get_nuscenes_2d_boxes(nusc: NuScenes, sample_data_token: str,
             min_x, min_y, max_x, max_y = final_coords
 
         # Generate dictionary record to be included in the .json file.
-        repro_rec = generate_record(ann_rec, min_x, min_y, max_x, max_y,
-                                    'nuscenes')
+        repro_rec = generate_record(ann_rec, min_x, min_y, max_x, max_y, 'nuscenes')
 
         # if repro_rec is None, we do not append it into repre_recs
         if repro_rec is not None:
@@ -155,8 +176,9 @@ def get_nuscenes_2d_boxes(nusc: NuScenes, sample_data_token: str,
             global_velo3d = np.array([*global_velo2d, 0.0])
             e2g_r_mat = Quaternion(pose_rec['rotation']).rotation_matrix
             c2e_r_mat = Quaternion(cs_rec['rotation']).rotation_matrix
-            cam_velo3d = global_velo3d @ np.linalg.inv(
-                e2g_r_mat).T @ np.linalg.inv(c2e_r_mat).T
+            cam_velo3d = (
+                global_velo3d @ np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(c2e_r_mat).T
+            )
             velo = cam_velo3d[0::2].tolist()
 
             repro_rec['bbox_3d'] = loc + dim + rot
@@ -164,7 +186,8 @@ def get_nuscenes_2d_boxes(nusc: NuScenes, sample_data_token: str,
 
             center_3d = np.array(loc).reshape([1, 3])
             center_2d_with_depth = points_cam2img(
-                center_3d, camera_intrinsic, with_depth=True)
+                center_3d, camera_intrinsic, with_depth=True
+            )
             center_2d_with_depth = center_2d_with_depth.squeeze().tolist()
             repro_rec['center_2d'] = center_2d_with_depth[:2]
             repro_rec['depth'] = center_2d_with_depth[2]
@@ -173,8 +196,7 @@ def get_nuscenes_2d_boxes(nusc: NuScenes, sample_data_token: str,
             if repro_rec['depth'] <= 0:
                 continue
 
-            ann_token = nusc.get('sample_annotation',
-                                 box.token)['attribute_tokens']
+            ann_token = nusc.get('sample_annotation', box.token)['attribute_tokens']
             if len(ann_token) == 0:
                 attr_name = 'None'
             else:
@@ -188,12 +210,14 @@ def get_nuscenes_2d_boxes(nusc: NuScenes, sample_data_token: str,
     return repro_recs
 
 
-def get_kitti_style_2d_boxes(info: dict,
-                             cam_idx: int = 2,
-                             occluded: Tuple[int] = (0, 1, 2, 3),
-                             annos: Optional[dict] = None,
-                             mono3d: bool = True,
-                             dataset: str = 'kitti') -> List[dict]:
+def get_kitti_style_2d_boxes(
+    info: dict,
+    cam_idx: int = 2,
+    occluded: Tuple[int] = (0, 1, 2, 3),
+    annos: Optional[dict] = None,
+    mono3d: bool = True,
+    dataset: str = 'kitti',
+) -> List[dict]:
     """Get the 2d / mono3d annotation records for a given info.
 
     This function is used to get 2D/Mono3D annotations when loading annotations
@@ -244,8 +268,7 @@ def get_kitti_style_2d_boxes(info: dict,
 
     for ann_idx, ann_rec in enumerate(ann_recs):
         # Augment sample_annotation with token information.
-        ann_rec['sample_annotation_token'] = \
-            f"{info['image']['image_idx']}.{ann_idx}"
+        ann_rec['sample_annotation_token'] = f"{info['image']['image_idx']}.{ann_idx}"
         ann_rec['sample_data_token'] = info['image']['image_idx']
 
         loc = ann_rec['location'][np.newaxis, :]
@@ -257,29 +280,31 @@ def get_kitti_style_2d_boxes(info: dict,
         src = np.array([0.5, 1.0, 0.5])
         # gravity center
         loc_center = loc + dim * (dst - src)
-        gt_bbox_3d = np.concatenate([loc_center, dim, rot],
-                                    axis=1).astype(np.float32)
+        gt_bbox_3d = np.concatenate([loc_center, dim, rot], axis=1).astype(np.float32)
 
         # Filter out the corners that are not in front of the calibrated
         # sensor.
         corners_3d = box_np_ops.center_to_corner_box3d(
             gt_bbox_3d[:, :3],
             gt_bbox_3d[:, 3:6],
-            gt_bbox_3d[:, 6], (0.5, 0.5, 0.5),
-            axis=1)
+            gt_bbox_3d[:, 6],
+            (0.5, 0.5, 0.5),
+            axis=1,
+        )
         corners_3d = corners_3d[0].T  # (1, 8, 3) -> (3, 8)
         in_front = np.argwhere(corners_3d[2, :] > 0).flatten()
         corners_3d = corners_3d[:, in_front]
 
         # Project 3d box to 2d.
-        corner_coords = view_points(corners_3d, camera_intrinsic,
-                                    True).T[:, :2].tolist()
+        corner_coords = (
+            view_points(corners_3d, camera_intrinsic, True).T[:, :2].tolist()
+        )
 
         # Keep only corners that fall within the image.
         final_coords = post_process_coords(
             corner_coords,
-            imsize=(info['image']['image_shape'][1],
-                    info['image']['image_shape'][0]))
+            imsize=(info['image']['image_shape'][1], info['image']['image_shape'][0]),
+        )
 
         # Skip if the convex hull of the re-projected corners
         # does not intersect the image canvas.
@@ -289,19 +314,23 @@ def get_kitti_style_2d_boxes(info: dict,
             min_x, min_y, max_x, max_y = final_coords
 
         # Generate dictionary record to be included in the .json file.
-        repro_rec = generate_record(ann_rec, min_x, min_y, max_x, max_y,
-                                    dataset)
+        repro_rec = generate_record(ann_rec, min_x, min_y, max_x, max_y, dataset)
 
         # If mono3d=True, add 3D annotations in camera coordinates
         if mono3d and (repro_rec is not None):
             # use bottom center to represent the bbox_3d
-            repro_rec['bbox_3d'] = np.concatenate(
-                [loc, dim, rot], axis=1).astype(np.float32).squeeze().tolist()
+            repro_rec['bbox_3d'] = (
+                np.concatenate([loc, dim, rot], axis=1)
+                .astype(np.float32)
+                .squeeze()
+                .tolist()
+            )
             repro_rec['velocity'] = -1  # no velocity in KITTI
 
             center_3d = np.array(loc_center).reshape([1, 3])
             center_2d_with_depth = points_cam2img(
-                center_3d, camera_intrinsic, with_depth=True)
+                center_3d, camera_intrinsic, with_depth=True
+            )
             center_2d_with_depth = center_2d_with_depth.squeeze().tolist()
 
             repro_rec['center_2d'] = center_2d_with_depth[:2]
@@ -325,14 +354,17 @@ def convert_annos(info: dict, cam_idx: int) -> dict:
     loc = annos['location']
     dims = annos['dimensions']
     rots = annos['rotation_y']
-    gt_bboxes_3d = np.concatenate([loc, dims, rots[..., np.newaxis]],
-                                  axis=1).astype(np.float32)
+    gt_bboxes_3d = np.concatenate([loc, dims, rots[..., np.newaxis]], axis=1).astype(
+        np.float32
+    )
     # convert gt_bboxes_3d to velodyne coordinates
     gt_bboxes_3d = CameraInstance3DBoxes(gt_bboxes_3d).convert_to(
-        Box3DMode.LIDAR, np.linalg.inv(rect @ lidar2cam0), correct_yaw=True)
+        Box3DMode.LIDAR, np.linalg.inv(rect @ lidar2cam0), correct_yaw=True
+    )
     # convert gt_bboxes_3d to cam coordinates
     gt_bboxes_3d = gt_bboxes_3d.convert_to(
-        Box3DMode.CAM, rect @ lidar2cami, correct_yaw=True).numpy()
+        Box3DMode.CAM, rect @ lidar2cami, correct_yaw=True
+    ).numpy()
     converted_annos['location'] = gt_bboxes_3d[:, :3]
     converted_annos['dimensions'] = gt_bboxes_3d[:, 3:6]
     converted_annos['rotation_y'] = gt_bboxes_3d[:, 6]
@@ -362,7 +394,8 @@ def post_process_coords(
         img_intersection = polygon_from_2d_box.intersection(img_canvas)
         if isinstance(img_intersection, Polygon):
             intersection_coords = np.array(
-                [coord for coord in img_intersection.exterior.coords])
+                [coord for coord in img_intersection.exterior.coords]
+            )
             min_x = min(intersection_coords[:, 0])
             min_y = min(intersection_coords[:, 1])
             max_x = max(intersection_coords[:, 0])
@@ -375,8 +408,9 @@ def post_process_coords(
         return None
 
 
-def generate_record(ann_rec: dict, x1: float, y1: float, x2: float, y2: float,
-                    dataset: str) -> Union[dict, None]:
+def generate_record(
+    ann_rec: dict, x1: float, y1: float, x2: float, y2: float, dataset: str
+) -> Union[dict, None]:
     """Generate one 2D annotation record given various information on top of
     the 2D bounding box coordinates.
 

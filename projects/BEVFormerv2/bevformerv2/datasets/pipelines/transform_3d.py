@@ -1,11 +1,14 @@
+import mmcv
 import numpy as np
 from numpy import random
-import mmcv
+
 from mmdet3d.registry import TRANSFORMS
+
 
 @TRANSFORMS.register_module()
 class PadMultiViewImage(object):
     """Pad the multi-view image.
+
     There are two padding modes: (1) pad to a fixed size and (2) pad to the
     minimum size that is divisible by some number.
     Added keys are "pad_shape", "pad_fixed_size", "pad_size_divisor",
@@ -26,12 +29,16 @@ class PadMultiViewImage(object):
     def _pad_img(self, results):
         """Pad images according to ``self.size``."""
         if self.size is not None:
-            padded_img = [mmcv.impad(
-                img, shape=self.size, pad_val=self.pad_val) for img in results['img']]
+            padded_img = [
+                mmcv.impad(img, shape=self.size, pad_val=self.pad_val)
+                for img in results['img']
+            ]
         elif self.size_divisor is not None:
-            padded_img = [mmcv.impad_to_multiple(
-                img, self.size_divisor, pad_val=self.pad_val) for img in results['img']]
-        
+            padded_img = [
+                mmcv.impad_to_multiple(img, self.size_divisor, pad_val=self.pad_val)
+                for img in results['img']
+            ]
+
         results['ori_shape'] = [img.shape for img in results['img']]
         results['img'] = padded_img
         results['img_shape'] = [img.shape for img in padded_img]
@@ -41,6 +48,7 @@ class PadMultiViewImage(object):
 
     def __call__(self, results):
         """Call function to pad images, masks, semantic segmentation maps.
+
         Args:
             results (dict): Result dict from loading pipeline.
         Returns:
@@ -60,6 +68,7 @@ class PadMultiViewImage(object):
 @TRANSFORMS.register_module()
 class NormalizeMultiviewImage(object):
     """Normalize the image.
+
     Added key is "img_norm_cfg".
     Args:
         mean (sequence): Mean values of 3 channels.
@@ -73,9 +82,9 @@ class NormalizeMultiviewImage(object):
         self.std = np.array(std, dtype=np.float32)
         self.to_rgb = to_rgb
 
-
     def __call__(self, results):
         """Call function to normalize images.
+
         Args:
             results (dict): Result dict from loading pipeline.
         Returns:
@@ -83,9 +92,11 @@ class NormalizeMultiviewImage(object):
                 result dict.
         """
 
-        results['img'] = [mmcv.imnormalize(img, self.mean, self.std, self.to_rgb) for img in results['img']]
-        results['img_norm_cfg'] = dict(
-            mean=self.mean, std=self.std, to_rgb=self.to_rgb)
+        results['img'] = [
+            mmcv.imnormalize(img, self.mean, self.std, self.to_rgb)
+            for img in results['img']
+        ]
+        results['img_norm_cfg'] = dict(mean=self.mean, std=self.std, to_rgb=self.to_rgb)
         return results
 
     def __repr__(self):
@@ -97,7 +108,9 @@ class NormalizeMultiviewImage(object):
 @TRANSFORMS.register_module()
 class PhotoMetricDistortionMultiViewImage:
     """Apply photometric distortion to image sequentially, every transformation
-    is applied with a probability of 0.5. The position of random contrast is in
+    is applied with a probability of 0.5.
+
+    The position of random contrast is in
     second or second to last.
     1. random brightness
     2. random contrast (mode 0)
@@ -114,11 +127,13 @@ class PhotoMetricDistortionMultiViewImage:
         hue_delta (int): delta of hue.
     """
 
-    def __init__(self,
-                 brightness_delta=32,
-                 contrast_range=(0.5, 1.5),
-                 saturation_range=(0.5, 1.5),
-                 hue_delta=18):
+    def __init__(
+        self,
+        brightness_delta=32,
+        contrast_range=(0.5, 1.5),
+        saturation_range=(0.5, 1.5),
+        hue_delta=18,
+    ):
         self.brightness_delta = brightness_delta
         self.contrast_lower, self.contrast_upper = contrast_range
         self.saturation_lower, self.saturation_upper = saturation_range
@@ -126,6 +141,7 @@ class PhotoMetricDistortionMultiViewImage:
 
     def __call__(self, results):
         """Call function to perform photometric distortion on images.
+
         Args:
             results (dict): Result dict from loading pipeline.
         Returns:
@@ -134,13 +150,13 @@ class PhotoMetricDistortionMultiViewImage:
         imgs = results['img']
         new_imgs = []
         for img in imgs:
-            assert img.dtype == np.float32, \
-                'PhotoMetricDistortion needs the input image of dtype np.float32,'\
+            assert img.dtype == np.float32, (
+                'PhotoMetricDistortion needs the input image of dtype np.float32,'
                 ' please set "to_float32=True" in "LoadImageFromFile" pipeline'
+            )
             # random brightness
             if random.randint(2):
-                delta = random.uniform(-self.brightness_delta,
-                                    self.brightness_delta)
+                delta = random.uniform(-self.brightness_delta, self.brightness_delta)
                 img += delta
 
             # mode == 0 --> do random contrast first
@@ -148,8 +164,7 @@ class PhotoMetricDistortionMultiViewImage:
             mode = random.randint(2)
             if mode == 1:
                 if random.randint(2):
-                    alpha = random.uniform(self.contrast_lower,
-                                        self.contrast_upper)
+                    alpha = random.uniform(self.contrast_lower, self.contrast_upper)
                     img *= alpha
 
             # convert color from BGR to HSV
@@ -157,8 +172,9 @@ class PhotoMetricDistortionMultiViewImage:
 
             # random saturation
             if random.randint(2):
-                img[..., 1] *= random.uniform(self.saturation_lower,
-                                            self.saturation_upper)
+                img[..., 1] *= random.uniform(
+                    self.saturation_lower, self.saturation_upper
+                )
 
             # random hue
             if random.randint(2):
@@ -172,8 +188,7 @@ class PhotoMetricDistortionMultiViewImage:
             # random contrast
             if mode == 0:
                 if random.randint(2):
-                    alpha = random.uniform(self.contrast_lower,
-                                        self.contrast_upper)
+                    alpha = random.uniform(self.contrast_lower, self.contrast_upper)
                     img *= alpha
 
             # randomly swap channels
@@ -194,14 +209,14 @@ class PhotoMetricDistortionMultiViewImage:
         return repr_str
 
 
-
 @TRANSFORMS.register_module()
 class CustomCollect3D(object):
-    """Collect data from the loader relevant to the specific task.
-    This is usually the last stage of the data loader pipeline. Typically keys
-    is set to some subset of "img", "proposals", "gt_bboxes",
-    "gt_bboxes_ignore", "gt_labels", and/or "gt_masks".
-    The "img_meta" item is always populated.  The contents of the "img_meta"
+    """Collect data from the loader relevant to the specific task. This is
+    usually the last stage of the data loader pipeline. Typically keys is set
+    to some subset of "img", "proposals", "gt_bboxes", "gt_bboxes_ignore",
+    "gt_labels", and/or "gt_masks". The "img_meta" item is always populated.
+    The contents of the "img_meta".
+
     dictionary depends on "meta_keys". By default this includes:
         - 'img_shape': shape of the image input to the network as a tuple \
             (h, w, c).  Note that images may be zero padded on the \
@@ -240,17 +255,37 @@ class CustomCollect3D(object):
             'sample_idx', 'pcd_scale_factor', 'pcd_rotation', 'pts_filename')
     """
 
-    def __init__(self,
-                 keys,
-                 meta_keys=('filename', 'ori_shape', 'img_shape', 'lidar2img','lidar2cam',
-                            'depth2img', 'cam2img', 'pad_shape',
-                            'scale_factor', 'flip', 'pcd_horizontal_flip',
-                            'pcd_vertical_flip', 'box_mode_3d', 'box_type_3d',
-                            'img_norm_cfg', 'pcd_trans', 'sample_idx', 'prev_idx', 'next_idx',
-                            'pcd_scale_factor', 'pcd_rotation', 'pts_filename',
-                            'transformation_3d_flow', 'scene_token',
-                            'can_bus',
-                            )):
+    def __init__(
+        self,
+        keys,
+        meta_keys=(
+            'filename',
+            'ori_shape',
+            'img_shape',
+            'lidar2img',
+            'lidar2cam',
+            'depth2img',
+            'cam2img',
+            'pad_shape',
+            'scale_factor',
+            'flip',
+            'pcd_horizontal_flip',
+            'pcd_vertical_flip',
+            'box_mode_3d',
+            'box_type_3d',
+            'img_norm_cfg',
+            'pcd_trans',
+            'sample_idx',
+            'prev_idx',
+            'next_idx',
+            'pcd_scale_factor',
+            'pcd_rotation',
+            'pts_filename',
+            'transformation_3d_flow',
+            'scene_token',
+            'can_bus',
+        ),
+    ):
         self.keys = keys
         self.meta_keys = meta_keys
 
@@ -264,10 +299,10 @@ class CustomCollect3D(object):
                 - keys in ``self.keys``
                 - ``img_metas``
         """
-       
+
         data = {}
         img_metas = {}
-      
+
         for key in self.meta_keys:
             if key in results:
                 img_metas[key] = results[key]
@@ -275,16 +310,16 @@ class CustomCollect3D(object):
         data['img_metas'] = img_metas
         for key in self.keys:
             if key not in results:
-                data[key] = None 
+                data[key] = None
             else:
                 data[key] = results[key]
         return data
 
     def __repr__(self):
         """str: Return a string that describes the module."""
-        return self.__class__.__name__ + \
-            f'(keys={self.keys}, meta_keys={self.meta_keys})'
-
+        return (
+            self.__class__.__name__ + f'(keys={self.keys}, meta_keys={self.meta_keys})'
+        )
 
 
 @TRANSFORMS.register_module()
@@ -296,10 +331,11 @@ class RandomScaleImageMultiViewImage(object):
 
     def __init__(self, scales=[]):
         self.scales = scales
-        assert len(self.scales)==1
+        assert len(self.scales) == 1
 
     def __call__(self, results):
         """Call function to pad images, masks, semantic segmentation maps.
+
         Args:
             results (dict): Result dict from loading pipeline.
         Returns:
@@ -313,15 +349,16 @@ class RandomScaleImageMultiViewImage(object):
         scale_factor = np.eye(4)
         scale_factor[0, 0] *= rand_scale
         scale_factor[1, 1] *= rand_scale
-        results['img'] = [mmcv.imresize(img, (x_size[idx], y_size[idx]), return_scale=False) for idx, img in
-                          enumerate(results['img'])]
+        results['img'] = [
+            mmcv.imresize(img, (x_size[idx], y_size[idx]), return_scale=False)
+            for idx, img in enumerate(results['img'])
+        ]
         lidar2img = [scale_factor @ l2i for l2i in results['lidar2img']]
         results['lidar2img'] = lidar2img
         results['img_shape'] = [img.shape for img in results['img']]
         results['ori_shape'] = [img.shape for img in results['img']]
 
         return results
-
 
     def __repr__(self):
         repr_str = self.__class__.__name__

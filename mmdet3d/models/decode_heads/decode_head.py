@@ -59,21 +59,24 @@ class Base3DDecodeHead(BaseModule, metaclass=ABCMeta):
             optional): Initialization config dict. Defaults to None.
     """
 
-    def __init__(self,
-                 channels: int,
-                 num_classes: int,
-                 dropout_ratio: float = 0.5,
-                 conv_cfg: ConfigType = dict(type='Conv1d'),
-                 norm_cfg: ConfigType = dict(type='BN1d'),
-                 act_cfg: ConfigType = dict(type='ReLU'),
-                 loss_decode: ConfigType = dict(
-                     type='mmdet.CrossEntropyLoss',
-                     use_sigmoid=False,
-                     class_weight=None,
-                     loss_weight=1.0),
-                 conv_seg_kernel_size: int = 1,
-                 ignore_index: int = 255,
-                 init_cfg: OptMultiConfig = None) -> None:
+    def __init__(
+        self,
+        channels: int,
+        num_classes: int,
+        dropout_ratio: float = 0.5,
+        conv_cfg: ConfigType = dict(type='Conv1d'),
+        norm_cfg: ConfigType = dict(type='BN1d'),
+        act_cfg: ConfigType = dict(type='ReLU'),
+        loss_decode: ConfigType = dict(
+            type='mmdet.CrossEntropyLoss',
+            use_sigmoid=False,
+            class_weight=None,
+            loss_weight=1.0,
+        ),
+        conv_seg_kernel_size: int = 1,
+        ignore_index: int = 255,
+        init_cfg: OptMultiConfig = None,
+    ) -> None:
         super(Base3DDecodeHead, self).__init__(init_cfg=init_cfg)
         self.channels = channels
         self.num_classes = num_classes
@@ -85,9 +88,8 @@ class Base3DDecodeHead(BaseModule, metaclass=ABCMeta):
         self.ignore_index = ignore_index
 
         self.conv_seg = self.build_conv_seg(
-            channels=channels,
-            num_classes=num_classes,
-            kernel_size=conv_seg_kernel_size)
+            channels=channels, num_classes=num_classes, kernel_size=conv_seg_kernel_size
+        )
         if dropout_ratio > 0:
             self.dropout = nn.Dropout(dropout_ratio)
         else:
@@ -103,8 +105,9 @@ class Base3DDecodeHead(BaseModule, metaclass=ABCMeta):
         """Placeholder of forward function."""
         pass
 
-    def build_conv_seg(self, channels: int, num_classes: int,
-                       kernel_size: int) -> nn.Module:
+    def build_conv_seg(
+        self, channels: int, num_classes: int, kernel_size: int
+    ) -> nn.Module:
         """Build Convolutional Segmentation Layers."""
         return nn.Conv1d(channels, num_classes, kernel_size=kernel_size)
 
@@ -115,8 +118,9 @@ class Base3DDecodeHead(BaseModule, metaclass=ABCMeta):
         output = self.conv_seg(feat)
         return output
 
-    def loss(self, inputs: dict, batch_data_samples: SampleList,
-             train_cfg: ConfigType) -> Dict[str, Tensor]:
+    def loss(
+        self, inputs: dict, batch_data_samples: SampleList, train_cfg: ConfigType
+    ) -> Dict[str, Tensor]:
         """Forward function for training.
 
         Args:
@@ -133,8 +137,9 @@ class Base3DDecodeHead(BaseModule, metaclass=ABCMeta):
         losses = self.loss_by_feat(seg_logits, batch_data_samples)
         return losses
 
-    def predict(self, inputs: dict, batch_input_metas: List[dict],
-                test_cfg: ConfigType) -> Tensor:
+    def predict(
+        self, inputs: dict, batch_input_metas: List[dict], test_cfg: ConfigType
+    ) -> Tensor:
         """Forward function for testing.
 
         Args:
@@ -157,8 +162,9 @@ class Base3DDecodeHead(BaseModule, metaclass=ABCMeta):
         ]
         return torch.stack(gt_semantic_segs, dim=0)
 
-    def loss_by_feat(self, seg_logit: Tensor,
-                     batch_data_samples: SampleList) -> Dict[str, Tensor]:
+    def loss_by_feat(
+        self, seg_logit: Tensor, batch_data_samples: SampleList
+    ) -> Dict[str, Tensor]:
         """Compute semantic segmentation loss.
 
         Args:
@@ -174,5 +180,6 @@ class Base3DDecodeHead(BaseModule, metaclass=ABCMeta):
         seg_label = self._stack_batch_gt(batch_data_samples)
         loss = dict()
         loss['loss_sem_seg'] = self.loss_decode(
-            seg_logit, seg_label, ignore_index=self.ignore_index)
+            seg_logit, seg_label, ignore_index=self.ignore_index
+        )
         return loss

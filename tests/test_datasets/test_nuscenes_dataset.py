@@ -12,22 +12,28 @@ def _generate_nus_dataset_config():
     data_root = 'tests/data/nuscenes'
     ann_file = 'nus_info.pkl'
     classes = [
-        'car', 'truck', 'trailer', 'bus', 'construction_vehicle', 'bicycle',
-        'motorcycle', 'pedestrian', 'traffic_cone', 'barrier'
+        'car',
+        'truck',
+        'trailer',
+        'bus',
+        'construction_vehicle',
+        'bicycle',
+        'motorcycle',
+        'pedestrian',
+        'traffic_cone',
+        'barrier',
     ]
     if 'Identity' not in TRANSFORMS:
 
         @TRANSFORMS.register_module()
         class Identity(BaseTransform):
-
             def transform(self, info):
                 packed_input = dict(data_samples=Det3DDataSample())
                 if 'ann_info' in info:
-                    packed_input[
-                        'data_samples'].gt_instances_3d = InstanceData()
-                    packed_input[
-                        'data_samples'].gt_instances_3d.labels_3d = info[
-                            'ann_info']['gt_labels_3d']
+                    packed_input['data_samples'].gt_instances_3d = InstanceData()
+                    packed_input['data_samples'].gt_instances_3d.labels_3d = info[
+                        'ann_info'
+                    ]['gt_labels_3d']
                 return packed_input
 
     pipeline = [
@@ -35,16 +41,21 @@ def _generate_nus_dataset_config():
     ]
     modality = dict(use_lidar=True, use_camera=True)
     data_prefix = dict(
-        pts='samples/LIDAR_TOP',
-        img='samples/CAM_BACK_LEFT',
-        sweeps='sweeps/LIDAR_TOP')
+        pts='samples/LIDAR_TOP', img='samples/CAM_BACK_LEFT', sweeps='sweeps/LIDAR_TOP'
+    )
     return data_root, ann_file, classes, data_prefix, pipeline, modality
 
 
 def test_getitem():
     np.random.seed(0)
-    data_root, ann_file, classes, data_prefix, pipeline, modality = \
-        _generate_nus_dataset_config()
+    (
+        data_root,
+        ann_file,
+        classes,
+        data_prefix,
+        pipeline,
+        modality,
+    ) = _generate_nus_dataset_config()
 
     nus_dataset = NuScenesDataset(
         data_root=data_root,
@@ -52,7 +63,8 @@ def test_getitem():
         data_prefix=data_prefix,
         pipeline=pipeline,
         metainfo=dict(classes=classes),
-        modality=modality)
+        modality=modality,
+    )
 
     nus_dataset.prepare_data(0)
     input_dict = nus_dataset.get_data_info(0)

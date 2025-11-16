@@ -5,10 +5,12 @@ from mmdet.models import BaseDetector
 from mmengine.structures import InstanceData
 
 from mmdet3d.registry import MODELS
-from mmdet3d.structures.det3d_data_sample import (ForwardResults,
-                                                  OptSampleList, SampleList)
-from mmdet3d.utils.typing_utils import (OptConfigType, OptInstanceList,
-                                        OptMultiConfig)
+from mmdet3d.structures.det3d_data_sample import (
+    ForwardResults,
+    OptSampleList,
+    SampleList,
+)
+from mmdet3d.utils.typing_utils import OptConfigType, OptInstanceList, OptMultiConfig
 
 
 @MODELS.register_module()
@@ -23,17 +25,18 @@ class Base3DDetector(BaseDetector):
            initialization. Defaults to None.
     """
 
-    def __init__(self,
-                 data_preprocessor: OptConfigType = None,
-                 init_cfg: OptMultiConfig = None) -> None:
-        super().__init__(
-            data_preprocessor=data_preprocessor, init_cfg=init_cfg)
+    def __init__(
+        self, data_preprocessor: OptConfigType = None, init_cfg: OptMultiConfig = None
+    ) -> None:
+        super().__init__(data_preprocessor=data_preprocessor, init_cfg=init_cfg)
 
-    def forward(self,
-                inputs: Union[dict, List[dict]],
-                data_samples: OptSampleList = None,
-                mode: str = 'tensor',
-                **kwargs) -> ForwardResults:
+    def forward(
+        self,
+        inputs: Union[dict, List[dict]],
+        data_samples: OptSampleList = None,
+        mode: str = 'tensor',
+        **kwargs,
+    ) -> ForwardResults:
         """The unified entry for a forward process in both training and test.
 
         The method should accept three modes: "tensor", "predict" and "loss":
@@ -76,19 +79,22 @@ class Base3DDetector(BaseDetector):
         elif mode == 'predict':
             if isinstance(data_samples[0], list):
                 # aug test
-                assert len(data_samples[0]) == 1, 'Only support ' \
-                                                  'batch_size 1 ' \
-                                                  'in mmdet3d when ' \
-                                                  'do the test' \
-                                                  'time augmentation.'
+                assert len(data_samples[0]) == 1, (
+                    'Only support '
+                    'batch_size 1 '
+                    'in mmdet3d when '
+                    'do the test'
+                    'time augmentation.'
+                )
                 return self.aug_test(inputs, data_samples, **kwargs)
             else:
                 return self.predict(inputs, data_samples, **kwargs)
         elif mode == 'tensor':
             return self._forward(inputs, data_samples, **kwargs)
         else:
-            raise RuntimeError(f'Invalid mode "{mode}". '
-                               'Only supports loss, predict and tensor mode')
+            raise RuntimeError(
+                f'Invalid mode "{mode}". ' 'Only supports loss, predict and tensor mode'
+            )
 
     def add_pred_to_datasample(
         self,
@@ -133,18 +139,14 @@ class Base3DDetector(BaseDetector):
               (num_instances, 4).
         """
 
-        assert (data_instances_2d is not None) or \
-               (data_instances_3d is not None),\
-               'please pass at least one type of data_samples'
+        assert (data_instances_2d is not None) or (
+            data_instances_3d is not None
+        ), 'please pass at least one type of data_samples'
 
         if data_instances_2d is None:
-            data_instances_2d = [
-                InstanceData() for _ in range(len(data_instances_3d))
-            ]
+            data_instances_2d = [InstanceData() for _ in range(len(data_instances_3d))]
         if data_instances_3d is None:
-            data_instances_3d = [
-                InstanceData() for _ in range(len(data_instances_2d))
-            ]
+            data_instances_3d = [InstanceData() for _ in range(len(data_instances_2d))]
 
         for i, data_sample in enumerate(data_samples):
             data_sample.pred_instances_3d = data_instances_3d[i]

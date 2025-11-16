@@ -25,10 +25,9 @@ class PointPillarsScatter(nn.Module):
         self.nx = output_shape[1]
         self.in_channels = in_channels
 
-    def forward(self,
-                voxel_features: Tensor,
-                coors: Tensor,
-                batch_size: int = None) -> Tensor:
+    def forward(
+        self, voxel_features: Tensor, coors: Tensor, batch_size: int = None
+    ) -> Tensor:
         """Foraward function to scatter features."""
         # TODO: rewrite the function in a batch manner
         # no need to deal with different batch cases
@@ -50,7 +49,8 @@ class PointPillarsScatter(nn.Module):
             self.in_channels,
             self.nx * self.ny,
             dtype=voxel_features.dtype,
-            device=voxel_features.device)
+            device=voxel_features.device,
+        )
 
         indices = coors[:, 2] * self.nx + coors[:, 3]
         indices = indices.long()
@@ -61,8 +61,9 @@ class PointPillarsScatter(nn.Module):
         canvas = canvas.view(1, self.in_channels, self.ny, self.nx)
         return canvas
 
-    def forward_batch(self, voxel_features: Tensor, coors: Tensor,
-                      batch_size: int) -> Tensor:
+    def forward_batch(
+        self, voxel_features: Tensor, coors: Tensor, batch_size: int
+    ) -> Tensor:
         """Scatter features of single sample.
 
         Args:
@@ -79,7 +80,8 @@ class PointPillarsScatter(nn.Module):
                 self.in_channels,
                 self.nx * self.ny,
                 dtype=voxel_features.dtype,
-                device=voxel_features.device)
+                device=voxel_features.device,
+            )
 
             # Only include non-empty pillars
             batch_mask = coors[:, 0] == batch_itt
@@ -99,7 +101,6 @@ class PointPillarsScatter(nn.Module):
         batch_canvas = torch.stack(batch_canvas, 0)
 
         # Undo the column stacking to final 4-dim tensor
-        batch_canvas = batch_canvas.view(batch_size, self.in_channels, self.ny,
-                                         self.nx)
+        batch_canvas = batch_canvas.view(batch_size, self.in_channels, self.ny, self.nx)
 
         return batch_canvas

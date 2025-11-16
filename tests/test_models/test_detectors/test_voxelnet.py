@@ -5,12 +5,10 @@ import torch
 from mmengine import DefaultScope
 
 from mmdet3d.registry import MODELS
-from mmdet3d.testing import (create_detector_inputs, get_detector_cfg,
-                             setup_seed)
+from mmdet3d.testing import create_detector_inputs, get_detector_cfg, setup_seed
 
 
 class TestVoxelNet(unittest.TestCase):
-
     def test_voxelnet(self):
         import mmdet3d.models
 
@@ -18,7 +16,8 @@ class TestVoxelNet(unittest.TestCase):
         DefaultScope.get_instance('test_voxelnet', scope_name='mmdet3d')
         setup_seed(0)
         pointpillars_cfg = get_detector_cfg(
-            'pointpillars/pointpillars_hv_secfpn_8xb6-160e_kitti-3d-3class.py')
+            'pointpillars/pointpillars_hv_secfpn_8xb6-160e_kitti-3d-3class.py'
+        )
         model = MODELS.build(pointpillars_cfg)
         num_gt_instance = 2
         packed_inputs = create_detector_inputs(num_gt_instance=num_gt_instance)

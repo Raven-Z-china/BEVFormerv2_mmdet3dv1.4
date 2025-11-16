@@ -9,15 +9,16 @@ from torch import Tensor
 
 
 def box3d_multiclass_nms(
-        mlvl_bboxes: Tensor,
-        mlvl_bboxes_for_nms: Tensor,
-        mlvl_scores: Tensor,
-        score_thr: float,
-        max_num: int,
-        cfg: dict,
-        mlvl_dir_scores: Optional[Tensor] = None,
-        mlvl_attr_scores: Optional[Tensor] = None,
-        mlvl_bboxes2d: Optional[Tensor] = None) -> Tuple[Tensor]:
+    mlvl_bboxes: Tensor,
+    mlvl_bboxes_for_nms: Tensor,
+    mlvl_scores: Tensor,
+    score_thr: float,
+    max_num: int,
+    cfg: dict,
+    mlvl_dir_scores: Optional[Tensor] = None,
+    mlvl_attr_scores: Optional[Tensor] = None,
+    mlvl_bboxes2d: Optional[Tensor] = None,
+) -> Tuple[Tensor]:
     """Multi-class NMS for 3D boxes. The IoU used for NMS is defined as the 2D
     IoU between BEV boxes.
 
@@ -71,9 +72,7 @@ def box3d_multiclass_nms(
         _mlvl_bboxes = mlvl_bboxes[cls_inds, :]
         bboxes.append(_mlvl_bboxes[selected])
         scores.append(_scores[selected])
-        cls_label = mlvl_bboxes.new_full((len(selected), ),
-                                         i,
-                                         dtype=torch.long)
+        cls_label = mlvl_bboxes.new_full((len(selected),), i, dtype=torch.long)
         labels.append(cls_label)
 
         if mlvl_dir_scores is not None:
@@ -110,29 +109,30 @@ def box3d_multiclass_nms(
                 bboxes2d = bboxes2d[inds]
     else:
         bboxes = mlvl_scores.new_zeros((0, mlvl_bboxes.size(-1)))
-        scores = mlvl_scores.new_zeros((0, ))
-        labels = mlvl_scores.new_zeros((0, ), dtype=torch.long)
+        scores = mlvl_scores.new_zeros((0,))
+        labels = mlvl_scores.new_zeros((0,), dtype=torch.long)
         if mlvl_dir_scores is not None:
-            dir_scores = mlvl_scores.new_zeros((0, ))
+            dir_scores = mlvl_scores.new_zeros((0,))
         if mlvl_attr_scores is not None:
-            attr_scores = mlvl_scores.new_zeros((0, ))
+            attr_scores = mlvl_scores.new_zeros((0,))
         if mlvl_bboxes2d is not None:
             bboxes2d = mlvl_scores.new_zeros((0, 4))
 
     results = (bboxes, scores, labels)
 
     if mlvl_dir_scores is not None:
-        results = results + (dir_scores, )
+        results = results + (dir_scores,)
     if mlvl_attr_scores is not None:
-        results = results + (attr_scores, )
+        results = results + (attr_scores,)
     if mlvl_bboxes2d is not None:
-        results = results + (bboxes2d, )
+        results = results + (bboxes2d,)
 
     return results
 
 
-def aligned_3d_nms(boxes: Tensor, scores: Tensor, classes: Tensor,
-                   thresh: float) -> Tensor:
+def aligned_3d_nms(
+    boxes: Tensor, scores: Tensor, classes: Tensor, thresh: float
+) -> Tensor:
     """3D NMS for aligned boxes.
 
     Args:
@@ -151,32 +151,35 @@ def aligned_3d_nms(boxes: Tensor, scores: Tensor, classes: Tensor,
     y2 = boxes[:, 4]
     z2 = boxes[:, 5]
     area = (x2 - x1) * (y2 - y1) * (z2 - z1)
-    zero = boxes.new_zeros(1, )
+    zero = boxes.new_zeros(
+        1,
+    )
 
     score_sorted = torch.argsort(scores)
     pick = []
-    while (score_sorted.shape[0] != 0):
+    while score_sorted.shape[0] != 0:
         last = score_sorted.shape[0]
         i = score_sorted[-1]
         pick.append(i)
 
-        xx1 = torch.max(x1[i], x1[score_sorted[:last - 1]])
-        yy1 = torch.max(y1[i], y1[score_sorted[:last - 1]])
-        zz1 = torch.max(z1[i], z1[score_sorted[:last - 1]])
-        xx2 = torch.min(x2[i], x2[score_sorted[:last - 1]])
-        yy2 = torch.min(y2[i], y2[score_sorted[:last - 1]])
-        zz2 = torch.min(z2[i], z2[score_sorted[:last - 1]])
+        xx1 = torch.max(x1[i], x1[score_sorted[: last - 1]])
+        yy1 = torch.max(y1[i], y1[score_sorted[: last - 1]])
+        zz1 = torch.max(z1[i], z1[score_sorted[: last - 1]])
+        xx2 = torch.min(x2[i], x2[score_sorted[: last - 1]])
+        yy2 = torch.min(y2[i], y2[score_sorted[: last - 1]])
+        zz2 = torch.min(z2[i], z2[score_sorted[: last - 1]])
         classes1 = classes[i]
-        classes2 = classes[score_sorted[:last - 1]]
+        classes2 = classes[score_sorted[: last - 1]]
         inter_l = torch.max(zero, xx2 - xx1)
         inter_w = torch.max(zero, yy2 - yy1)
         inter_h = torch.max(zero, zz2 - zz1)
 
         inter = inter_l * inter_w * inter_h
-        iou = inter / (area[i] + area[score_sorted[:last - 1]] - inter)
+        iou = inter / (area[i] + area[score_sorted[: last - 1]] - inter)
         iou = iou * (classes1 == classes2).float()
-        score_sorted = score_sorted[torch.nonzero(
-            iou <= thresh, as_tuple=False).flatten()]
+        score_sorted = score_sorted[
+            torch.nonzero(iou <= thresh, as_tuple=False).flatten()
+        ]
 
     indices = boxes.new_tensor(pick, dtype=torch.long)
     return indices
@@ -207,8 +210,7 @@ def circle_nms(dets: Tensor, thresh: float, post_max_size: int = 83) -> Tensor:
     keep = []
     for _i in range(ndets):
         i = order[_i]  # start with highest score box
-        if suppressed[
-                i] == 1:  # if any box have enough iou with this, remove it
+        if suppressed[i] == 1:  # if any box have enough iou with this, remove it
             continue
         keep.append(i)
         for _j in range(_i + 1, ndets):
@@ -216,7 +218,7 @@ def circle_nms(dets: Tensor, thresh: float, post_max_size: int = 83) -> Tensor:
             if suppressed[j] == 1:
                 continue
             # calculate center distance between i and j box
-            dist = (x1[i] - x1[j])**2 + (y1[i] - y1[j])**2
+            dist = (x1[i] - x1[j]) ** 2 + (y1[i] - y1[j]) ** 2
 
             # ovr = inter / areas[j]
             if dist <= thresh:
@@ -231,11 +233,13 @@ def circle_nms(dets: Tensor, thresh: float, post_max_size: int = 83) -> Tensor:
 # This function duplicates functionality of mmcv.ops.iou_3d.nms_bev
 # from mmcv<=1.5, but using cuda ops from mmcv.ops.nms.nms_rotated.
 # Nms api will be unified in mmdetection3d one day.
-def nms_bev(boxes: Tensor,
-            scores: Tensor,
-            thresh: float,
-            pre_max_size: Optional[int] = None,
-            post_max_size: Optional[int] = None) -> Tensor:
+def nms_bev(
+    boxes: Tensor,
+    scores: Tensor,
+    thresh: float,
+    pre_max_size: Optional[int] = None,
+    post_max_size: Optional[int] = None,
+) -> Tensor:
     """NMS function GPU implementation (for BEV boxes). The overlap of two
     boxes for IoU calculation is defined as the exact overlapping area of the
     two boxes. In this function, one can also set ``pre_max_size`` and
@@ -264,9 +268,15 @@ def nms_bev(boxes: Tensor,
     # xyxyr -> back to xywhr
     # note: better skip this step before nms_bev call in the future
     boxes = torch.stack(
-        ((boxes[:, 0] + boxes[:, 2]) / 2, (boxes[:, 1] + boxes[:, 3]) / 2,
-         boxes[:, 2] - boxes[:, 0], boxes[:, 3] - boxes[:, 1], boxes[:, 4]),
-        dim=-1)
+        (
+            (boxes[:, 0] + boxes[:, 2]) / 2,
+            (boxes[:, 1] + boxes[:, 3]) / 2,
+            boxes[:, 2] - boxes[:, 0],
+            boxes[:, 3] - boxes[:, 1],
+            boxes[:, 4],
+        ),
+        dim=-1,
+    )
 
     keep = nms_rotated(boxes, scores, thresh)[1]
     keep = order[keep]

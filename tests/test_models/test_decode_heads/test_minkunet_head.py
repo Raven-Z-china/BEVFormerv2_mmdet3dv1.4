@@ -10,7 +10,6 @@ from mmdet3d.structures import Det3DDataSample, PointData
 
 
 class TestMinkUNetHead(TestCase):
-
     def test_minkunet_head_loss(self):
         """Tests PAConv head loss."""
 
@@ -40,7 +39,7 @@ class TestMinkUNetHead(TestCase):
 
             # When truth is non-empty then losses
             # should be nonzero for random inputs
-            voxel_semantic_mask = torch.randint(0, 19, (100, )).long().cuda()
+            voxel_semantic_mask = torch.randint(0, 19, (100,)).long().cuda()
             gt_pts_seg = PointData(voxel_semantic_mask=voxel_semantic_mask)
 
             datasample = Det3DDataSample()
@@ -50,5 +49,6 @@ class TestMinkUNetHead(TestCase):
 
             gt_sem_seg_loss = gt_losses['loss_sem_seg'].item()
 
-            self.assertGreater(gt_sem_seg_loss, 0,
-                               'semantic seg loss should be positive')
+            self.assertGreater(
+                gt_sem_seg_loss, 0, 'semantic seg loss should be positive'
+            )

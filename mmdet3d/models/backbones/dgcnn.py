@@ -33,21 +33,23 @@ class DGCNNBackbone(BaseModule):
             Defaults to None.
     """
 
-    def __init__(self,
-                 in_channels: int,
-                 num_samples: Sequence[int] = (20, 20, 20),
-                 knn_modes: Sequence[str] = ('D-KNN', 'F-KNN', 'F-KNN'),
-                 radius: Sequence[Union[float, None]] = (None, None, None),
-                 gf_channels: Sequence[Sequence[int]] = ((64, 64), (64, 64),
-                                                         (64, )),
-                 fa_channels: Sequence[int] = (1024, ),
-                 act_cfg: ConfigType = dict(type='ReLU'),
-                 init_cfg: OptMultiConfig = None):
+    def __init__(
+        self,
+        in_channels: int,
+        num_samples: Sequence[int] = (20, 20, 20),
+        knn_modes: Sequence[str] = ('D-KNN', 'F-KNN', 'F-KNN'),
+        radius: Sequence[Union[float, None]] = (None, None, None),
+        gf_channels: Sequence[Sequence[int]] = ((64, 64), (64, 64), (64,)),
+        fa_channels: Sequence[int] = (1024,),
+        act_cfg: ConfigType = dict(type='ReLU'),
+        init_cfg: OptMultiConfig = None,
+    ):
         super().__init__(init_cfg=init_cfg)
         self.num_gf = len(gf_channels)
 
-        assert len(num_samples) == len(knn_modes) == len(radius) == len(
-            gf_channels), 'Num_samples, knn_modes, radius and gf_channels \
+        assert (
+            len(num_samples) == len(knn_modes) == len(radius) == len(gf_channels)
+        ), 'Num_samples, knn_modes, radius and gf_channels \
             should have the same length.'
 
         self.GF_modules = nn.ModuleList()
@@ -65,7 +67,9 @@ class DGCNNBackbone(BaseModule):
                     num_sample=num_samples[gf_index],
                     knn_mode=knn_modes[gf_index],
                     radius=radius[gf_index],
-                    act_cfg=act_cfg))
+                    act_cfg=act_cfg,
+                )
+            )
             skip_channel_list.append(gf_out_channel)
             gf_in_channel = gf_out_channel * 2
 
@@ -73,8 +77,7 @@ class DGCNNBackbone(BaseModule):
         cur_fa_mlps = list(fa_channels)
         cur_fa_mlps = [fa_in_channel] + cur_fa_mlps
 
-        self.FA_module = DGCNNFAModule(
-            mlp_channels=cur_fa_mlps, act_cfg=act_cfg)
+        self.FA_module = DGCNNFAModule(mlp_channels=cur_fa_mlps, act_cfg=act_cfg)
 
     def forward(self, points: Tensor) -> dict:
         """Forward pass.

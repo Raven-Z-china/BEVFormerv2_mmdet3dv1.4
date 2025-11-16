@@ -17,7 +17,8 @@ def test_pointnet2_sa_ssg():
         radius=(0.8, 1.2),
         num_samples=(16, 8),
         sa_channels=((8, 16), (16, 16)),
-        fp_channels=((16, 16), (16, 16)))
+        fp_channels=((16, 16), (16, 16)),
+    )
     self = MODELS.build(cfg)
     self.cuda()
     assert self.SA_modules[0].mlps[0].layer0.conv.in_channels == 6

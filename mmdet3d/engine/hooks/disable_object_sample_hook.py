@@ -47,8 +47,10 @@ class DisableObjectSampleHook(Hook):
             # The dataset pipeline cannot be updated when persistent_workers
             # is True, so we need to force the dataloader's multi-process
             # restart. This is a very hacky approach.
-            if hasattr(train_loader, 'persistent_workers'
-                       ) and train_loader.persistent_workers is True:
+            if (
+                hasattr(train_loader, 'persistent_workers')
+                and train_loader.persistent_workers is True
+            ):
                 train_loader._DataLoader__initialized = False
                 train_loader._iterator = None
                 self._restart_dataloader = True

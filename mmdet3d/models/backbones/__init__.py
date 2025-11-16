@@ -14,8 +14,21 @@ from .second import SECOND
 from .spvcnn_backone import MinkUNetBackboneV2, SPVCNNBackbone
 
 __all__ = [
-    'ResNet', 'ResNetV1d', 'ResNeXt', 'SSDVGG', 'HRNet', 'NoStemRegNet',
-    'SECOND', 'DGCNNBackbone', 'PointNet2SASSG', 'PointNet2SAMSG',
-    'MultiBackbone', 'DLANet', 'MinkResNet', 'Asymm3DSpconv',
-    'MinkUNetBackbone', 'SPVCNNBackbone', 'MinkUNetBackboneV2'
+    'ResNet',
+    'ResNetV1d',
+    'ResNeXt',
+    'SSDVGG',
+    'HRNet',
+    'NoStemRegNet',
+    'SECOND',
+    'DGCNNBackbone',
+    'PointNet2SASSG',
+    'PointNet2SAMSG',
+    'MultiBackbone',
+    'DLANet',
+    'MinkResNet',
+    'Asymm3DSpconv',
+    'MinkUNetBackbone',
+    'SPVCNNBackbone',
+    'MinkUNetBackboneV2',
 ]

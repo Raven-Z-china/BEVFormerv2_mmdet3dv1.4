@@ -6,9 +6,11 @@ import torch.nn.functional as F
 from torch import Tensor
 
 
-def multiview_img_stack_batch(tensor_list: List[Tensor],
-                              pad_size_divisor: int = 1,
-                              pad_value: Union[int, float] = 0) -> Tensor:
+def multiview_img_stack_batch(
+    tensor_list: List[Tensor],
+    pad_size_divisor: int = 1,
+    pad_value: Union[int, float] = 0,
+) -> Tensor:
     """Compared to the ``stack_batch`` in `mmengine.model.utils`,
     multiview_img_stack_batch further handle the multiview images.
 
@@ -30,19 +32,21 @@ def multiview_img_stack_batch(tensor_list: List[Tensor],
     Returns:
         Tensor: The n dim tensor.
     """
-    assert isinstance(tensor_list, list), \
-        f'Expected input type to be list, but got {type(tensor_list)}'
+    assert isinstance(
+        tensor_list, list
+    ), f'Expected input type to be list, but got {type(tensor_list)}'
     assert tensor_list, '`tensor_list` could not be an empty list'
-    assert len({tensor.ndim for tensor in tensor_list}) == 1, \
-        'Expected the dimensions of all tensors must be the same, ' \
+    assert len({tensor.ndim for tensor in tensor_list}) == 1, (
+        'Expected the dimensions of all tensors must be the same, '
         f'but got {[tensor.ndim for tensor in tensor_list]}'
+    )
 
     dim = tensor_list[0].dim()
     num_img = len(tensor_list)
-    all_sizes: torch.Tensor = torch.Tensor(
-        [tensor.shape for tensor in tensor_list])
-    max_sizes = torch.ceil(
-        torch.max(all_sizes, dim=0)[0] / pad_size_divisor) * pad_size_divisor
+    all_sizes: torch.Tensor = torch.Tensor([tensor.shape for tensor in tensor_list])
+    max_sizes = (
+        torch.ceil(torch.max(all_sizes, dim=0)[0] / pad_size_divisor) * pad_size_divisor
+    )
     padded_sizes = max_sizes - all_sizes
     # The first dim normally means channel, which should not be padded.
     padded_sizes[:, :-2] = 0
@@ -58,6 +62,5 @@ def multiview_img_stack_batch(tensor_list: List[Tensor],
     pad[:, 1::2] = padded_sizes[:, range(dim - 1, -1, -1)]
     batch_tensor = []
     for idx, tensor in enumerate(tensor_list):
-        batch_tensor.append(
-            F.pad(tensor, tuple(pad[idx].tolist()), value=pad_value))
+        batch_tensor.append(F.pad(tensor, tuple(pad[idx].tolist()), value=pad_value))
     return torch.stack(batch_tensor)

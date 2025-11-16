@@ -40,19 +40,22 @@ class SPVCNNBackbone(MinkUNetBackbone):
             , optional): Initialization config dict. Defaults to None.
     """
 
-    def __init__(self,
-                 in_channels: int = 4,
-                 base_channels: int = 32,
-                 num_stages: int = 4,
-                 encoder_channels: Sequence[int] = [32, 64, 128, 256],
-                 decoder_channels: Sequence[int] = [256, 128, 96, 96],
-                 drop_ratio: float = 0.3,
-                 sparseconv_backend: str = 'torchsparse',
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        in_channels: int = 4,
+        base_channels: int = 32,
+        num_stages: int = 4,
+        encoder_channels: Sequence[int] = [32, 64, 128, 256],
+        decoder_channels: Sequence[int] = [256, 128, 96, 96],
+        drop_ratio: float = 0.3,
+        sparseconv_backend: str = 'torchsparse',
+        **kwargs,
+    ) -> None:
         assert num_stages == 4, 'SPVCNN backbone only supports 4 stages.'
-        assert sparseconv_backend == 'torchsparse', \
-            f'SPVCNN backbone only supports torchsparse backend, but got ' \
+        assert sparseconv_backend == 'torchsparse', (
+            f'SPVCNN backbone only supports torchsparse backend, but got '
             f'sparseconv backend: {sparseconv_backend}.'
+        )
         super().__init__(
             in_channels=in_channels,
             base_channels=base_channels,
@@ -60,19 +63,28 @@ class SPVCNNBackbone(MinkUNetBackbone):
             encoder_channels=encoder_channels,
             decoder_channels=decoder_channels,
             sparseconv_backend=sparseconv_backend,
-            **kwargs)
+            **kwargs,
+        )
 
-        self.point_transforms = nn.ModuleList([
-            nn.Sequential(
-                nn.Linear(base_channels, encoder_channels[-1]),
-                nn.BatchNorm1d(encoder_channels[-1]), nn.ReLU(True)),
-            nn.Sequential(
-                nn.Linear(encoder_channels[-1], decoder_channels[2]),
-                nn.BatchNorm1d(decoder_channels[2]), nn.ReLU(True)),
-            nn.Sequential(
-                nn.Linear(decoder_channels[2], decoder_channels[4]),
-                nn.BatchNorm1d(decoder_channels[4]), nn.ReLU(True))
-        ])
+        self.point_transforms = nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.Linear(base_channels, encoder_channels[-1]),
+                    nn.BatchNorm1d(encoder_channels[-1]),
+                    nn.ReLU(True),
+                ),
+                nn.Sequential(
+                    nn.Linear(encoder_channels[-1], decoder_channels[2]),
+                    nn.BatchNorm1d(decoder_channels[2]),
+                    nn.ReLU(True),
+                ),
+                nn.Sequential(
+                    nn.Linear(decoder_channels[2], decoder_channels[4]),
+                    nn.BatchNorm1d(decoder_channels[4]),
+                    nn.ReLU(True),
+                ),
+            ]
+        )
         self.dropout = nn.Dropout(drop_ratio, True)
 
     def forward(self, voxel_features: Tensor, coors: Tensor) -> Tensor:
@@ -110,8 +122,7 @@ class SPVCNNBackbone(MinkUNetBackbone):
             voxels = decoder[1](voxels)
             decoder_outs.append(voxels)
             if i == 1:
-                points = voxel_to_point(voxels, points,
-                                        self.point_transforms[1])
+                points = voxel_to_point(voxels, points, self.point_transforms[1])
                 voxels = point_to_voxel(voxels, points)
                 voxels.F = self.dropout(voxels.F)
 
@@ -129,12 +140,11 @@ class MinkUNetBackboneV2(MinkUNetBackbone):
         sparseconv_backend (str): Sparse convolution backend.
     """  # noqa: E501
 
-    def __init__(self,
-                 sparseconv_backend: str = 'torchsparse',
-                 **kwargs) -> None:
-        assert sparseconv_backend == 'torchsparse', \
-            f'SPVCNN backbone only supports torchsparse backend, but got ' \
+    def __init__(self, sparseconv_backend: str = 'torchsparse', **kwargs) -> None:
+        assert sparseconv_backend == 'torchsparse', (
+            f'SPVCNN backbone only supports torchsparse backend, but got '
             f'sparseconv backend: {sparseconv_backend}.'
+        )
         super().__init__(sparseconv_backend=sparseconv_backend, **kwargs)
 
     def forward(self, voxel_features: Tensor, coors: Tensor) -> Tensor:
@@ -200,10 +210,12 @@ def initial_voxelize(points: PointTensor) -> SparseTensor:
     return new_tensor
 
 
-def voxel_to_point(voxels: SparseTensor,
-                   points: PointTensor,
-                   point_transform: Optional[nn.Module] = None,
-                   nearest: bool = False) -> PointTensor:
+def voxel_to_point(
+    voxels: SparseTensor,
+    points: PointTensor,
+    point_transform: Optional[nn.Module] = None,
+    nearest: bool = False,
+) -> PointTensor:
     """Feed voxel features to points.
 
     Args:
@@ -217,43 +229,50 @@ def voxel_to_point(voxels: SparseTensor,
     Returns:
         PointTensor: Points with new features.
     """
-    if points.idx_query is None or points.weights is None or \
-            points.idx_query.get(voxels.s) is None or \
-            points.weights.get(voxels.s) is None:
+    if (
+        points.idx_query is None
+        or points.weights is None
+        or points.idx_query.get(voxels.s) is None
+        or points.weights.get(voxels.s) is None
+    ):
         offsets = get_kernel_offsets(2, voxels.s, 1, device=points.F.device)
         old_hash = F.sphash(
-            torch.cat([
-                torch.floor(points.C[:, :3] / voxels.s[0]).int() * voxels.s[0],
-                points.C[:, -1].int().view(-1, 1)
-            ], 1), offsets)
+            torch.cat(
+                [
+                    torch.floor(points.C[:, :3] / voxels.s[0]).int() * voxels.s[0],
+                    points.C[:, -1].int().view(-1, 1),
+                ],
+                1,
+            ),
+            offsets,
+        )
         pc_hash = F.sphash(voxels.C.to(points.F.device))
         idx_query = F.sphashquery(old_hash, pc_hash)
-        weights = F.calc_ti_weights(
-            points.C, idx_query, scale=voxels.s[0]).transpose(0,
-                                                              1).contiguous()
+        weights = (
+            F.calc_ti_weights(points.C, idx_query, scale=voxels.s[0])
+            .transpose(0, 1)
+            .contiguous()
+        )
         idx_query = idx_query.transpose(0, 1).contiguous()
         if nearest:
-            weights[:, 1:] = 0.
+            weights[:, 1:] = 0.0
             idx_query[:, 1:] = -1
         new_features = F.spdevoxelize(voxels.F, idx_query, weights)
         new_tensor = PointTensor(
-            new_features,
-            points.C,
-            idx_query=points.idx_query,
-            weights=points.weights)
+            new_features, points.C, idx_query=points.idx_query, weights=points.weights
+        )
         new_tensor.additional_features = points.additional_features
         new_tensor.idx_query[voxels.s] = idx_query
         new_tensor.weights[voxels.s] = weights
         points.idx_query[voxels.s] = idx_query
         points.weights[voxels.s] = weights
     else:
-        new_features = F.spdevoxelize(voxels.F, points.idx_query.get(voxels.s),
-                                      points.weights.get(voxels.s))
+        new_features = F.spdevoxelize(
+            voxels.F, points.idx_query.get(voxels.s), points.weights.get(voxels.s)
+        )
         new_tensor = PointTensor(
-            new_features,
-            points.C,
-            idx_query=points.idx_query,
-            weights=points.weights)
+            new_features, points.C, idx_query=points.idx_query, weights=points.weights
+        )
         new_tensor.additional_features = points.additional_features
 
     if point_transform is not None:
@@ -272,14 +291,20 @@ def point_to_voxel(voxels: SparseTensor, points: PointTensor) -> SparseTensor:
     Returns:
         SparseTensor: Voxels with new features.
     """
-    if points.additional_features is None or \
-            points.additional_features.get('idx_query') is None or \
-            points.additional_features['idx_query'].get(voxels.s) is None:
+    if (
+        points.additional_features is None
+        or points.additional_features.get('idx_query') is None
+        or points.additional_features['idx_query'].get(voxels.s) is None
+    ):
         pc_hash = F.sphash(
-            torch.cat([
-                torch.floor(points.C[:, :3] / voxels.s[0]).int() * voxels.s[0],
-                points.C[:, -1].int().view(-1, 1)
-            ], 1))
+            torch.cat(
+                [
+                    torch.floor(points.C[:, :3] / voxels.s[0]).int() * voxels.s[0],
+                    points.C[:, -1].int().view(-1, 1),
+                ],
+                1,
+            )
+        )
         sparse_hash = F.sphash(voxels.C)
         idx_query = F.sphashquery(pc_hash, sparse_hash)
         counts = F.spcount(idx_query.int(), voxels.C.shape[0])

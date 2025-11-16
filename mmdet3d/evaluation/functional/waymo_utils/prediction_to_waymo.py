@@ -11,7 +11,8 @@ except ImportError:
     Objects = None
     raise ImportError(
         'Please run "pip install waymo-open-dataset-tf-2-1-0==1.2.0" '
-        'to install the official devkit first.')
+        'to install the official devkit first.'
+    )
 
 from typing import List
 
@@ -35,11 +36,13 @@ class Prediction2Waymo(object):
         num_workers (str): Number of parallel processes. Defaults to 4.
     """
 
-    def __init__(self,
-                 results: List[dict],
-                 waymo_results_final_path: str,
-                 classes: dict,
-                 num_workers: int = 4):
+    def __init__(
+        self,
+        results: List[dict],
+        waymo_results_final_path: str,
+        classes: dict,
+        num_workers: int = 4,
+    ):
         self.results = results
         self.waymo_results_final_path = waymo_results_final_path
         self.classes = classes
@@ -62,16 +65,19 @@ class Prediction2Waymo(object):
         sample_idx = self.results[res_idx]['sample_idx']
         if len(self.results[res_idx]['labels_3d']) > 0:
             objects = self.parse_objects_from_origin(
-                self.results[res_idx], self.results[res_idx]['context_name'],
-                self.results[res_idx]['timestamp'])
+                self.results[res_idx],
+                self.results[res_idx]['context_name'],
+                self.results[res_idx]['timestamp'],
+            )
         else:
             print(sample_idx, 'not found.')
             objects = metrics_pb2.Objects()
 
         return objects
 
-    def parse_objects_from_origin(self, result: dict, contextname: str,
-                                  timestamp: str) -> Objects:
+    def parse_objects_from_origin(
+        self, result: dict, contextname: str, timestamp: str
+    ) -> Objects:
         """Parse obejcts from the original prediction results.
 
         Args:
@@ -121,8 +127,7 @@ class Prediction2Waymo(object):
         # objects_list = mmengine.track_parallel_progress(
         #     self.convert_one, range(len(self)), self.num_workers)
 
-        objects_list = mmengine.track_progress(self.convert_one,
-                                               range(len(self)))
+        objects_list = mmengine.track_progress(self.convert_one, range(len(self)))
 
         combined = metrics_pb2.Objects()
         for objects in objects_list:

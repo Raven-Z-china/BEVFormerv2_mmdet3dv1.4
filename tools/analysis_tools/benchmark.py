@@ -17,17 +17,18 @@ def parse_args():
     parser.add_argument('config', help='test config file path')
     parser.add_argument('checkpoint', help='checkpoint file')
     parser.add_argument('--samples', default=2000, help='samples to benchmark')
-    parser.add_argument(
-        '--log-interval', default=50, help='interval of logging')
+    parser.add_argument('--log-interval', default=50, help='interval of logging')
     parser.add_argument(
         '--amp',
         action='store_true',
-        help='Whether to use automatic mixed precision inference')
+        help='Whether to use automatic mixed precision inference',
+    )
     parser.add_argument(
         '--fuse-conv-bn',
         action='store_true',
         help='Whether to fuse conv and bn, this will slightly increase'
-        'the inference speed')
+        'the inference speed',
+    )
     args = parser.parse_args()
     return args
 
@@ -59,7 +60,6 @@ def main():
 
     # benchmark with several samples and take the average
     for i, data in enumerate(dataloader):
-
         torch.cuda.synchronize()
         start_time = time.perf_counter()
 
@@ -73,8 +73,10 @@ def main():
             pure_inf_time += elapsed
             if (i + 1) % args.log_interval == 0:
                 fps = (i + 1 - num_warmup) / pure_inf_time
-                print(f'Done sample [{i + 1:<3}/ {args.samples}], '
-                      f'fps: {fps:.1f} sample / s')
+                print(
+                    f'Done sample [{i + 1:<3}/ {args.samples}], '
+                    f'fps: {fps:.1f} sample / s'
+                )
 
         if (i + 1) == args.samples:
             pure_inf_time += elapsed

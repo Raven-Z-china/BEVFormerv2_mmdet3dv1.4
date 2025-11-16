@@ -5,15 +5,15 @@ from torch import Tensor
 
 
 def normalize_bbox(bboxes: Tensor, pc_range: List) -> Tensor:
-    """ normalize bboxes
-        Args:
-            bboxes (Tensor): boxes with unnormalized
-                coordinates (cx,cy,cz,L,W,H,φ,v_x,v_y). Shape [num_gt, 9].
-            pc_range (List): Perception range of the detector
-        Returns:
-            normalized_bboxes (Tensor): boxes with normalized coordinate
-                (cx,cy,L,W,cz,H,sin(φ),cos(φ),v_x,v_y).
-                All in range [0, 1] and shape [num_query, 10].
+    """normalize bboxes
+    Args:
+        bboxes (Tensor): boxes with unnormalized
+            coordinates (cx,cy,cz,L,W,H,φ,v_x,v_y). Shape [num_gt, 9].
+        pc_range (List): Perception range of the detector
+    Returns:
+        normalized_bboxes (Tensor): boxes with normalized coordinate
+            (cx,cy,L,W,cz,H,sin(φ),cos(φ),v_x,v_y).
+            All in range [0, 1] and shape [num_query, 10].
     """
 
     cx = bboxes[..., 0:1]
@@ -28,23 +28,25 @@ def normalize_bbox(bboxes: Tensor, pc_range: List) -> Tensor:
         vx = bboxes[..., 7:8]
         vy = bboxes[..., 8:9]
         normalized_bboxes = torch.cat(
-            (cx, cy, L, W, cz, H, rot.sin(), rot.cos(), vx, vy), dim=-1)
+            (cx, cy, L, W, cz, H, rot.sin(), rot.cos(), vx, vy), dim=-1
+        )
     else:
         normalized_bboxes = torch.cat(
-            (cx, cy, L, W, cz, H, rot.sin(), rot.cos()), dim=-1)
+            (cx, cy, L, W, cz, H, rot.sin(), rot.cos()), dim=-1
+        )
     return normalized_bboxes
 
 
 def denormalize_bbox(normalized_bboxes, pc_range):
-    """ denormalize bboxes
-        Args:
-            normalized_bboxes (Tensor): boxes with normalized coordinate
-                (cx,cy,L,W,cz,H,sin(φ),cos(φ),v_x,v_y).
-                All in range [0, 1] and shape [num_query, 10].
-            pc_range (List): Perception range of the detector
-        Returns:
-            denormalized_bboxes (Tensor): boxes with unnormalized
-                coordinates (cx,cy,cz,L,W,H,φ,v_x,v_y). Shape [num_gt, 9].
+    """denormalize bboxes
+    Args:
+        normalized_bboxes (Tensor): boxes with normalized coordinate
+            (cx,cy,L,W,cz,H,sin(φ),cos(φ),v_x,v_y).
+            All in range [0, 1] and shape [num_query, 10].
+        pc_range (List): Perception range of the detector
+    Returns:
+        denormalized_bboxes (Tensor): boxes with unnormalized
+            coordinates (cx,cy,cz,L,W,H,φ,v_x,v_y). Shape [num_gt, 9].
     """
     # rotation
     rot_sine = normalized_bboxes[..., 6:7]
@@ -69,8 +71,7 @@ def denormalize_bbox(normalized_bboxes, pc_range):
         # velocity
         vx = normalized_bboxes[:, 8:9]
         vy = normalized_bboxes[:, 9:10]
-        denormalized_bboxes = torch.cat([cx, cy, cz, L, W, H, rot, vx, vy],
-                                        dim=-1)
+        denormalized_bboxes = torch.cat([cx, cy, cz, L, W, H, rot, vx, vy], dim=-1)
     else:
         denormalized_bboxes = torch.cat([cx, cy, cz, L, W, H, rot], dim=-1)
     return denormalized_bboxes

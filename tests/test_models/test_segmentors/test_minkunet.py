@@ -6,12 +6,10 @@ import torch
 from mmengine import DefaultScope
 
 from mmdet3d.registry import MODELS
-from mmdet3d.testing import (create_detector_inputs, get_detector_cfg,
-                             setup_seed)
+from mmdet3d.testing import create_detector_inputs, get_detector_cfg, setup_seed
 
 
 class TestMinkUNet(unittest.TestCase):
-
     def test_minkunet(self):
         try:
             import torchsparse  # noqa
@@ -27,9 +25,8 @@ class TestMinkUNet(unittest.TestCase):
         model = MODELS.build(model_cfg)
         num_gt_instance = 3
         packed_inputs = create_detector_inputs(
-            num_gt_instance=num_gt_instance,
-            num_classes=19,
-            with_pts_semantic_mask=True)
+            num_gt_instance=num_gt_instance, num_classes=19, with_pts_semantic_mask=True
+        )
 
         if torch.cuda.is_available():
             model = model.cuda()

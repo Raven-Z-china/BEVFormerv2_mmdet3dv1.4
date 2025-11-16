@@ -5,6 +5,9 @@ from .sparse_unet import SparseUNet
 from .voxel_set_abstraction import VoxelSetAbstraction
 
 __all__ = [
-    'PointPillarsScatter', 'SparseEncoder', 'SparseEncoderSASSD', 'SparseUNet',
-    'VoxelSetAbstraction'
+    'PointPillarsScatter',
+    'SparseEncoder',
+    'SparseEncoderSASSD',
+    'SparseUNet',
+    'VoxelSetAbstraction',
 ]
