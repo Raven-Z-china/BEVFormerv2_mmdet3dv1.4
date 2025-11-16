@@ -49,6 +49,7 @@ repos:
     rev: v1.7.5
     hooks:
       - id: docformatter
+        language: python
         args: ["--in-place", "--wrap-descriptions", "79"]
 
   - repo: https://github.com/open-mmlab/pre-commit-hooks
