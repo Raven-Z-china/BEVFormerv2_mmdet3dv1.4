@@ -309,7 +309,7 @@ class NuScenesMetric(BaseMetric):
         else:
             tmp_dir = None
         result_dict = dict()
-        sample_idx_list = [result['sample_idx'] for result in results]
+        sample_idx_list = [result['sample_idx'][0] for result in results]
 
         for name in results[0]:
             if 'pred' in name and '3d' in name and name[0] != '_':
