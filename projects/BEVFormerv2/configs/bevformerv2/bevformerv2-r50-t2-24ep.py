@@ -43,7 +43,7 @@ input_modality = dict(
 img_norm_cfg = dict(mean=[103.53, 116.28, 123.675], std=[1, 1, 1], to_rgb=False)
 bev_h_ = 200
 bev_w_ = 200
-frames = (-7, -6, -5, -4, -3, -2, -1, 0)
+frames = (-1, 0)
 group_detr = 11
 voxel_size = [102.4 / bev_h_, 102.4 / bev_w_, 8]
 out_size_factor = 4
@@ -64,18 +64,11 @@ ida_aug_conf_eval = {
     'rand_flip': False,
 }
 
-
 train_pipeline = [
     dict(type='LoadMultiViewImageFromFiles', to_float32=True, num_views=6),
     dict(type='PhotoMetricDistortionMultiViewImage'),
-    dict(
-        type='LoadAnnotations3D',
-        with_bbox_3d=True,
-        with_label_3d=True,
-        with_attr_label=False,
-    ),
-    dict(
-        type='GlobalRotScaleTransImage',
+    dict(type='LoadAnnotations3D', with_bbox_3d=True, with_label_3d=True, with_attr_label=False),
+    dict(type='GlobalRotScaleTransImage',
         rot_range=[-22.5, 22.5],
         scale_ratio_range=[0.95, 1.05],
         translation_std=[0, 0, 0],
@@ -83,51 +76,29 @@ train_pipeline = [
         training=True,
         flip_dx_ratio=0.5,
         flip_dy_ratio=0.5,
-        only_gt=True,
-    ),
-    dict(type='ObjectRangeFilter', point_cloud_range=point_cloud_range),
-    dict(type='ObjectNameFilter', classes=class_names),
+        only_gt=True,),
     dict(
-        type='CropResizeFlipImage',
-        data_aug_conf=ida_aug_conf,
-        training=True,
-        debug=False,
-    ),
+        type='ObjectRangeFilter',
+        point_cloud_range=point_cloud_range),
+    dict(
+        type='ObjectNameFilter',
+        classes=class_names),
+    dict(type='CropResizeFlipImage', data_aug_conf=ida_aug_conf, training=True, debug=False),
     dict(type='NormalizeMultiviewImage', **img_norm_cfg),
     dict(type='PadMultiViewImage', size_divisor=32),
     dict(type='DefaultFormatBundle3D', class_names=class_names),
     dict(
         type='CustomCollect3D',
-        keys=[
-            'gt_bboxes_3d',
-            'gt_labels_3d',
-            'img',
-            'ego2global_translation',
-            'ego2global_rotation',
-            'lidar2ego_translation',
-            'lidar2ego_rotation',
-            'timestamp',
-            'mono_input_dict',
-            'mono_ann_idx',
-            'aug_param',
-        ],
-    ),
-    dict(
-        type='DD3DMapper',
-        is_train=True,
-        tasks=dict(box2d_on=True, box3d_on=True),
-    ),
+        keys=['gt_bboxes_3d', 'gt_labels_3d', 'img',
+              'ego2global_translation', 'ego2global_rotation', 'lidar2ego_translation', 'lidar2ego_rotation',
+              'timestamp', 'mono_input_dict', 'mono_ann_idx', 'aug_param']),
+    dict(type='DD3DMapper',
+         is_train=True,
+         tasks=dict(box2d_on=True, box3d_on=True),)
 ]
 eval_pipeline = [
-    dict(
-        type='LoadMultiViewImageFromFiles', to_float32=True, num_views=6, test_mode=True
-    ),
-    dict(
-        type='CropResizeFlipImage',
-        data_aug_conf=ida_aug_conf_eval,
-        training=False,
-        debug=False,
-    ),
+    dict(type='LoadMultiViewImageFromFiles', to_float32=True, num_views=6,test_mode=True),
+    dict(type='CropResizeFlipImage', data_aug_conf=ida_aug_conf_eval, training=False, debug=False),
     dict(type='NormalizeMultiviewImage', **img_norm_cfg),
     dict(type='PadMultiViewImage', size_divisor=32),
     dict(
@@ -137,21 +108,13 @@ eval_pipeline = [
         flip=False,
         transforms=[
             dict(
-                type='DefaultFormatBundle3D', class_names=class_names, with_label=False
-            ),
-            dict(
-                type='CustomCollect3D',
-                keys=[
-                    'img',
-                    'ego2global_translation',
-                    'ego2global_rotation',
-                    'lidar2ego_translation',
-                    'lidar2ego_rotation',
-                    'timestamp',
-                ],
-            ),
-        ],
-    ),
+                type='DefaultFormatBundle3D',
+                class_names=class_names,
+                with_label=False),
+            dict(type='CustomCollect3D',
+                 keys=['img', 'ego2global_translation', 'ego2global_rotation', 'lidar2ego_translation',
+                       'lidar2ego_rotation', 'timestamp'])
+        ])
 ]
 
 
@@ -167,18 +130,16 @@ train_dataloader = dict(
         ann_file='nuscenes_infos_temporal_train.pkl',
         pipeline=train_pipeline,
         serialize_data=False,
-        metainfo=dict(classes=class_names),
+        metainfo=dict(classes=class_names,version='v1.0-mini'),
         modality=input_modality,
         test_mode=False,
         use_valid_flag=True,
         box_type_3d='LiDAR',
         mono_cfg=dict(
-            name='nusc_train',
+            name='nusc_mini_train',
             data_root=data_root,
             min_num_lidar_points=3,
-            min_box_visibility=0.2,
-        ),
-    ),
+            min_box_visibility=0.2))
 )
 
 val_dataloader = dict(
@@ -192,41 +153,26 @@ val_dataloader = dict(
         data_root=data_root,
         serialize_data=False,
         ann_file='nuscenes_infos_temporal_val.pkl',
-        metainfo=dict(classes=class_names),
+        metainfo=dict(classes=class_names,version='v1.0-mini'),
         pipeline=eval_pipeline,
         modality=input_modality,
-    ),
+        test_mode=True,)
 )
 
-test_dataloader = dict(
-    batch_size=1,
-    num_workers=4,
-    persistent_workers=True,
-    sampler=dict(type='DefaultSampler', shuffle=False),
-    dataset=dict(
-        type='CustomNuScenesDatasetV2',
-        frames=frames,
-        data_root=data_root,
-        serialize_data=False,
-        ann_file='nuscenes_infos_temporal_val.pkl',
-        metainfo=dict(classes=class_names),
-        pipeline=eval_pipeline,
-        modality=input_modality,
-    ),
-)
+test_dataloader = val_dataloader
 
 
 val_evaluator = dict(
     type='NuScenesMetric',
     data_root=data_root,
-    ann_file='nuscenes_infos_temporal_val.pkl',
+    ann_file=data_root+'nuscenes_infos_temporal_val.pkl',
     metric='bbox',
 )
 
 test_evaluator = dict(
     type='NuScenesMetric',
     data_root=data_root,
-    ann_file='nuscenes_infos_temporal_val.pkl',
+    ann_file=data_root+'nuscenes_infos_temporal_val.pkl',
     metric='bbox',
 )
 
@@ -453,30 +399,6 @@ model = dict(
         ),
         nusc_loss_weight=dict(attr_loss_weight=0.2, speed_loss_weight=0.2),
     ),
-    #    pts_fusion_layer=dict(
-    #        type='InstanceFusion',
-    #        num_proposals=200,
-    #        auxiliary=True,
-    #        in_channels=_dim_,
-    #        hidden_channel=_dim_ // 2,
-    #        num_classes=10,
-    #        num_decoder_layers=1,
-    #        num_heads=8,
-    #        nms_kernel_size=3,
-    #        ffn_channel=_dim_,
-    #        dropout=0.1,
-    #        bn_momentum=0.1,
-    #        activation='relu',
-    #        common_heads=dict(center=(2, 2), height=(1, 2), dim=(3, 2), rot=(2, 2), vel=(2, 2)),
-    #        loss_cls=dict(type='FocalLoss', use_sigmoid=True, gamma=2, alpha=0.25, reduction='mean', loss_weight=1.0),
-    #        # loss_iou=dict(type='CrossEntropyLoss', use_sigmoid=True, reduction='mean', loss_weight=0.0),
-    #        loss_bbox=dict(type='L1Loss', reduction='mean', loss_weight=0.25),
-    #        loss_heatmap=dict(type='GaussianFocalLoss', reduction='mean', loss_weight=1.0),
-    #        bev_shape=[bev_h_,bev_w_],
-    #        voxel_size=voxel_size,
-    #        point_cloud_range=point_cloud_range,
-    #        out_size_factor=out_size_factor,
-    #    ),
     train_cfg=dict(
         pts=dict(
             grid_size=[512, 512, 1],

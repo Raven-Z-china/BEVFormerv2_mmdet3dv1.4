@@ -8,6 +8,7 @@ from mmdet.models.utils import multi_apply
 from mmdet.utils import reduce_mean
 from mmengine.model.weight_init import bias_init_with_prob
 from mmengine.structures import InstanceData
+
 from projects.BEVFormerv2.bevformerv2.utils import normalize_bbox
 
 from mmdet3d.registry import MODELS, TASK_UTILS
@@ -142,9 +143,7 @@ class BEVFormerHead(DETRHead_old):
         ).to(dtype)
         bev_pos = self.positional_encoding(bev_mask).to(dtype)
 
-        if (
-            only_bev
-        ):  # only use encoder to obtain BEV features, TODO: refine the workaround
+        if only_bev:  # only use encoder to obtain BEV features, TODO: refine the workaround
             return self.transformer.get_bev_features(
                 mlvl_feats,
                 bev_queries,
@@ -537,9 +536,7 @@ class BEVFormerHead(DETRHead_old):
         Returns:
             list[dict]: Decoded bbox, scores and labels after nms.
         """
-
         preds_dicts = self.bbox_coder.decode(preds_dicts)
-
         num_samples = len(preds_dicts)
         ret_list = []
         for i in range(num_samples):
@@ -549,7 +546,7 @@ class BEVFormerHead(DETRHead_old):
             bboxes[:, 2] = bboxes[:, 2] - bboxes[:, 5] * 0.5
 
             code_size = bboxes.shape[-1]
-            bboxes = img_metas[i]['box_type_3d'](bboxes, code_size)
+            bboxes = img_metas[i]['box_type_3d'][0](bboxes, code_size)
             scores = preds['scores']
             labels = preds['labels']
 
