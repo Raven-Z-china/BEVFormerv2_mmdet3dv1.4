@@ -9,7 +9,7 @@ import numpy as np
 from nuscenes.eval.common.utils import quaternion_yaw, Quaternion
 from mmdet3d.structures import LiDARInstance3DBoxes
 from .nuscnes_eval import NuScenesEval_custom
-from projects.BEVFormerv3.bevformerv3.dd3d.datasets.nuscenes import NuscenesDataset as DD3DNuscenesDataset
+from projects.BEVFormerv2.bevformerv2.dd3d.datasets.nuscenes import NuscenesDataset as DD3DNuscenesDataset
 
 
 
@@ -45,8 +45,8 @@ class CustomNuScenesDatasetV2(NuScenesDataset):
             if frame_idx ==0 or chosen_idx <0 or chosen_idx >= len(self.data_list):
                 continue
             info = self.data_list[chosen_idx]
-            input_dict = self.prepare_input_dict(info)
-            if input_dict['scene_token'] == cur_scene_token:
+            pre_input_dict = self.prepare_input_dict(info)
+            if pre_input_dict['scene_token'] == cur_scene_token:
                 self.pre_pipeline(input_dict)
                 example = self.pipeline(input_dict)
                 data_queue[frame_idx] = example
@@ -81,7 +81,6 @@ class CustomNuScenesDatasetV2(NuScenesDataset):
         if input_dict is None:
             return None 
         cur_scene_token = input_dict['scene_token']
-        # cur_frame_idx = input_dict['frame_idx']
         ann_info = copy.deepcopy(input_dict['ann_info'])
         self.pre_pipeline(input_dict)
         example = self.pipeline(input_dict)
@@ -143,8 +142,7 @@ class CustomNuScenesDatasetV2(NuScenesDataset):
                     metas_map[i]['lidar2img'].append(each['img_metas']['lidar2img'][i_cam] @ np.linalg.inv(lidaradj2lidarcurr))
         queue[0]['img'] = imgs_list
         queue[0]['img_metas'] = metas_map
-        queue = queue[0]
-        return queue
+        return queue[0]
 
     def prepare_input_dict(self, info):
         # standard protocal modified from SECOND.Pytorch
