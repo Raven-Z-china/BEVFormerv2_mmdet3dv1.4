@@ -21,7 +21,7 @@ from projects.BEVFormerv2.bevformerv2.bevformer.modules import (
 
 from mmdet3d.models.dense_heads.free_anchor3d_head import FreeAnchor3DHead
 from mmdet3d.registry import MODELS, TASK_UTILS
-
+from projects.BEVFormerv2.bevformerv2.force_fp32 import force_fp32
 
 @MODELS.register_module()
 class BEVHead(BaseModule):
@@ -64,6 +64,7 @@ class BEVHead(BaseModule):
 
         self.bev_embedding = nn.Embedding(self.bev_h * self.bev_w, self.embed_dims)
 
+    @force_fp32(apply_to=('mlvl_feats', 'pred_bev'))
     def forward(self, mlvl_feats, img_metas, prev_bev=None, only_bev=False):
         bs, num_cam, _, _, _ = mlvl_feats[0].shape
         dtype = mlvl_feats[0].dtype
@@ -101,6 +102,7 @@ class BEVHead(BaseModule):
             ret['bev_embed'] = bev_embed
         return ret
 
+    @force_fp32(apply_to=('ret'))
     def loss(
         self, gt_bboxes_list, gt_labels_list, ret, gt_bboxes_ignore=None, img_metas=None
     ):
@@ -113,12 +115,14 @@ class BEVHead(BaseModule):
             img_metas=img_metas,
         )
 
+    @force_fp32(apply_to=('ret'))
     def get_bboxes(self, ret, img_metas, rescale=False):
         return self.pts_bbox_head_3d.get_bboxes(ret['pred'], img_metas)
 
 
 @MODELS.register_module()
 class FreeAnchor3DHeadV2(FreeAnchor3DHead):
+    @force_fp32(apply_to=('ret'))
     def loss(
         self,
         gt_bboxes_list,
@@ -139,6 +143,7 @@ class FreeAnchor3DHeadV2(FreeAnchor3DHead):
             gt_bboxes_ignore,
         )
 
+    @force_fp32(apply_to=('pred'))
     def get_bboxes(self, pred, img_metas, rescale=False):
         cls_scores, bbox_preds, dir_cls_preds = pred
         return super().get_bboxes(

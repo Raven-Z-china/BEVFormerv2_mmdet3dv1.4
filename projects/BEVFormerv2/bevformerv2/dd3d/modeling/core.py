@@ -18,6 +18,7 @@ from .fcos3d import FCOS3DHead, FCOS3DInference, FCOS3DLoss
 
 # from tridet.modeling.dd3d.postprocessing import nuscenes_sample_aggregate
 from .prepare_targets import DD3DTargetPreparer
+from projects.BEVFormerv2.bevformerv2.force_fp32 import force_fp32
 
 
 # @META_ARCH_REGISTRY.register()
@@ -99,7 +100,11 @@ class DD3D(nn.Module):
     # def preprocess_image(self, x):
     #     return (x - self.pixel_mean) / self.pixel_std
 
+    @force_fp32(apply_to=('features'))
     def forward(self, features, batched_inputs):
+        
+        features = torch.clamp(features, -10000.0, 10000.0)
+
         # NOTE:
         # images = [x["image"].to(self.device) for x in batched_inputs]
         # images = [self.preprocess_image(x) for x in images]

@@ -19,6 +19,7 @@ from .core import DD3D
 
 # from tridet.modeling.dd3d.postprocessing import get_group_idxs, nuscenes_sample_aggregate
 from .prepare_targets import DD3DTargetPreparer
+from projects.BEVFormerv2.bevformerv2.force_fp32 import force_fp32
 
 INF = 100000000.0
 
@@ -233,6 +234,7 @@ class NuscenesLoss(nn.Module):
         self.attr_loss_weight = attr_loss_weight
         self.speed_loss_weight = speed_loss_weight
 
+    @force_fp32(apply_to=('attr_logits', 'speeds'))
     def forward(self, attr_logits, speeds, fcos2d_info, targets):
         # Flatten predictions
         attr_logits = cat(

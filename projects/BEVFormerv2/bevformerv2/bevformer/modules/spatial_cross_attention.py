@@ -15,6 +15,7 @@ from mmcv.ops.multi_scale_deform_attn import multi_scale_deformable_attn_pytorch
 from mmcv.utils import ext_loader
 from mmengine.model import constant_init, xavier_init
 from mmengine.model.base_module import BaseModule, ModuleList, Sequential
+from projects.BEVFormerv2.bevformerv2.force_fp32 import force_fp32
 
 from mmdet3d.registry import MODELS
 from .multi_scale_deformable_attn_function import (
@@ -72,6 +73,7 @@ class SpatialCrossAttention(BaseModule):
         """Default initialization for Parameters of Module."""
         xavier_init(self.output_proj, distribution='uniform', bias=0.0)
 
+    @force_fp32(apply_to=('query', 'key', 'value', 'query_pos', 'reference_points_cam'))
     def forward(
         self,
         query,

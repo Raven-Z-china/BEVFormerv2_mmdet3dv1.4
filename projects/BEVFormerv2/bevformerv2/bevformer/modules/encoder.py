@@ -16,6 +16,7 @@ from mmengine.utils.version_utils import digit_version
 
 from mmdet3d.registry import MODELS
 from .custom_base_transformer_layer import MyCustomBaseTransformerLayer
+from projects.BEVFormerv2.bevformerv2.force_fp32 import force_fp32
 
 ext_module = ext_loader.load_ext(
     '_ext', ['ms_deform_attn_backward', 'ms_deform_attn_forward']
@@ -113,7 +114,7 @@ class BEVFormerEncoder(TransformerLayerSequence):
             return ref_2d
 
     # This function must use fp32!!!
-
+    @force_fp32(apply_to=('reference_points', 'img_metas'))
     def point_sampling(self, reference_points, pc_range, img_metas):
         # NOTE: close tf32 here.
         allow_tf32 = torch.backends.cuda.matmul.allow_tf32

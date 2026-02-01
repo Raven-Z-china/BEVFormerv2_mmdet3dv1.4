@@ -14,6 +14,8 @@ from projects.BEVFormerv2.bevformerv2.dd3d.layers.normalization import (
 from projects.BEVFormerv2.bevformerv2.dd3d.utils.comm import reduce_sum
 from torch import nn
 from torch.nn import functional as F
+from projects.BEVFormerv2.bevformerv2.force_fp32 import force_fp32
+
 
 INF = 100000000
 
@@ -212,6 +214,7 @@ class FCOS2DLoss(nn.Module):
 
         self.num_classes = num_classes
 
+    @force_fp32(apply_to=('logits', 'box2d_reg', 'centerness'))
     def forward(self, logits, box2d_reg, centerness, targets):
         labels = targets['labels']
         box2d_reg_targets = targets['box2d_reg_targets']

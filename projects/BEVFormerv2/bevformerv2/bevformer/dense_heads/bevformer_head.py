@@ -13,6 +13,7 @@ from projects.BEVFormerv2.bevformerv2.utils import normalize_bbox
 
 from mmdet3d.registry import MODELS, TASK_UTILS
 from .detr_heads import DETRHead_old
+from projects.BEVFormerv2.bevformerv2.force_fp32 import force_fp32
 
 
 @MODELS.register_module()
@@ -430,6 +431,7 @@ class BEVFormerHead(DETRHead_old):
         loss_bbox = torch.nan_to_num(loss_bbox)
         return loss_cls, loss_bbox
 
+    @force_fp32(apply_to=('preds_dicts'))
     def loss(
         self,
         gt_bboxes_list,
@@ -527,6 +529,7 @@ class BEVFormerHead(DETRHead_old):
             num_dec_layer += 1
         return loss_dict
 
+    @force_fp32(apply_to=('preds_dicts'))
     def get_bboxes(self, preds_dicts, img_metas, rescale=False):
         """Generate bboxes from bbox head predictions.
 

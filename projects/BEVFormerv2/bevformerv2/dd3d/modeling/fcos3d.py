@@ -15,6 +15,7 @@ from projects.BEVFormerv2.bevformerv2.dd3d.utils.geometry import (
 from torch import nn
 
 from .disentangled_box3d_loss import DisentangledBox3DLoss
+from projects.BEVFormerv2.bevformerv2.force_fp32 import force_fp32
 
 EPS = 1e-7
 
@@ -314,6 +315,7 @@ class FCOS3DLoss(nn.Module):
         self.num_classes = num_classes
         self.class_agnostic = class_agnostic
 
+    @force_fp32(apply_to=('box3d_quat', 'box3d_ctr', 'box3d_depth', 'box3d_size', 'box3d_conf', 'inv_intrinsics'))
     def forward(
         self,
         box3d_quat,
