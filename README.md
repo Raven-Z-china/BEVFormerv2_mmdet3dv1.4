@@ -50,6 +50,7 @@ python detectron2/setup.py develop
 ```
 ### 6. Install mmdetection3d v1.4
 Please refer to the official documentation to install mmdetection3d v1.4.
+https://github.com/open-mmlab/mmdetection3d
 
 ### 7. Enter the Project Directory
 ```bash
