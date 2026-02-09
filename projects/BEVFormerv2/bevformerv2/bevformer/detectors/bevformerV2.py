@@ -278,7 +278,7 @@ class BEVFormerV2(MVXTwoStageDetector):
         ins_data.bboxes_3d = bbox_results[0]['pts_bbox']['bboxes_3d']
         ins_data.scores_3d = bbox_results[0]['pts_bbox']['scores_3d']
         ins_data.labels_3d = bbox_results[0]['pts_bbox']['labels_3d']
-        datasample = DetDataSample(sample_idx=kwargs['sample_idx'])
+        datasample = DetDataSample(sample_idx=kwargs['sample_idx'][0])
         predictions = self.add_pred_to_datasample([datasample],[ins_data])
         return predictions
 
