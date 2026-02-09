@@ -101,6 +101,7 @@ BEVFormerv2/
 │   ├── dist_train.sh
 │   └── dist_test.sh
 ├── data/
+│   ├── can_bus
 │   └── nuscenes/
 ├── ckpts/
 └── ...
