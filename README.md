@@ -49,8 +49,11 @@ git clone https://github.com/facebookresearch/detectron2.git
 python detectron2/setup.py develop
 ```
 ### 6. Install mmdetection3d v1.4
-Please refer to the official documentation to install mmdetection3d v1.4.
-https://github.com/open-mmlab/mmdetection3d
+```bash
+git clone https://github.com/open-mmlab/mmdetection3d.git -b dev-1.x
+cd mmdetection3d
+python setup.py develop
+```
 
 ### 7. Enter the Project Directory
 ```bash
