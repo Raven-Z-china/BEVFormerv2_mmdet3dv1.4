@@ -466,3 +466,12 @@ fp16 = dict(
 )
 
 model_wrapper_cfg = dict(type='MMDistributedDataParallel', find_unused_parameters=True)
+
+default_hooks = dict(
+    checkpoint=dict(
+        interval=1, max_keep_ckpts=3, save_last=True, type='CheckpointHook'),
+    logger=dict(interval=50, type='LoggerHook'),
+    param_scheduler=dict(type='ParamSchedulerHook'),
+    sampler_seed=dict(type='DistSamplerSeedHook'),
+    timer=dict(type='IterTimerHook'),
+    visualization=dict(type='Det3DVisualizationHook'))
